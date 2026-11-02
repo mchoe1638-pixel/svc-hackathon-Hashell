@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { joinTripRequest } from '@/lib/trips/api';
 import { mockJoinTrip, mockRequest } from '@/mocks';
 import type { ApiError, JoinTripInput, JoinTripResult } from '@/types/api';
 
@@ -19,8 +19,8 @@ export function useJoinTrip(): UseMutationResult<JoinTripResult, ApiError, JoinT
       if (USE_MOCK) {
         return mockRequest(() => mockJoinTrip(input));
       }
-      // TODO(real-api): 이름 묶기 또는 새 멤버 추가. 이미 묶인 이름이면 409, 참여 마감(OPEN이 아님)이면 423.
-      throw notImplemented('useJoinTrip');
+      // 진짜 API: 이름 묶기 또는 새 멤버 추가. 이미 묶인 이름이면 409, 참여 마감(OPEN이 아님)이면 423.
+      return joinTripRequest(input);
     },
     onSuccess: (result, input) =>
       invalidateAll(queryClient, [

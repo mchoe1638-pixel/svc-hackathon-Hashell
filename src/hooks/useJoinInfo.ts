@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { fetchJoinInfo } from '@/lib/trips/api';
 import { getMockJoinInfo, mockRequest } from '@/mocks';
 import type { ApiError, InviteCode, JoinInfo } from '@/types/api';
 
@@ -15,8 +15,8 @@ export function useJoinInfo(inviteCode: InviteCode): UseQueryResult<JoinInfo, Ap
       if (USE_MOCK) {
         return mockRequest(getMockJoinInfo);
       }
-      // TODO(real-api): 초대 코드로 방 정보 조회. 가입이 없으므로 서버는 초대 코드만 확인한다.
-      throw notImplemented('useJoinInfo');
+      // 진짜 API: 초대 코드로 방 정보 조회. 가입이 없으므로 익명 로그인만 되어 있으면 된다.
+      return fetchJoinInfo(inviteCode);
     },
   });
 }
