@@ -13,9 +13,9 @@
 
 ## 백엔드 (최명규)
 - 날짜/시간: 2026-11-02
-- 완료: 1-1 api/contract 파일 작성 — `src/types/api.ts` 보강(category·ParsedReceiptItem), `src/hooks/` 훅 16개+사용 예시, `src/mocks/`, `src/core/money.ts`(+테스트), `src/lib/providers.tsx`·`apiError.ts`. tsc·vitest·lint는 안 돌려서 미검증(정적 검토만). 앞서: S0 앱 셸 파일(`mobile/`, `.gitignore`, 동작 미확인), Git 방식 문서, CI·`.nvmrc`
-- 다음: (사람) `npx tsc --noEmit`·`npx vitest run` 실행 → 디자이너와 `api.ts` 합의, `app/layout.tsx`를 `<Providers>`로 감싸기. S0 남은 것: `server.url`에 Vercel 운영 주소·`appId` 확인 → `mobile/`에서 `npm install` → `npx cap add android` → 폰에 설치. `backend` Push, `dev`·`chore/setup` 정리, `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. 이어서 1-3 core 나머지, `native.ts`
-- 막힌 점: `api.ts` 디자이너 승인, `src/mocks/` 첫 시드를 백엔드가 작성함(이후 담당 확정 필요), Vercel 운영 주소 미확정, `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE)
+- 완료: 1-3 core/settlement — `src/core/`의 `allocate`(품목·세금·봉사료·할인 최대 잔여법 배분)·`settlement`(지출→사람별 순잔액)·`minimizeTransfers`(순잔액→송금 목록), `money.ts`에 `convertToKrw` 등 정수 연산 추가. PLAN 9장 케이스 9개 전부 테스트로 고정. `npx vitest run` 4파일 129개 통과, `npx tsc --noEmit` 오류 0(1-1 파일 포함 전체), `npx eslint src/core` 통과. 앞서: 1-1 api/contract(`api.ts`·훅 16개·`mocks/`·`formatMoney`·`providers.tsx`), S0 앱 셸 파일(`mobile/`, 동작 미확인), Git 방식 문서, CI·`.nvmrc`
+- 다음: (사람) 1-3 확인 후 커밋(`feat: 1-3 core/settlement …`) → 디자이너와 `api.ts` 합의, `app/layout.tsx`를 `<Providers>`로 감싸기. S0 남은 것: `server.url`에 Vercel 운영 주소·`appId` 확인 → `mobile/`에서 `npm install` → `npx cap add android` → 폰에 설치. `backend` Push, `dev`·`chore/setup` 정리, `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. 이어서 `core/fx.ts`(현금=방 환율·카드=TTS×(1+수수료) 스냅샷 고르기, 100엔당 시세 정규화), `native.ts`
+- 막힌 점: `api.ts` 디자이너 승인, `src/mocks/` 첫 시드를 백엔드가 작성함(이후 담당 확정 필요), Vercel 운영 주소 미확정, `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE), 1-3: 품목 밖 금액(합계−품목−조정)을 나눌 멤버(`remainderMemberIds`)를 API가 어떻게 채울지, EACH/SHARED 구분 필요 여부 확인 필요
 
 
 ## 디자인·화면 (이승화)
