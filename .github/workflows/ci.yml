@@ -1,0 +1,45 @@
+# 타입 검사(tsc) + 테스트(vitest). dev·main 대상 PR과 dev·main push마다 돈다.
+# 브랜치 보호의 필수 체크는 job 이름 `check`로 지정한다.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+# 같은 PR에 새 커밋이 오면 이전 실행을 취소한다. dev·main push는 취소하지 않는다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # LayoutProps 같은 라우트 타입과 next-env.d.ts는 git에 없다(.gitignore).
+      # tsc 전에 생성하지 않으면 깨끗한 체크아웃에서 타입 오류가 난다.
+      - name: Next 타입 생성
+        run: npx next typegen
+
+      - name: 타입 검사
+        run: npx tsc --noEmit
+
+      # 테스트 파일이 아직 없어도 실패하지 않게 한다.
+      - name: 테스트
+        run: npx vitest run --passWithNoTests

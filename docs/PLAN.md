@@ -62,7 +62,7 @@
 - Tailwind + shadcn/ui
 - Supabase: Postgres, Realtime, 익명 로그인(Anonymous Sign-in)
 - Claude API: 영수증 파싱
-- Vercel: 배포 (PR마다 미리보기 주소, `main`은 운영 주소)
+- Vercel: 배포 (`main`은 운영 주소, 브랜치 Push마다 미리보기 주소)
 - Capacitor (Android): 총무 앱 셸. 운영 주소를 열고, 기본 공유창(Share) 사용
 - zod (AI 응답 검증), @tanstack/react-query (데이터 캐시·낙관적 업데이트), vitest (테스트)
 
