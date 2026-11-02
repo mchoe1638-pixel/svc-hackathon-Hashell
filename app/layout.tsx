@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import { t } from "@/i18n/ko";
+import { Providers } from "@/lib/providers";
 
 export const metadata: Metadata = {
   title: t("app.name"),
@@ -16,7 +17,6 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-// TODO: 백엔드가 src/lib/providers.tsx를 주면 {children}을 <Providers>로 감싼다.
 export default function RootLayout({
   children,
 }: {
@@ -25,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full">
       <body className="min-h-full">
-        <div className="mx-auto flex min-h-dvh w-full max-w-app flex-col bg-background">
-          {children}
-        </div>
+        <Providers>
+          <div className="mx-auto flex min-h-dvh w-full max-w-app flex-col bg-background">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );

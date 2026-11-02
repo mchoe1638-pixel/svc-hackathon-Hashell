@@ -25,7 +25,7 @@
 ## 일정과 완료 기준
 | 시점 | 할 일 | 완료 기준 |
 | --- | --- | --- |
-| Day 0 | 수출입은행 키(가장 먼저), Anthropic 키(사무국), Supabase, Vercel, GitHub 저장소·main 보호·CI·PR 템플릿. `api.ts` + 가짜 훅. **S0 앱 셸**: Android Studio 설치, Capacitor 셸이 Vercel 운영 주소를 열어 폰에 설치됨 | 디자이너가 clone → `npm install` → `.env.local`에 `NEXT_PUBLIC_USE_MOCK=true`만 넣고 실행했을 때 가짜 데이터로 화면이 뜸. GitHub에 `.env` 파일 없음. **내 폰에 hashell 앱 설치됨** |
+| Day 0 | 수출입은행 키(가장 먼저), Anthropic 키(사무국), Supabase, Vercel(`main`=운영, 브랜치 Push마다 미리보기), GitHub 저장소(`main`·`backend`·`design` 세 브랜치만)·CI(vitest + tsc). `api.ts` + 가짜 훅. **S0 앱 셸**: Android Studio 설치, Capacitor 셸이 Vercel 운영 주소를 열어 폰에 설치됨 | 디자이너가 clone → `npm install` → `.env.local`에 `NEXT_PUBLIC_USE_MOCK=true`만 넣고 실행했을 때 가짜 데이터로 화면이 뜸. GitHub에 `.env` 파일 없음. **내 폰에 hashell 앱 설치됨** |
 | D1 오전 | 훅·타입 합의 반영, S1: trips·members 테이블, RLS, 익명 로그인, `/trips` `/join` | 앱(총무)과 폰 브라우저(동행)가 같은 방에 참여 |
 | D1 오후 | `src/core/` 테스트 먼저 → 구현, S2: expenses·items·item_shares·adjustments, `/expenses` (생성·수정·삭제·체크) | `npx vitest run` 전부 통과 |
 | D1 밤 | 훅을 진짜 데이터로 교체, 배포 | AI 없이 정산 끝나는 배포 앱 |
