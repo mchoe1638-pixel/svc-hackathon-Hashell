@@ -10,9 +10,14 @@
  *  1. 환율(`cashRate`, `appliedRate`)은 "현지통화 1단위(1엔·1달러)당 원화". 100엔 기준 표기라면 7장에 맞춰 고친다.
  *  2. `CreateTripInput.memberNames`의 첫 번째 이름이 총무(방을 만든 사람).
  *  3. 5·9장에 없지만 화면에 필요해 추가: `ExpenseSummary.title`, `ExpenseDetail.shares`, `ApiError.status`.
- *  4. 파싱 초안 모양과 `ParseConfidence` 값은 6장 `ParsedReceipt`를 확인해 맞춘다.
+ *  4. 파싱 초안은 6장 `ParsedReceipt`를 따라 품목마다 `category`·`suggestedEaters`(`suggested_eaters`의 camelCase)를 싣는다.
+ *     소계(subtotal)는 품목에서 계산되는 값이라 싣지 않는다. `ParseConfidence`는 high | medium | low.
  *  5. 지출 수정은 전체 교체. 기존 품목은 `id`를 보내야 체크가 유지된다.
  *  6. 잔액은 원화 정수, 양수 = 받을 돈 · 음수 = 보낼 돈. 확정 전 송금은 미리보기라 `Transfer.id`가 null (받았어요 불가).
+ *  7. `category`는 저장 요청에서 생략할 수 있다: 새 품목은 'other', 기존 품목은 지금 값을 유지한다.
+ *  8. `ExpenseDetail.canEdit`은 정산 확정(SETTLED) 뒤에는 false다 (쓰기가 막히므로 버튼을 숨긴다).
+ *  9. 품목 없는 전표에서 "예외 항목만 입력하고 나머지는 체크된 인원끼리 분배"할 때, 그 인원을 어떻게 보내는지는
+ *     PLAN 6장에 없어 계약이 비어 있다. 가짜 데이터는 멤버 전원 균등 분배로 둔다.
  */
 
 // ── 공통 값 ──────────────────────────────────────────────────────────────
@@ -50,6 +55,20 @@ export type AdjustmentKind = 'TAX' | 'SERVICE' | 'DISCOUNT';
 /** 영수증 판독 신뢰도. 'low'이거나 합계가 안 맞으면 서버가 `needsReview`를 true로 준다. */
 export type ParseConfidence = 'high' | 'medium' | 'low';
 
+/**
+ * 품목 카테고리 (PLAN '품목 카테고리' 절). 판독할 때 Claude가 품목마다 하나를 고르고, 목록 밖 값은 서버가 'other'로 저장한다.
+ * 정산 계산에는 쓰지 않는다 (통계 표시용).
+ */
+export type ItemCategory =
+  | 'alcohol'
+  | 'drink'
+  | 'meal'
+  | 'snack'
+  | 'transport'
+  | 'shopping'
+  | 'lodging'
+  | 'other';
+
 // ── 에러 ─────────────────────────────────────────────────────────────────
 
 /** 서버가 돌려주는 에러 내용. */
@@ -65,8 +84,9 @@ export interface ApiErrorResponse {
 
 /**
  * 훅의 `error` 값 (react-query의 TError). 응답 본문 + HTTP 상태.
- * 400 잘못된 요청(예: 품목 체크가 0명이 되는 해제) · 409 충돌(`version` 불일치, 이미 묶인 이름) ·
- * 423 정산 확정(SETTLED)된 여행에 쓰기.
+ * 400 잘못된 요청(예: 품목 체크가 0명이 되는 해제) · 404 없는 id · 409 충돌(`version` 불일치, 이미 묶인 이름) ·
+ * 423 잠김(정산 확정된 여행에 쓰기, 참여 마감된 여행에 참여) · 0 서버 응답 없음(오프라인·연결 시간 초과).
+ * 화면은 `message`가 아니라 `status`(필요하면 `code`)로 분기한다.
  */
 export interface ApiError extends ApiErrorDetail {
   readonly status: number;
@@ -133,8 +153,10 @@ export interface ExpenseItem {
   /** 수량 (정수). */
   readonly quantity: number;
   readonly splitType: SplitType;
-  /** 체크한 사람. 서버 규칙상 1명 이상. */
+  /** 체크한 사람. 서버 규칙상 1명 이상. 집합이라 순서에 뜻이 없다 (멤버 순서로 보여주려면 `TripDetail.members`를 기준으로 삼는다). */
   readonly checkedMemberIds: readonly MemberId[];
+  /** 품목 카테고리. 판독 때 정해진다. 통계 표시용이고 정산 계산에는 안 쓴다. */
+  readonly category: ItemCategory;
 }
 
 /** 세금 · 봉사료 · 할인 한 줄. 지출 저장 요청에도 같은 모양으로 싣는다. */
@@ -163,7 +185,7 @@ export interface ExpenseDetail extends ExpenseSummary {
   readonly items: readonly ExpenseItem[];
   readonly adjustments: readonly Adjustment[];
   readonly shares: readonly MemberShare[];
-  /** 올린 사람 또는 총무면 true. 수정·삭제 버튼 표시용 (실제 권한은 서버가 다시 확인). */
+  /** 올린 사람 또는 총무면 true (정산 확정 뒤에는 false, 가정 8). 수정·삭제 버튼 표시용 (실제 권한은 서버가 다시 확인). */
   readonly canEdit: boolean;
   /** 수정·삭제 요청에 그대로 실어 보낸다. 서버 값과 다르면 409. */
   readonly version: number;
@@ -245,6 +267,8 @@ export interface ExpenseItemInput {
   readonly splitType: SplitType;
   /** 생략하면 새 품목은 전원 체크, 기존 품목은 지금 체크 그대로. */
   readonly checkedMemberIds?: readonly MemberId[];
+  /** 생략하면 새 품목은 'other', 기존 품목은 지금 값 그대로 (가정 7). */
+  readonly category?: ItemCategory;
 }
 
 /** 영수증에서 읽었거나 직접 입력한 지출 내용. 파싱 초안과 지출 저장 요청이 함께 쓴다. */
@@ -264,11 +288,20 @@ export interface ParseReceiptInput {
   readonly image: Blob;
 }
 
+/** 파싱 초안의 품목. 저장 요청의 품목에 `category`(항상 있음)와 참고용 `suggestedEaters`가 더 붙는다. */
+export interface ParsedReceiptItem extends ExpenseItemInput {
+  readonly category: ItemCategory;
+  /** 몇 명이 먹었을지 추정한 값. 참고 표시용이고 체크 기본값은 전원이다 (PLAN 6장 `suggested_eaters`). */
+  readonly suggestedEaters: number;
+}
+
 /**
  * `useParseReceipt` 출력. 저장하지 않는 초안.
- * 사용자가 확인한 뒤 `confidence`·`needsReview`를 떼고 `CreateExpenseInput`으로 보낸다.
+ * 사용자가 확인한 뒤 `confidence`·`needsReview`를 떼고 `CreateExpenseInput`으로 보낸다
+ * (품목의 `suggestedEaters`는 저장 요청에 안 실어도 되고, 실려 와도 서버가 무시한다).
  */
 export interface ParsedReceiptDraft extends ExpenseContent {
+  readonly items: readonly ParsedReceiptItem[];
   readonly confidence: ParseConfidence;
   /** true면 결과를 바로 확정하지 않고 수동 확인 화면을 거친다. */
   readonly needsReview: boolean;
@@ -349,7 +382,7 @@ export interface QueryHookContracts {
 
 /**
  * 쓰기 훅: 훅을 부른 뒤 쓰기를 실행할 때 `variables`를 넘긴다. 성공하면 `data`가 채워진다.
- * 정산 확정(SETTLED)된 여행에 대한 쓰기는 전부 423.
+ * 정산 확정(SETTLED)된 여행에 대한 쓰기는 423. 예외는 받는 사람의 `useMarkReceived`와 총무의 `useUnsettleTrip` 둘뿐.
  */
 export interface MutationHookContracts {
   useCreateTrip: { variables: CreateTripInput; data: CreateTripResult };

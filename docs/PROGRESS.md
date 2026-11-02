@@ -13,9 +13,9 @@
 
 ## 백엔드 (최명규)
 - 날짜/시간: 2026-11-02
-- 완료: S0 앱 셸 파일 작성 — `mobile/`(Capacitor 8 Android 설정, `capacitor.config.ts`, 빈 `www/index.html`)와 `.gitignore`. 명령은 안 돌려서 동작은 미확인. 앞서: `src/types/api.ts` 초안, Git 방식 문서, CI·`.nvmrc`
-- 다음: (사람) `server.url`에 Vercel 운영 주소 입력·`appId` 확인 → `mobile/`에서 `npm install` → `npx cap add android` → 폰에 설치. `backend` Push, `dev`·`chore/setup` 정리, `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. 이어서 `api.ts` 합의 → 가짜 훅·`src/mocks/`·`native.ts`·`money.ts`·`providers.tsx`
-- 막힌 점: Vercel 운영 주소 미확정, `api.ts` 디자이너 승인, `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, `src/mocks/` 첫 시드 담당 미정, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE)
+- 완료: 1-1 api/contract 파일 작성 — `src/types/api.ts` 보강(category·ParsedReceiptItem), `src/hooks/` 훅 16개+사용 예시, `src/mocks/`, `src/core/money.ts`(+테스트), `src/lib/providers.tsx`·`apiError.ts`. tsc·vitest·lint는 안 돌려서 미검증(정적 검토만). 앞서: S0 앱 셸 파일(`mobile/`, `.gitignore`, 동작 미확인), Git 방식 문서, CI·`.nvmrc`
+- 다음: (사람) `npx tsc --noEmit`·`npx vitest run` 실행 → 디자이너와 `api.ts` 합의, `app/layout.tsx`를 `<Providers>`로 감싸기. S0 남은 것: `server.url`에 Vercel 운영 주소·`appId` 확인 → `mobile/`에서 `npm install` → `npx cap add android` → 폰에 설치. `backend` Push, `dev`·`chore/setup` 정리, `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. 이어서 1-3 core 나머지, `native.ts`
+- 막힌 점: `api.ts` 디자이너 승인, `src/mocks/` 첫 시드를 백엔드가 작성함(이후 담당 확정 필요), Vercel 운영 주소 미확정, `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE)
 
 
 ## 디자인·화면 (이승화)
