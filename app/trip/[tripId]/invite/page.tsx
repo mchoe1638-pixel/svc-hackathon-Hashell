@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { BottomCTA } from "@/components/bottom-cta";
 import { ErrorState } from "@/components/error-state";
@@ -33,6 +33,15 @@ async function shareInviteTemporary(url: string): Promise<boolean> {
 
 /** 링크 공유 (총무, 앱): 초대 링크 공유 + 참여 현황 + 링크 잠금. */
 export default function InvitePage() {
+  // cacheComponents: useParams는 요청 시점에 정해지므로 Suspense 안에서 읽어야 빌드가 된다.
+  return (
+    <Suspense fallback={<InviteSkeleton />}>
+      <InviteContent />
+    </Suspense>
+  );
+}
+
+function InviteContent() {
   const { tripId } = useParams<{ tripId: string }>();
   const trip = useTrip(tripId);
   const lockTrip = useLockTrip();

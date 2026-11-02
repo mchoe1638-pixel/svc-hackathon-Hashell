@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { BottomCTA } from "@/components/bottom-cta";
 import { ErrorState } from "@/components/error-state";
@@ -15,6 +15,15 @@ import type { MemberId } from "@/types/api";
 
 /** 참여 (동행, 웹): 초대 링크로 들어와 이름을 고르거나 새 이름을 더한다. 잠겼으면 마감 안내. */
 export default function JoinPage() {
+  // cacheComponents: useParams는 요청 시점에 정해지므로 Suspense 안에서 읽어야 빌드가 된다.
+  return (
+    <Suspense fallback={<JoinSkeleton />}>
+      <JoinContent />
+    </Suspense>
+  );
+}
+
+function JoinContent() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const router = useRouter();
   const joinInfo = useJoinInfo(inviteCode);
