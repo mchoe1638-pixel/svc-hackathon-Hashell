@@ -1,0 +1,511 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>hashell 동기화 흐름</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style id="css">
+/* Layout: two-row toolbar, then a full-bleed dotted canvas with three swimlanes (host app / server / guest web). Selection opens a floating inspector at the bottom. Review notes sit in a column right of the guest lane. */
+:root{
+  --bg:#FFFFFF; --page:#EEF0F4; --surface:#F4F6F9; --surface2:#E9EDF3;
+  --text:#16181D; --sub:#646B77; --border:#E1E5EB; --dot:#D5DAE2;
+  --lane:#F7F8FB; --edge:#8A919D;
+  --primary:#2F6BFF; --primary-ink:#FFFFFF; --primary-soft:#E8EFFF;
+  --receive:#17915A; --receive-soft:#E3F5EC; --send:#D93F45;
+  --warn:#9A6200; --warn-soft:#FFF4DC;
+  --note:#FFF3B8; --note-ink:#5A4A00;
+  --shadow:0 1px 2px rgba(20,24,32,.08);
+  --shadow-lg:0 8px 24px rgba(20,24,32,.14);
+  --font:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111214; --page:#08090A; --surface:#1B1D21; --surface2:#25282E;
+  --text:#F2F3F5; --sub:#9AA0AA; --border:#2C2F35; --dot:#22252B;
+  --lane:#0F1012; --edge:#6E7581;
+  --primary:#5B8CFF; --primary-ink:#0B1020; --primary-soft:#1B2645;
+  --receive:#3CC683; --receive-soft:#12301F; --send:#FF6B6F;
+  --warn:#F2B544; --warn-soft:#33270C;
+  --note:#3A3316; --note-ink:#F3E6A6;
+  --shadow:0 1px 2px rgba(0,0,0,.5); --shadow-lg:0 8px 24px rgba(0,0,0,.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111214; --page:#08090A; --surface:#1B1D21; --surface2:#25282E;
+  --text:#F2F3F5; --sub:#9AA0AA; --border:#2C2F35; --dot:#22252B;
+  --lane:#0F1012; --edge:#6E7581;
+  --primary:#5B8CFF; --primary-ink:#0B1020; --primary-soft:#1B2645;
+  --receive:#3CC683; --receive-soft:#12301F; --send:#FF6B6F;
+  --warn:#F2B544; --warn-soft:#33270C;
+  --note:#3A3316; --note-ink:#F3E6A6;
+  --shadow:0 1px 2px rgba(0,0,0,.5); --shadow-lg:0 8px 24px rgba(0,0,0,.6);
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--page);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+button,input{font:inherit;color:inherit}
+#root{height:100%;display:flex;flex-direction:column}
+.top{background:var(--bg);border-bottom:1px solid var(--border);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 8px;display:flex;flex-direction:column;gap:8px;position:relative;z-index:20}
+.row{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.brand{flex:1 1 0;min-width:0}
+.brand h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand h1 i{font-style:normal;color:var(--primary)}
+.status{font-size:13px;color:var(--sub);white-space:nowrap}
+.status.dirty{color:var(--warn);font-weight:700}
+.btn{min-height:36px;border-radius:9px;border:1px solid var(--border);background:var(--surface);padding:0 12px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--surface2)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn.icon{width:36px;padding:0;justify-content:center;font-size:16px}
+.btn.danger{color:var(--send)}
+.btn.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+.btn:focus-visible,.h:focus-visible,input:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.tools{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px 2px}
+.tools::-webkit-scrollbar{display:none}
+.tools .lbl{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.04em;margin-right:2px;white-space:nowrap}
+.tools .sep{width:1px;height:22px;background:var(--border);margin:0 6px;flex:none}
+.tools .spacer{flex:1;min-width:8px}
+.sw{width:14px;height:12px;border-radius:3px;border:1.5px solid;flex:none}
+.sw.screen{background:var(--surface);border-color:var(--sub)}
+.sw.decision{background:var(--warn-soft);border-color:var(--warn);transform:rotate(45deg) scale(.8);border-radius:1px;width:12px}
+.sw.server{background:var(--primary-soft);border-color:var(--primary)}
+.sw.live{background:var(--receive-soft);border-color:var(--receive)}
+.sw.terminal{background:var(--surface2);border-color:var(--sub);border-radius:99px;width:18px}
+.sw.planned{background:var(--bg);border-color:var(--sub);border-style:dashed}
+.sw.note{background:var(--note);border-color:var(--note)}
+.zv{font-family:var(--mono);font-size:12px;color:var(--sub);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--sub);white-space:nowrap}
+.viewport{position:relative;flex:1;min-height:0;overflow:hidden;background-color:var(--page);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);touch-action:none;cursor:grab}
+.viewport.panning{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.lane{position:absolute;border-radius:18px;background:var(--lane);border:1px solid var(--border)}
+.lane-t{position:absolute;top:16px;left:0;right:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0}
+.lane-t b{font-size:16px;font-weight:800;letter-spacing:-0.01em}
+.lane-t small{font-family:var(--mono);font-size:11px;color:var(--sub);letter-spacing:.06em;text-transform:uppercase}
+svg.edges{position:absolute;overflow:visible;pointer-events:none;z-index:1}
+svg.edges .hit{pointer-events:stroke;stroke:transparent;stroke-width:18;fill:none;cursor:pointer}
+svg.edges .ln{fill:none;stroke:var(--edge);stroke-width:1.6}
+svg.edges .ln.dash{stroke-dasharray:6 5}
+svg.edges .ln.sel{stroke:var(--primary);stroke-width:2.4}
+svg.edges .ln.temp{stroke:var(--primary);stroke-dasharray:4 4;stroke-width:2}
+svg.edges .mk{fill:var(--edge)}
+svg.edges .mk.sel{fill:var(--primary)}
+.node{position:absolute;z-index:2;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px 14px;font-size:14px;line-height:1.45;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:move;user-select:none;-webkit-user-select:none;box-shadow:var(--shadow)}
+.node .txt{white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;outline:none;min-width:2ch;cursor:inherit}
+.node .txt[contenteditable="true"],.node .txt[contenteditable="plaintext-only"]{cursor:text;user-select:text;-webkit-user-select:text;background:var(--bg);color:var(--text);border-radius:4px;box-shadow:0 0 0 3px var(--bg),0 0 0 4.5px var(--primary)}
+.node .txt:empty::before{content:"글자 입력";color:var(--sub)}
+.node.sel{outline:2px solid var(--primary);outline-offset:4px}
+.t-screen{border-color:var(--sub)}
+.t-server{background:var(--primary-soft);border-color:var(--primary);border-radius:6px}
+.t-live{background:var(--receive-soft);border-color:var(--receive)}
+.t-terminal{background:var(--surface2);border-color:var(--sub);border-radius:999px;padding:12px 22px}
+.t-planned{background:var(--bg);border-style:dashed;border-color:var(--sub);color:var(--sub)}
+.t-note{background:var(--note);border-color:var(--note);color:var(--note-ink);border-radius:4px;text-align:left;justify-content:flex-start;font-size:13px}
+.t-decision{background:none;border:0;box-shadow:none;min-height:100px;padding:20px 40px}
+.t-decision::before,.t-decision::after{content:"";position:absolute;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);z-index:-1}
+.t-decision::before{inset:0;background:var(--warn)}
+.t-decision::after{inset:2px 3px;background:var(--warn-soft)}
+.t-decision.sel{outline-style:dashed}
+.h{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--primary);cursor:crosshair;z-index:4;touch-action:none}
+.h::after{content:"";position:absolute;inset:-10px}
+.h.n{top:-8px;left:calc(50% - 7px)}.h.s{bottom:-8px;left:calc(50% - 7px)}
+.h.e{right:-8px;top:calc(50% - 7px)}.h.w{left:-8px;top:calc(50% - 7px)}
+.t-decision .h.n{top:-6px}.t-decision .h.s{bottom:-6px}.t-decision .h.e{right:-4px}.t-decision .h.w{left:-4px}
+.elabel{position:absolute;z-index:3;transform:translate(-50%,-50%);background:var(--bg);color:var(--sub);border:1px solid var(--border);font-size:12px;font-weight:500;padding:1px 7px;border-radius:7px;white-space:nowrap;cursor:pointer}
+.elabel.sel{color:var(--primary);border-color:var(--primary)}
+.insp{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;background:var(--bg);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;width:max-content;max-width:calc(100% - 32px)}
+.insp .btn{min-height:34px;font-size:13px;padding:0 10px}
+.insp .grp{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.insp input{min-height:34px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);padding:0 10px;font-size:14px;width:180px;max-width:100%}
+.insp input:focus{outline:none;border-color:var(--primary)}
+.toast{position:fixed;left:50%;top:calc(120px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;z-index:40;max-width:calc(100% - 32px);text-align:center}
+@media (max-width:640px){.hint{display:none}.brand h1{font-size:16px}}
+@media (prefers-reduced-motion:no-preference){.insp{animation:up .14s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}}
+</style>
+
+<div id="root">
+  <header class="top">
+    <div class="row">
+      <div class="brand"><h1><i>hashell</i> 동기화 흐름</h1></div>
+      <span class="status" id="status"></span>
+      <button class="btn icon" id="undoBtn" type="button" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">↶</button>
+      <button class="btn icon" id="redoBtn" type="button" title="다시 실행 (Ctrl+Shift+Z)" aria-label="다시 실행">↷</button>
+      <button class="btn primary" id="saveBtn" type="button" disabled>저장</button>
+    </div>
+    <div class="tools" role="toolbar" aria-label="도형 추가">
+      <span class="lbl">추가</span>
+      <button class="btn" type="button" data-add="screen"><i class="sw screen"></i>화면</button>
+      <button class="btn" type="button" data-add="decision"><i class="sw decision"></i>분기</button>
+      <button class="btn" type="button" data-add="server"><i class="sw server"></i>서버</button>
+      <button class="btn" type="button" data-add="live"><i class="sw live"></i>실시간</button>
+      <button class="btn" type="button" data-add="terminal"><i class="sw terminal"></i>시작·끝</button>
+      <button class="btn" type="button" data-add="planned"><i class="sw planned"></i>예정</button>
+      <button class="btn" type="button" data-add="note"><i class="sw note"></i>메모</button>
+      <span class="sep"></span>
+      <button class="btn icon" id="zOut" type="button" aria-label="축소">−</button>
+      <span class="zv" id="zVal">100%</span>
+      <button class="btn icon" id="zIn" type="button" aria-label="확대">+</button>
+      <button class="btn" id="zFit" type="button">전체 보기</button>
+      <span class="spacer"></span>
+      <span class="hint">더블클릭 글자 수정 · 파란 점 끌어서 연결 · 빈 곳 끌어서 이동 · Ctrl+휠 확대</span>
+    </div>
+  </header>
+  <main class="viewport" id="vp" aria-label="플로우 차트 캔버스">
+    <div class="world" id="world">
+      <div id="lanes"></div>
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+      <div id="labels"></div>
+      <div id="nodes"></div>
+    </div>
+    <div class="insp" id="insp" hidden></div>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script type="application/json" id="flow-data">{"updatedAt": "2026-11-02T05:03:53Z", "lanes": [{"title": "방장 앱", "sub": "Android · Expo", "x": 0, "w": 380}, {"title": "서버", "sub": "Spring Boot · 원본 데이터", "x": 400, "w": 380}, {"title": "동행 웹", "sub": "링크 참여 · 설치 없음", "x": 800, "w": 380}], "nodes": [{"id": "h1", "type": "terminal", "x": 100, "y": 90, "w": 180, "text": "방장: 앱 실행\n기기 토큰 자동 발급 · 로그인 없음"}, {"id": "h2", "type": "screen", "x": 90, "y": 200, "w": 200, "text": "여행 만들기\n국가 · 현금 환전 환율 · 카드 수수료율 · 멤버(선택)"}, {"id": "s1", "type": "server", "x": 490, "y": 200, "w": 200, "text": "방 생성\n방 ID · 초대 토큰 · 방장 권한 기록"}, {"id": "h3", "type": "screen", "x": 90, "y": 330, "w": 200, "text": "초대 링크 공유\n단톡방에 보내기 · 필요 시 재발급"}, {"id": "g1", "type": "terminal", "x": 900, "y": 330, "w": 180, "text": "동행: 링크 열기\n설치·가입 없음"}, {"id": "s2", "type": "decision", "x": 495, "y": 440, "w": 190, "text": "초대 토큰 유효?"}, {"id": "gx", "type": "screen", "x": 890, "y": 455, "w": 200, "text": "만료된 링크 안내\n방장에게 재요청"}, {"id": "g2", "type": "screen", "x": 890, "y": 580, "w": 200, "text": "멤버 목록에서 '나' 고르기\n목록에 없으면 새로 추가"}, {"id": "s3", "type": "decision", "x": 495, "y": 600, "w": 190, "text": "이미 다른 기기와\n연결된 멤버?"}, {"id": "gy", "type": "screen", "x": 890, "y": 730, "w": 200, "text": "이미 참여한 멤버\n다른 멤버 고르기 · 방장에게 해제 요청"}, {"id": "s4", "type": "live", "x": 490, "y": 780, "w": 200, "text": "멤버 연결 · 참여자 토큰 발급\n→ 전원에게 참여 이벤트"}, {"id": "h4", "type": "screen", "x": 90, "y": 780, "w": 200, "text": "멤버 참여 즉시 표시\n잘못 연결되면 방장이 해제"}, {"id": "g3", "type": "screen", "x": 890, "y": 880, "w": 200, "text": "참여자 토큰을 브라우저에 저장\n→ 가계부 입장"}, {"id": "h5", "type": "screen", "x": 90, "y": 1000, "w": 200, "text": "지출 추가\n영수증 · 메뉴판 · 직접 · N분의1"}, {"id": "g4", "type": "screen", "x": 890, "y": 1000, "w": 200, "text": "지출 추가 (웹)\n영수증 사진 · 직접 입력"}, {"id": "s5", "type": "server", "x": 490, "y": 1080, "w": 200, "text": "AI 영수증 판독\n결과는 초안으로 응답만 · 저장 안 함"}, {"id": "h6", "type": "screen", "x": 90, "y": 1200, "w": 200, "text": "판독 초안 검토\n품목 수정 · 안 먹은 사람 제외\n실패 시 직접 입력"}, {"id": "g5", "type": "screen", "x": 890, "y": 1200, "w": 200, "text": "판독 초안 검토 (웹)\n품목 수정 · 안 먹은 사람 제외\n실패 시 직접 입력"}, {"id": "h7", "type": "screen", "x": 90, "y": 1350, "w": 200, "text": "결제 수단 선택\n현금 · 카드 · 공금"}, {"id": "g6", "type": "screen", "x": 890, "y": 1350, "w": 200, "text": "결제 수단 선택\n현금 · 카드"}, {"id": "s6", "type": "server", "x": 490, "y": 1450, "w": 200, "text": "환율 확정 → 지출에 고정 저장\n현금: 환전 환율\n카드: 결제일 환율 + 수수료"}, {"id": "s7", "type": "server", "x": 490, "y": 1600, "w": 200, "text": "DB 커밋\n지출 저장 · 방 버전 +1"}, {"id": "s8", "type": "live", "x": 490, "y": 1730, "w": 200, "text": "커밋 후 변경 이벤트\nWebSocket · 방 버전 포함"}, {"id": "h8", "type": "screen", "x": 90, "y": 1730, "w": 200, "text": "내역 즉시 반영\n버전이 건너뛰면 변경분 다시 받기"}, {"id": "g7", "type": "screen", "x": 890, "y": 1730, "w": 200, "text": "내역 즉시 반영\n버전이 건너뛰면 변경분 다시 받기"}, {"id": "h9", "type": "screen", "x": 90, "y": 1880, "w": 200, "text": "지출 수정 · 삭제\n올린 사람과 방장만"}, {"id": "s9", "type": "decision", "x": 410, "y": 1870, "w": 170, "text": "지출 버전\n일치?"}, {"id": "s10", "type": "server", "x": 600, "y": 1880, "w": 170, "text": "체크 저장\n(품목, 사람) 한 줄씩"}, {"id": "g8", "type": "screen", "x": 890, "y": 1880, "w": 200, "text": "내가 먹은 메뉴 체크\n본인만 · 방장은 대신 가능"}, {"id": "h10", "type": "screen", "x": 90, "y": 2030, "w": 200, "text": "409 응답\n최신 내용 보여주고 다시 수정"}, {"id": "s11", "type": "live", "x": 490, "y": 2040, "w": 200, "text": "커밋 후 변경 이벤트\n→ 전원 화면 갱신"}, {"id": "h11", "type": "screen", "x": 90, "y": 2180, "w": 200, "text": "정산 미리보기\n언제든 · 서버 계산 결과"}, {"id": "s12", "type": "server", "x": 490, "y": 2180, "w": 200, "text": "정산 계산 (서버 한 곳)\n지출별 고정 환율로 원화 환산 · 송금 최소화"}, {"id": "g9", "type": "screen", "x": 890, "y": 2180, "w": 200, "text": "정산 미리보기 (웹)"}, {"id": "h12", "type": "screen", "x": 90, "y": 2330, "w": 200, "text": "정산 확정\n방장만"}, {"id": "s13", "type": "live", "x": 490, "y": 2330, "w": 200, "text": "방 잠금\n지출·체크 쓰기 거절 · 송금 목록 고정\n→ 전원에게 잠금 이벤트"}, {"id": "h13", "type": "screen", "x": 90, "y": 2490, "w": 200, "text": "받을 사람: 입금 확인\n'받았어요' 체크 (앱·웹 동일)"}, {"id": "g10", "type": "screen", "x": 890, "y": 2490, "w": 200, "text": "보낼 사람: 송금 후\n'보냈어요' 표시 (앱·웹 동일)"}, {"id": "s14", "type": "server", "x": 490, "y": 2620, "w": 200, "text": "송금 상태 저장\n보냈어요(대기) → 받았어요(완료)\n완료는 받은 사람만"}, {"id": "end", "type": "terminal", "x": 500, "y": 2770, "w": 180, "text": "모든 송금 완료\n→ 정산 끝"}, {"id": "n1", "type": "note", "x": 815, "y": 120, "w": 190, "text": "동행 웹은 Expo 웹 빌드로\n앱과 같은 컴포넌트 재사용"}, {"id": "k1", "type": "note", "x": 1220, "y": 200, "w": 230, "text": "확정 · 인증\n방장·동행 모두 기기 토큰. 방장 기기 분실 복구는 해커톤 이후"}, {"id": "k2", "type": "note", "x": 1220, "y": 600, "w": 230, "text": "확정 · 멤버 연결\n한 멤버에 한 기기만 연결. 잘못 고르면 방장이 해제"}, {"id": "p1", "type": "planned", "x": 1220, "y": 1000, "w": 230, "text": "카드 문자 '공유하기'로 지출 등록\nSMS 자동 읽기는 Play 정책상 불가"}, {"id": "k3", "type": "note", "x": 1220, "y": 1440, "w": 230, "text": "확정 · 환율\n저장 시점 환율을 지출에 고정. 정산 때 다시 계산하지 않음"}, {"id": "p2", "type": "planned", "x": 1220, "y": 1600, "w": 230, "text": "카드 청구 확정 금액으로\n환율 보정"}, {"id": "k4", "type": "note", "x": 1220, "y": 1730, "w": 230, "text": "확정 · 동기화 순서\n쓰기는 REST → DB 커밋 → 이벤트. 보낸 사람은 REST 응답으로 먼저 반영"}, {"id": "k5", "type": "note", "x": 1220, "y": 1880, "w": 230, "text": "확정 · 수정 충돌\n지출은 버전(@Version) 낙관적 잠금. 체크는 행 단위라 잠금 불필요"}, {"id": "p3", "type": "planned", "x": 1220, "y": 2040, "w": 230, "text": "오프라인 쓰기 큐\n지금은 연결 끊기면 쓰기 막고 배너 표시"}, {"id": "k6", "type": "note", "x": 1220, "y": 2330, "w": 230, "text": "확정 · 잠금 해제\n방장만 가능, 송금 기록 초기화 경고 후 해제"}, {"id": "p4", "type": "planned", "x": 1220, "y": 2620, "w": 230, "text": "서버 여러 대 운영 시\nRedis pub/sub로 이벤트 전달"}], "edges": [{"id": "e1", "from": "h1", "to": "h2", "label": "", "dashed": false}, {"id": "e2", "from": "h2", "to": "s1", "label": "생성 요청", "dashed": false}, {"id": "e3", "from": "s1", "to": "h3", "label": "초대 링크", "dashed": false}, {"id": "e4", "from": "h3", "to": "g1", "label": "단톡방", "dashed": true}, {"id": "e5", "from": "g1", "to": "s2", "label": "토큰 확인", "dashed": false}, {"id": "e6", "from": "s2", "to": "gx", "label": "무효", "dashed": false}, {"id": "e7", "from": "s2", "to": "g2", "label": "유효", "dashed": false}, {"id": "e8", "from": "g2", "to": "s3", "label": "멤버 선택", "dashed": false}, {"id": "e9", "from": "s3", "to": "gy", "label": "예", "dashed": false}, {"id": "e10", "from": "gy", "to": "g2", "label": "다시 고르기", "dashed": false}, {"id": "e11", "from": "s3", "to": "s4", "label": "아니요", "dashed": false}, {"id": "e12", "from": "s4", "to": "h4", "label": "참여 이벤트", "dashed": false}, {"id": "e13", "from": "s4", "to": "g3", "label": "참여자 토큰", "dashed": false}, {"id": "e14", "from": "h4", "to": "h5", "label": "", "dashed": false}, {"id": "e15", "from": "g3", "to": "g4", "label": "", "dashed": false}, {"id": "e16", "from": "h5", "to": "s5", "label": "사진", "dashed": false}, {"id": "e17", "from": "g4", "to": "s5", "label": "사진", "dashed": false}, {"id": "e18", "from": "s5", "to": "h6", "label": "초안", "dashed": false}, {"id": "e19", "from": "s5", "to": "g5", "label": "초안", "dashed": false}, {"id": "e20", "from": "h5", "to": "h6", "label": "직접 입력", "dashed": false}, {"id": "e21", "from": "g4", "to": "g5", "label": "직접 입력", "dashed": false}, {"id": "e22", "from": "h6", "to": "h7", "label": "", "dashed": false}, {"id": "e23", "from": "g5", "to": "g6", "label": "", "dashed": false}, {"id": "e24", "from": "h7", "to": "s6", "label": "저장 요청 (REST)", "dashed": false}, {"id": "e25", "from": "g6", "to": "s6", "label": "저장 요청 (REST)", "dashed": false}, {"id": "e26", "from": "s6", "to": "s7", "label": "", "dashed": false}, {"id": "e27", "from": "s7", "to": "s8", "label": "커밋 성공 후", "dashed": false}, {"id": "e28", "from": "s8", "to": "h8", "label": "이벤트", "dashed": false}, {"id": "e29", "from": "s8", "to": "g7", "label": "이벤트", "dashed": false}, {"id": "e30", "from": "h8", "to": "h9", "label": "", "dashed": false}, {"id": "e31", "from": "g7", "to": "g8", "label": "", "dashed": false}, {"id": "e32", "from": "h9", "to": "s9", "label": "수정 + 버전", "dashed": false}, {"id": "e33", "from": "g8", "to": "s10", "label": "체크", "dashed": false}, {"id": "e34", "from": "s9", "to": "h10", "label": "불일치", "dashed": false}, {"id": "e35", "from": "h10", "to": "h9", "label": "다시 수정", "dashed": false}, {"id": "e36", "from": "s9", "to": "s11", "label": "일치 → 저장", "dashed": false}, {"id": "e37", "from": "s10", "to": "s11", "label": "", "dashed": false}, {"id": "e38", "from": "s11", "to": "s12", "label": "최신 상태 기준", "dashed": false}, {"id": "e39", "from": "h11", "to": "s12", "label": "조회", "dashed": false}, {"id": "e40", "from": "g9", "to": "s12", "label": "조회", "dashed": false}, {"id": "e41", "from": "h11", "to": "h12", "label": "", "dashed": false}, {"id": "e42", "from": "h12", "to": "s13", "label": "확정 요청", "dashed": false}, {"id": "e43", "from": "s13", "to": "h13", "label": "송금 목록", "dashed": false}, {"id": "e44", "from": "s13", "to": "g10", "label": "송금 목록", "dashed": false}, {"id": "e45", "from": "g10", "to": "s14", "label": "보냈어요", "dashed": false}, {"id": "e46", "from": "h13", "to": "s14", "label": "받았어요", "dashed": false}, {"id": "e47", "from": "s14", "to": "end", "label": "", "dashed": false}]}</script>
+<script id="app">
+(function(){
+'use strict';
+var ROOT_HTML = document.getElementById('root').outerHTML; // pristine markup, captured before any render
+var DATA = JSON.parse(document.getElementById('flow-data').textContent);
+var S = {lanes:DATA.lanes, nodes:DATA.nodes, edges:DATA.edges};
+var SAVED = JSON.stringify(S);
+var DRAFT_KEY = 'hashell-board-draft';
+var TYPES = {screen:{n:'화면',w:200},decision:{n:'분기',w:190},server:{n:'서버',w:200},live:{n:'실시간',w:200},terminal:{n:'시작·끝',w:180},planned:{n:'예정',w:200},note:{n:'메모',w:190}};
+var $ = function(id){return document.getElementById(id);};
+var vp = $('vp'), world = $('world'), nodesEl = $('nodes'), edgesEl = $('edges'), labelsEl = $('labels'), lanesEl = $('lanes'), insp = $('insp');
+var view = {x:0,y:0,z:1};
+var sel = null;            // {kind:'node'|'edge', id}
+var sizes = {};            // id -> {w,h}
+var undo = [], redo = [];
+var editing = null;        // node id being edited
+var artifactCap = null, canWrite = false;
+
+try{ var d = JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); if(d && d.base === (DATA.updatedAt||'') && d.json && d.json !== SAVED){ S = JSON.parse(d.json); setTimeout(function(){toast('저장 안 한 편집 내용을 이어서 보여드려요');},300);} }catch(e){}
+
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function uid(p){return p+Math.random().toString(36).slice(2,8);}
+function node(id){for(var i=0;i<S.nodes.length;i++) if(S.nodes[i].id===id) return S.nodes[i]; return null;}
+function edge(id){for(var i=0;i<S.edges.length;i++) if(S.edges[i].id===id) return S.edges[i]; return null;}
+function rect(n){var s = sizes[n.id]||{w:n.w,h:56}; return {x:n.x,y:n.y,w:s.w,h:s.h};}
+
+/* ---------- history ---------- */
+function snap(){ undo.push(JSON.stringify(S)); if(undo.length>120) undo.shift(); redo = []; }
+function changed(){
+  renderAll(); status();
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({base:DATA.updatedAt||'', json:JSON.stringify(S)})); }catch(e){}
+}
+function doUndo(){ if(!undo.length) return; redo.push(JSON.stringify(S)); S = JSON.parse(undo.pop()); sel = null; changed(); }
+function doRedo(){ if(!redo.length) return; undo.push(JSON.stringify(S)); S = JSON.parse(redo.pop()); sel = null; changed(); }
+
+/* ---------- view ---------- */
+function applyView(){
+  world.style.transform = 'translate('+view.x+'px,'+view.y+'px) scale('+view.z+')';
+  var g = 20*view.z; vp.style.backgroundSize = g+'px '+g+'px'; vp.style.backgroundPosition = view.x+'px '+view.y+'px';
+  $('zVal').textContent = Math.round(view.z*100)+'%';
+}
+function toWorld(cx,cy){ var r = vp.getBoundingClientRect(); return {x:(cx-r.left-view.x)/view.z, y:(cy-r.top-view.y)/view.z}; }
+function zoomAt(f,cx,cy){
+  var r = vp.getBoundingClientRect(); var px = cx-r.left, py = cy-r.top;
+  var nz = Math.max(0.2, Math.min(2.5, view.z*f)); f = nz/view.z;
+  view.x = px-(px-view.x)*f; view.y = py-(py-view.y)*f; view.z = nz; applyView();
+}
+function bounds(){
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  S.nodes.forEach(function(n){var r=rect(n);minX=Math.min(minX,r.x);minY=Math.min(minY,r.y);maxX=Math.max(maxX,r.x+r.w);maxY=Math.max(maxY,r.y+r.h);});
+  S.lanes.forEach(function(l){minX=Math.min(minX,l.x);maxX=Math.max(maxX,l.x+l.w);});
+  if(minX===Infinity){minX=0;minY=0;maxX=400;maxY=400;}
+  return {x:minX,y:Math.min(minY,0),w:maxX-minX,h:maxY-Math.min(minY,0)};
+}
+function fitAll(){
+  var b = bounds(), r = vp.getBoundingClientRect();
+  view.z = Math.max(0.2, Math.min(1.2, (r.width-48)/(b.w+40), (r.height-48)/(b.h+120)));
+  view.x = (r.width - b.w*view.z)/2 - b.x*view.z; view.y = 24 - (b.y-20)*view.z; applyView();
+}
+function fitWidth(){
+  var b = bounds(), r = vp.getBoundingClientRect();
+  if(r.width < 640){ view.z = 0.62; view.x = 12 - b.x*view.z; view.y = 12 - (b.y-10)*view.z; applyView(); return; }
+  view.z = Math.max(0.3, Math.min(1, (r.width-32)/(b.w+40)));
+  view.x = (r.width - b.w*view.z)/2 - b.x*view.z; view.y = 16 - (b.y-10)*view.z; applyView();
+}
+
+/* ---------- render ---------- */
+function laneExtent(){ var b = bounds(); return {top:-10, bottom:b.y+b.h+80}; }
+function renderLanes(){
+  var e = laneExtent();
+  lanesEl.innerHTML = S.lanes.map(function(l){
+    return '<div class="lane" style="left:'+l.x+'px;top:'+e.top+'px;width:'+l.w+'px;height:'+(e.bottom-e.top)+'px"><div class="lane-t"><b>'+esc(l.title)+'</b><small>'+esc(l.sub||'')+'</small></div></div>';
+  }).join('');
+}
+function renderNodes(){
+  nodesEl.innerHTML = S.nodes.map(function(n){
+    var on = sel && sel.kind==='node' && sel.id===n.id;
+    return '<div class="node t-'+n.type+(on?' sel':'')+'" data-id="'+n.id+'" style="left:'+n.x+'px;top:'+n.y+'px;width:'+n.w+'px"><div class="txt">'+esc(n.text)+'</div>'+
+      (on?'<span class="h n" data-side="n"></span><span class="h e" data-side="e"></span><span class="h s" data-side="s"></span><span class="h w" data-side="w"></span>':'')+'</div>';
+  }).join('');
+  measure();
+}
+function measure(){ nodesEl.querySelectorAll('.node').forEach(function(el){ sizes[el.dataset.id] = {w:el.offsetWidth, h:el.offsetHeight}; }); }
+function port(r,s){ return s==='n'?[r.x+r.w/2,r.y]:s==='s'?[r.x+r.w/2,r.y+r.h]:s==='e'?[r.x+r.w,r.y+r.h/2]:[r.x,r.y+r.h/2]; }
+var NORM = {n:[0,-1],s:[0,1],e:[1,0],w:[-1,0]};
+function sides(a,b){
+  var dx = (b.x+b.w/2)-(a.x+a.w/2), dy = (b.y+b.h/2)-(a.y+a.h/2);
+  var gapX = Math.max(b.x-(a.x+a.w), a.x-(b.x+b.w)), gapY = Math.max(b.y-(a.y+a.h), a.y-(b.y+b.h));
+  if(gapY > 10 && (gapX < 20 || Math.abs(dy) > Math.abs(dx)*0.6)) return dy>0?['s','n']:['n','s'];
+  return dx>0?['e','w']:['w','e'];
+}
+function curve(p1,s1,p2,s2){
+  var dist = Math.hypot(p2[0]-p1[0],p2[1]-p1[1]), off = Math.max(28, Math.min(110, dist/2.2));
+  var c1 = [p1[0]+NORM[s1][0]*off, p1[1]+NORM[s1][1]*off];
+  var c2 = s2 ? [p2[0]+NORM[s2][0]*off, p2[1]+NORM[s2][1]*off] : p2;
+  return {d:'M'+p1[0]+','+p1[1]+' C'+c1[0]+','+c1[1]+' '+c2[0]+','+c2[1]+' '+p2[0]+','+p2[1],
+    mid:[(p1[0]+3*c1[0]+3*c2[0]+p2[0])/8,(p1[1]+3*c1[1]+3*c2[1]+p2[1])/8]};
+}
+var temp = null; // connecting line {from, side, x, y}
+function renderEdges(){
+  var e = laneExtent(), b = bounds();
+  var minX = b.x-300, minY = e.top-300, W = b.w+600, H = e.bottom-e.top+600;
+  edgesEl.setAttribute('viewBox', minX+' '+minY+' '+W+' '+H);
+  edgesEl.style.left = minX+'px'; edgesEl.style.top = minY+'px'; edgesEl.style.width = W+'px'; edgesEl.style.height = H+'px';
+  var out = '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>'+
+    '<marker id="arrS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk sel" d="M0,0 L10,5 L0,10 z"/></marker></defs>';
+  var labels = '';
+  S.edges.forEach(function(ed){
+    var a = node(ed.from), bn = node(ed.to); if(!a||!bn) return;
+    var ra = rect(a), rb = rect(bn), sd = sides(ra,rb), c = curve(port(ra,sd[0]),sd[0],port(rb,sd[1]),sd[1]);
+    var on = sel && sel.kind==='edge' && sel.id===ed.id;
+    out += '<path class="hit" data-eid="'+ed.id+'" d="'+c.d+'"/><path class="ln'+(ed.dashed?' dash':'')+(on?' sel':'')+'" d="'+c.d+'" marker-end="url(#'+(on?'arrS':'arr')+')"/>';
+    if(ed.label) labels += '<div class="elabel'+(on?' sel':'')+'" data-eid="'+ed.id+'" style="left:'+c.mid[0]+'px;top:'+c.mid[1]+'px">'+esc(ed.label)+'</div>';
+  });
+  if(temp){ var tn = node(temp.from); if(tn){ var r = rect(tn), p = port(r,temp.side), c2 = curve(p,temp.side,[temp.x,temp.y],null); out += '<path class="ln temp" d="'+c2.d+'"/>'; } }
+  edgesEl.innerHTML = out; labelsEl.innerHTML = labels;
+}
+function renderInsp(){
+  if(!sel || editing){ insp.hidden = true; return; }
+  if(sel.kind==='node'){
+    var n = node(sel.id); if(!n){ insp.hidden = true; return; }
+    insp.innerHTML = '<div class="grp">'+Object.keys(TYPES).map(function(t){return '<button class="btn'+(n.type===t?' on':'')+'" type="button" data-type="'+t+'" title="'+TYPES[t].n+'로 바꾸기"><i class="sw '+t+'"></i>'+TYPES[t].n+'</button>';}).join('')+'</div>'+
+      '<div class="grp"><button class="btn" type="button" data-cmd="edit">글자 수정</button><button class="btn" type="button" data-cmd="wider">넓게</button><button class="btn" type="button" data-cmd="narrower">좁게</button><button class="btn" type="button" data-cmd="dup">복제</button><button class="btn danger" type="button" data-cmd="del">삭제</button></div>';
+  } else {
+    var ed = edge(sel.id); if(!ed){ insp.hidden = true; return; }
+    insp.innerHTML = '<input id="elabelIn" type="text" placeholder="선 라벨 (예: 유효)" value="'+esc(ed.label)+'" aria-label="선 라벨">'+
+      '<div class="grp"><button class="btn'+(ed.dashed?' on':'')+'" type="button" data-cmd="dash">점선</button><button class="btn" type="button" data-cmd="flip">방향 바꾸기</button><button class="btn danger" type="button" data-cmd="del">삭제</button></div>';
+    var inp = $('elabelIn'), snapped = false;
+    inp.addEventListener('input', function(){ if(!snapped){ snap(); snapped = true; } ed.label = inp.value; renderEdges(); status(); saveDraft(); });
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter') inp.blur(); e.stopPropagation(); });
+  }
+  insp.hidden = false;
+}
+function renderAll(){ renderNodes(); renderLanes(); renderEdges(); renderInsp(); }
+function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({base:DATA.updatedAt||'', json:JSON.stringify(S)})); }catch(e){} }
+
+/* ---------- text editing ---------- */
+function editNode(id){
+  var el = nodesEl.querySelector('.node[data-id="'+id+'"] .txt'); if(!el) return;
+  var n = node(id), before = n.text, before_state = JSON.stringify(S);
+  editing = id; renderInsp();
+  try{ el.contentEditable = 'plaintext-only'; }catch(e){}
+  if(el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
+  el.focus();
+  var range = document.createRange(); range.selectNodeContents(el); var s = getSelection(); s.removeAllRanges(); s.addRange(range);
+  var cancelled = false;
+  function onInput(){ sizes[id] = {w:el.parentNode.offsetWidth, h:el.parentNode.offsetHeight}; renderEdges(); }
+  function onKey(e){
+    e.stopPropagation();
+    if(e.key==='Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); el.blur(); }
+    else if(e.key==='Escape'){ cancelled = true; el.blur(); }
+  }
+  function onBlur(){
+    el.removeEventListener('input',onInput); el.removeEventListener('keydown',onKey); el.removeEventListener('blur',onBlur);
+    var txt = (el.innerText||'').replace(/\n+$/,'').replace(/ /g,' ');
+    editing = null;
+    if(!cancelled && txt !== before){ undo.push(before_state); redo = []; n.text = txt; changed(); }
+    else renderAll();
+  }
+  el.addEventListener('input',onInput); el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
+}
+
+/* ---------- commands ---------- */
+function addNode(type){
+  var r = vp.getBoundingClientRect(), c = toWorld(r.left+r.width/2, r.top+r.height/2);
+  var w = TYPES[type].w, n = {id:uid('n'), type:type, x:Math.round((c.x-w/2)/10)*10, y:Math.round((c.y-30)/10)*10, w:w, text:''};
+  if(sel && sel.kind==='node'){ var p = node(sel.id); if(p){ var pr = rect(p); n.x = Math.round((pr.x+pr.w/2-w/2)/10)*10; n.y = Math.round((pr.y+pr.h+60)/10)*10; } }
+  snap(); S.nodes.push(n);
+  if(sel && sel.kind==='node' && node(sel.id)) S.edges.push({id:uid('e'), from:sel.id, to:n.id, label:'', dashed:type==='planned'});
+  sel = {kind:'node', id:n.id}; changed(); editNode(n.id);
+}
+function delSel(){
+  if(!sel) return; snap();
+  if(sel.kind==='node'){ var id = sel.id; S.nodes = S.nodes.filter(function(n){return n.id!==id;}); S.edges = S.edges.filter(function(e){return e.from!==id && e.to!==id;}); }
+  else { var eid = sel.id; S.edges = S.edges.filter(function(e){return e.id!==eid;}); }
+  sel = null; changed();
+}
+insp.addEventListener('click', function(ev){
+  var b = ev.target.closest('button'); if(!b || !sel) return;
+  if(b.dataset.type){ var n = node(sel.id); if(n && n.type!==b.dataset.type){ snap(); n.type = b.dataset.type; changed(); } return; }
+  var cmd = b.dataset.cmd;
+  if(cmd==='del') return delSel();
+  if(sel.kind==='node'){
+    var nd = node(sel.id); if(!nd) return;
+    if(cmd==='edit') return editNode(nd.id);
+    if(cmd==='wider'){ snap(); nd.w = Math.min(420, nd.w+40); changed(); }
+    if(cmd==='narrower'){ snap(); nd.w = Math.max(120, nd.w-40); changed(); }
+    if(cmd==='dup'){ snap(); var c = JSON.parse(JSON.stringify(nd)); c.id = uid('n'); c.x += 30; c.y += 30; S.nodes.push(c); sel = {kind:'node', id:c.id}; changed(); }
+  } else {
+    var ed = edge(sel.id); if(!ed) return;
+    if(cmd==='dash'){ snap(); ed.dashed = !ed.dashed; changed(); }
+    if(cmd==='flip'){ snap(); var t = ed.from; ed.from = ed.to; ed.to = t; changed(); }
+  }
+});
+document.querySelectorAll('[data-add]').forEach(function(b){ b.addEventListener('click', function(){ addNode(b.dataset.add); }); });
+$('undoBtn').addEventListener('click', doUndo);
+$('redoBtn').addEventListener('click', doRedo);
+$('zIn').addEventListener('click', function(){ var r = vp.getBoundingClientRect(); zoomAt(1.2, r.left+r.width/2, r.top+r.height/2); });
+$('zOut').addEventListener('click', function(){ var r = vp.getBoundingClientRect(); zoomAt(1/1.2, r.left+r.width/2, r.top+r.height/2); });
+$('zFit').addEventListener('click', fitAll);
+
+/* ---------- pointer: select, drag, connect, pan, pinch ---------- */
+var pointers = new Map(), act = null, pinch = null, lastTap = {id:null, t:0};
+vp.addEventListener('pointerdown', function(e){
+  if(editing && e.target.closest('.txt[contenteditable="true"],.txt[contenteditable="plaintext-only"]')) return;
+  if(e.target.closest('.insp')) return;
+  if(editing && document.activeElement && document.activeElement.blur) document.activeElement.blur(); // commit text first
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pointers.size === 2){
+    var p = Array.from(pointers.values());
+    pinch = {d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y), z:view.z};
+    if(act && act.kind==='drag' && act.moved){ /* keep */ } act = null; return;
+  }
+  var h = e.target.closest('.h'), nd = e.target.closest('.node'), ed = e.target.closest('[data-eid]');
+  try{ vp.setPointerCapture(e.pointerId); }catch(_){}
+  if(h && nd){
+    act = {kind:'connect', from:nd.dataset.id, side:h.dataset.side};
+    var w = toWorld(e.clientX,e.clientY); temp = {from:nd.dataset.id, side:h.dataset.side, x:w.x, y:w.y}; renderEdges(); e.preventDefault(); return;
+  }
+  if(nd){
+    var n = node(nd.dataset.id);
+    var wasSel = sel && sel.kind==='node' && sel.id===n.id;
+    if(!wasSel){ sel = {kind:'node', id:n.id}; renderNodes(); renderEdges(); renderInsp(); }
+    act = {kind:'drag', id:n.id, sx:e.clientX, sy:e.clientY, ox:n.x, oy:n.y, moved:false, wasSel:wasSel}; e.preventDefault(); return;
+  }
+  if(ed){ sel = {kind:'edge', id:ed.dataset.eid}; renderNodes(); renderEdges(); renderInsp(); act = null; return; }
+  if(sel){ sel = null; renderNodes(); renderEdges(); renderInsp(); }
+  act = {kind:'pan', sx:e.clientX, sy:e.clientY, ox:view.x, oy:view.y}; vp.classList.add('panning');
+});
+vp.addEventListener('pointermove', function(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pinch && pointers.size === 2){
+    var p = Array.from(pointers.values()), d = Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+    zoomAt((pinch.z*d/pinch.d)/view.z, (p[0].x+p[1].x)/2, (p[0].y+p[1].y)/2); return;
+  }
+  if(!act) return;
+  if(act.kind==='pan'){ view.x = act.ox + e.clientX-act.sx; view.y = act.oy + e.clientY-act.sy; applyView(); }
+  else if(act.kind==='drag'){
+    var dx = (e.clientX-act.sx)/view.z, dy = (e.clientY-act.sy)/view.z;
+    if(!act.moved && Math.hypot(dx,dy)*view.z < 4) return;
+    if(!act.moved){ snap(); act.moved = true; }
+    var n = node(act.id); n.x = Math.round((act.ox+dx)/10)*10; n.y = Math.round((act.oy+dy)/10)*10;
+    var el = nodesEl.querySelector('.node[data-id="'+act.id+'"]'); if(el){ el.style.left = n.x+'px'; el.style.top = n.y+'px'; }
+    renderEdges();
+  }
+  else if(act.kind==='connect'){ var w = toWorld(e.clientX,e.clientY); temp.x = w.x; temp.y = w.y; renderEdges(); }
+});
+function endPointer(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) pinch = null;
+  if(!act) return;
+  var a = act; act = null; vp.classList.remove('panning');
+  if(a.kind==='drag'){
+    if(a.moved){ renderLanes(); status(); saveDraft(); renderEdges(); }
+    else if(e.type==='pointerup'){
+      var now = Date.now();
+      if(lastTap.id===a.id && now-lastTap.t < 450){ lastTap = {id:null,t:0}; editNode(a.id); }
+      else lastTap = {id:a.id, t:now};
+    }
+  }
+  if(a.kind==='connect'){
+    temp = null;
+    var t = document.elementFromPoint(e.clientX, e.clientY), tn = t && t.closest && t.closest('.node');
+    if(tn && tn.dataset.id !== a.from){
+      var dup = S.edges.some(function(x){return x.from===a.from && x.to===tn.dataset.id;});
+      if(!dup){ snap(); var ne = {id:uid('e'), from:a.from, to:tn.dataset.id, label:'', dashed:false}; S.edges.push(ne); sel = {kind:'edge', id:ne.id}; changed(); setTimeout(function(){var i=$('elabelIn'); if(i) i.focus();},0); return; }
+    } else if(!tn){
+      // dropped on empty space: create a new screen there, connected
+      var w = toWorld(e.clientX,e.clientY), src = node(a.from);
+      var nt = src && src.type==='planned' ? 'planned' : 'screen', nw = TYPES[nt].w;
+      snap(); var nn = {id:uid('n'), type:nt, x:Math.round((w.x-nw/2)/10)*10, y:Math.round((w.y-28)/10)*10, w:nw, text:''};
+      S.nodes.push(nn); S.edges.push({id:uid('e'), from:a.from, to:nn.id, label:'', dashed:nt==='planned'});
+      sel = {kind:'node', id:nn.id}; changed(); editNode(nn.id); return;
+    }
+    renderEdges();
+  }
+}
+vp.addEventListener('pointerup', endPointer);
+vp.addEventListener('pointercancel', endPointer);
+vp.addEventListener('dblclick', function(e){
+  if(editing) return;
+  var nd = e.target.closest('.node'); if(nd){ sel = {kind:'node', id:nd.dataset.id}; editNode(nd.dataset.id); return; }
+  var ed = e.target.closest('[data-eid]'); if(ed){ sel = {kind:'edge', id:ed.dataset.eid}; renderEdges(); renderInsp(); var i = $('elabelIn'); if(i) i.focus(); }
+});
+vp.addEventListener('wheel', function(e){
+  e.preventDefault();
+  if(e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY*0.01), e.clientX, e.clientY);
+  else { view.x -= e.deltaX; view.y -= e.deltaY; applyView(); }
+}, {passive:false});
+document.addEventListener('keydown', function(e){
+  var tag = (document.activeElement && document.activeElement.tagName)||'';
+  if(editing || tag==='INPUT' || tag==='TEXTAREA') return;
+  var mod = e.ctrlKey || e.metaKey;
+  if(mod && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); }
+  else if(mod && e.key.toLowerCase()==='y'){ e.preventDefault(); doRedo(); }
+  else if(mod && e.key.toLowerCase()==='s'){ e.preventDefault(); if(!$('saveBtn').disabled) $('saveBtn').click(); }
+  else if((e.key==='Delete'||e.key==='Backspace') && sel){ e.preventDefault(); delSel(); }
+  else if(e.key==='Enter' && sel && sel.kind==='node'){ e.preventDefault(); editNode(sel.id); }
+  else if(e.key==='Escape' && sel){ sel = null; renderAll(); }
+});
+
+/* ---------- status & save ---------- */
+function status(){
+  var dirty = JSON.stringify(S) !== SAVED, st = $('status');
+  st.classList.toggle('dirty', dirty);
+  st.textContent = dirty ? '저장 안 됨' : (DATA.updatedAt ? '저장됨 · '+new Date(DATA.updatedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '');
+  $('saveBtn').disabled = !dirty || !canWrite;
+  $('undoBtn').disabled = !undo.length; $('redoBtn').disabled = !redo.length;
+}
+var tt; function toast(m){ var el = $('toast'); el.textContent = m; el.hidden = false; clearTimeout(tt); tt = setTimeout(function(){ el.hidden = true; }, 2400); }
+var SKEL = '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>';
+function buildDoc(data){
+  var json = JSON.stringify(data).replace(/</g,'\\u003c');
+  return SKEL +
+    '<title>hashell 동기화 흐름</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap">\n' +
+    '<style id="css">' + $('css').textContent + '<\/style>\n\n' + ROOT_HTML + '\n\n' +
+    '<script type="application/json" id="flow-data">' + json + '<\/script>\n' +
+    '<script id="app">' + $('app').textContent + '<\/script>\n</body></html>';
+}
+$('saveBtn').addEventListener('click', async function(){
+  if(!artifactCap) return;
+  var btn = this; btn.disabled = true; btn.textContent = '저장 중…';
+  try{
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(_){}
+    await artifactCap.publish(buildDoc({updatedAt:new Date().toISOString(), lanes:S.lanes, nodes:S.nodes, edges:S.edges}));
+  }catch(err){
+    saveDraft();
+    var code = err && err.code;
+    toast(code==='conflict' ? '다른 곳에서 먼저 저장됐어요. 최신 버전으로 다시 열려요' : '저장하지 못했어요'+(code?' ('+code+')':''));
+    btn.textContent = '저장'; status();
+  }
+});
+
+/* ---------- boot ---------- */
+renderAll(); fitWidth(); status();
+window.addEventListener('resize', function(){ clearTimeout(window.__rz); window.__rz = setTimeout(applyView, 150); });
+if(window.claude && claude.use){
+  claude.use('artifact').then(function(a){ artifactCap = a; canWrite = !!a; if(!a) $('saveBtn').title = '이 화면에서는 저장 권한이 없어요'; status(); });
+} else { $('saveBtn').title = '이 화면에서는 저장할 수 없어요'; }
+})();
+</script>
+
+</body></html>
