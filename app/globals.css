@@ -1,26 +1,134 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+/*
+ * 디자인 토큰. 색·글자·간격·둥글기는 여기서만 정의하고 Tailwind 클래스로 쓴다.
+ * 라이트 모드만 지원 (다크모드 범위 밖).
+ */
 :root {
+  /* 브랜드 */
+  --brand: #0034b3;
+  --brand-foreground: #ffffff;
+  --brand-soft: #e8eefc;
+
+  /* shadcn 시맨틱 색 */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #191f28;
+  --card: #ffffff;
+  --card-foreground: #191f28;
+  --popover: #ffffff;
+  --popover-foreground: #191f28;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #f2f4f6;
+  --secondary-foreground: #191f28;
+  --muted: #f2f4f6;
+  --muted-foreground: #6b7684;
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--brand);
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #e5e8eb;
+  --input: #d1d6db;
+  --ring: var(--brand);
+
+  /* 정산 의미 색: 받을 돈 / 보낼 돈 / 추정 */
+  --receive: #0034b3;
+  --send: #e5484d;
+  --estimate: #b25e09;
+  --estimate-soft: #fff4e5;
+
+  /* 둥글기 */
+  --radius: 0.75rem;
+
+  /* 레이아웃 */
+  --app-max-width: 480px;
+  --bottom-cta-height: 5rem; /* 하단 고정 버튼 영역: 위 12 + 버튼 56 + 아래 12 (safe-area 제외) */
+}
+
+/* 아이폰 홈 바 여백. viewport-fit=cover 필요 (layout.tsx) */
+@utility pb-safe {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* 하단 고정 버튼에 내용이 가려지지 않게 하는 빈 공간 */
+@utility h-bottom-cta-safe {
+  height: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom));
 }
 
 @theme inline {
+  /* 색 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-receive: var(--receive);
+  --color-send: var(--send);
+  --color-estimate: var(--estimate);
+  --color-estimate-soft: var(--estimate-soft);
+
+  /* 둥글기 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* 글자: 시스템 한글 글꼴 (외부 다운로드 없음) */
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  /* 글자 크기 (최소 입력 글자 16px = text-base) */
+  --text-caption: 0.8125rem; /* 13px 보조 설명 */
+  --text-caption--line-height: 1.25rem;
+  --text-body: 1rem; /* 16px 본문·입력 */
+  --text-body--line-height: 1.5rem;
+  --text-title: 1.375rem; /* 22px 화면 질문 */
+  --text-title--line-height: 1.875rem;
+  --text-amount: 1.75rem; /* 28px 금액 강조 */
+  --text-amount--line-height: 2.25rem;
+
+  /* 간격: 기본 4px 단위 (p-4 = 16px). 화면 좌우 여백은 px-gutter */
+  --spacing: 0.25rem;
+  --spacing-gutter: 1.25rem; /* 20px */
+  --spacing-touch: 2.75rem; /* 44px 최소 터치 영역 */
+  --spacing-bottom-cta: var(--bottom-cta-height);
+
+  /* 최대 폭 */
+  --container-app: var(--app-max-width);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-muted text-foreground font-sans antialiased;
+  }
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em); /* 아이폰 자동 확대 방지 */
+  }
 }
