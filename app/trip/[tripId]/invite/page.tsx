@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { AppBar } from "@/components/app-bar";
 import { BottomCTA } from "@/components/bottom-cta";
 import { ErrorState } from "@/components/error-state";
-import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
@@ -49,15 +49,20 @@ function InviteContent() {
   const [copied, setCopied] = useState(false);
   const [confirmingLock, setConfirmingLock] = useState(false);
 
+  const homeHref = `/trip/${tripId}`;
+
   if (trip.status === "pending") {
     return <InviteSkeleton />;
   }
 
   if (trip.status === "error") {
     return (
-      <main className="flex flex-1 flex-col px-gutter">
-        <ErrorState onRetry={() => trip.refetch()} />
-      </main>
+      <>
+        <AppBar title={t("invite.barTitle")} backHref={homeHref} />
+        <main className="flex flex-1 flex-col px-gutter">
+          <ErrorState onRetry={() => trip.refetch()} />
+        </main>
+      </>
     );
   }
 
@@ -65,93 +70,81 @@ function InviteContent() {
   const isOpen = status === "OPEN";
   const canLock = me.isOrganizer && isOpen;
   const joinedCount = members.filter((member) => member.isBound).length;
-  const url = inviteUrl(inviteCode);
 
   async function share() {
-    const ok = await shareInviteTemporary(url);
+    const ok = await shareInviteTemporary(inviteUrl(inviteCode));
     setCopied(ok);
   }
 
   function lock() {
-    lockTrip.mutate(
-      { tripId },
-      { onSuccess: () => setConfirmingLock(false) },
-    );
+    lockTrip.mutate({ tripId }, { onSuccess: () => setConfirmingLock(false) });
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 px-gutter pt-6">
-      <div className="grid gap-2">
+    <>
+      <AppBar title={t("invite.barTitle")} backHref={homeHref} />
+      <main className="flex flex-1 flex-col gap-3 px-gutter pt-4">
         <span
           className={cn(
-            "w-fit rounded-full px-3 py-1 text-caption font-medium",
-            isOpen ? "bg-brand-soft text-brand" : "bg-muted text-foreground",
+            "w-fit rounded-full px-2.5 py-0.5 text-caption font-medium",
+            isOpen ? "bg-accent text-accent-foreground" : "bg-muted text-foreground",
           )}
         >
           {t(`status.${status}`)}
         </span>
-        <h1 className="text-title font-bold tracking-tight break-keep">
+
+        <h2 className="text-title font-bold tracking-tight break-keep">
           {isOpen ? t("invite.titleOpen") : t("invite.titleLocked")}
-        </h1>
-        <p className="text-caption text-muted-foreground break-keep">
-          {isOpen ? t("invite.hintOpen") : t("invite.hintLocked")}
-        </p>
-      </div>
+        </h2>
 
-      {/* TODO(qr): QR 코드 자리. QR 라이브러리 추가 여부를 백엔드와 정한 뒤 넣는다. */}
+        {/* TODO(qr): QR 코드 자리 (가운데 120px). QR 라이브러리를 백엔드와 정한 뒤 넣는다. */}
 
-      {isOpen ? (
-        <div className="flex items-center gap-2 rounded-lg bg-muted py-1.5 pr-1.5 pl-4">
-          <span className="min-w-0 flex-1 truncate text-caption">{url}</span>
-          <Button size="sm" onClick={share} aria-live="polite">
-            {copied
-              ? t("common.copied")
-              : me.isOrganizer
-                ? t("invite.share")
-                : t("invite.copyLink")}
-          </Button>
-        </div>
-      ) : null}
+        <Button
+          variant="outline"
+          className="w-full border-primary text-primary"
+          onClick={share}
+          aria-live="polite"
+        >
+          {copied
+            ? t("common.copied")
+            : me.isOrganizer
+              ? t("invite.share")
+              : t("invite.copyLink")}
+        </Button>
 
-      <section className="grid gap-1">
         <p className="text-caption text-muted-foreground">
           {t("invite.joinedCount", {
             joined: joinedCount,
             total: members.length,
           })}
         </p>
-        <ul className="grid">
+
+        <ul className="rounded-xl border border-border px-3">
           {members.map((member) => (
             <li
               key={member.id}
-              className="flex min-h-15 items-center gap-3 border-b border-border py-2.5 last:border-b-0"
+              className="flex min-h-12 items-center gap-3 border-b border-border py-2 last:border-b-0"
             >
-              <MemberAvatar name={member.name} />
-              <span className="min-w-0 flex-1 truncate text-body font-bold">
+              <span className="min-w-0 flex-1 truncate text-body font-medium">
                 {member.name}
-                {member.isOrganizer ? (
-                  <span className="ml-1.5 text-caption font-medium text-muted-foreground">
-                    {t("invite.organizer")}
-                  </span>
-                ) : null}
+                {member.isOrganizer ? t("invite.organizer") : null}
               </span>
-              {member.isBound ? (
-                <span className="shrink-0 text-caption font-bold text-brand">
-                  {t("invite.joined")}
-                </span>
-              ) : (
-                <span className="shrink-0 text-caption text-muted-foreground">
-                  {t("invite.waiting")}
-                </span>
-              )}
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-caption",
+                  member.isBound
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-border text-muted-foreground",
+                )}
+              >
+                {member.isBound ? t("invite.joined") : t("invite.waiting")}
+              </span>
             </li>
           ))}
         </ul>
-      </section>
 
-      {canLock ? (
-        confirmingLock ? (
-          <section className="grid gap-3 rounded-xl bg-muted p-4">
+        {canLock && confirmingLock ? (
+          <section className="grid gap-2 rounded-xl bg-muted p-4">
             <p className="text-body font-bold">{t("invite.lockConfirmTitle")}</p>
             <p className="text-caption text-muted-foreground break-keep">
               {t("invite.lockConfirmHint")}
@@ -163,39 +156,41 @@ function InviteContent() {
                   : t("common.error")}
               </p>
             ) : null}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                disabled={lockTrip.isPending}
-                onClick={() => {
-                  lockTrip.reset();
-                  setConfirmingLock(false);
-                }}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                disabled={lockTrip.isPending}
-                onClick={lock}
-              >
-                {t("invite.lockConfirm")}
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              className="justify-self-start"
+              disabled={lockTrip.isPending}
+              onClick={() => {
+                lockTrip.reset();
+                setConfirmingLock(false);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
           </section>
-        ) : (
-          <Button variant="secondary" onClick={() => setConfirmingLock(true)}>
-            {t("invite.lock")}
-          </Button>
-        )
-      ) : null}
+        ) : null}
 
-      <BottomCTA asChild>
-        <Link href={`/trip/${tripId}`}>{t("invite.goHome")}</Link>
-      </BottomCTA>
-    </main>
+        {canLock ? (
+          confirmingLock ? (
+            <BottomCTA
+              variant="destructive"
+              disabled={lockTrip.isPending}
+              onClick={lock}
+            >
+              {t("invite.lockConfirm")}
+            </BottomCTA>
+          ) : (
+            <BottomCTA onClick={() => setConfirmingLock(true)}>
+              {t("invite.lock")}
+            </BottomCTA>
+          )
+        ) : (
+          <BottomCTA asChild>
+            <Link href={homeHref}>{t("invite.goHome")}</Link>
+          </BottomCTA>
+        )}
+      </main>
+    </>
   );
 }
 
@@ -204,15 +199,13 @@ function InviteSkeleton() {
     <main
       aria-busy
       aria-label={t("common.loading")}
-      className="flex flex-1 flex-col gap-6 px-gutter pt-6"
+      className="flex flex-1 flex-col gap-3 px-gutter pt-4"
     >
+      <Skeleton className="h-6 w-24 rounded-full" />
+      <Skeleton className="h-8 w-60" />
+      <Skeleton className="h-11 rounded-md" />
+      <Skeleton className="h-5 w-24" />
       <div className="grid gap-2">
-        <Skeleton className="h-7 w-24 rounded-full" />
-        <Skeleton className="h-8 w-60" />
-        <Skeleton className="h-5 w-full" />
-      </div>
-      <Skeleton className="h-14 rounded-lg" />
-      <div className="grid gap-3">
         {[0, 1, 2, 3].map((key) => (
           <Skeleton key={key} className="h-12" />
         ))}
