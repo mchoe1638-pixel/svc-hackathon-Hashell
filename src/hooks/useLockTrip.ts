@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { lockTripRequest } from '@/lib/trips/api';
 import { mockLockTrip, mockRequest } from '@/mocks';
 import type { ApiError, TripActionInput, TripStatusResult } from '@/types/api';
 
@@ -12,12 +12,12 @@ import { queryKeys } from './queryKeys';
 export function useLockTrip(): UseMutationResult<TripStatusResult, ApiError, TripActionInput> {
   const queryClient = useQueryClient();
   return useMutation<TripStatusResult, ApiError, TripActionInput>({
-    mutationFn: async () => {
+    mutationFn: async ({ tripId }) => {
       if (USE_MOCK) {
         return mockRequest(mockLockTrip);
       }
-      // TODO(real-api): 참여 마감 (총무만). 상태 OPEN → LOCKED.
-      throw notImplemented('useLockTrip');
+      // 진짜 API: 참여 마감 (총무만). 상태 OPEN → LOCKED. 권한과 상태는 서버가 확인한다.
+      return lockTripRequest(tripId);
     },
     onSuccess: (_result, { tripId }) => invalidateAll(queryClient, [queryKeys.trip(tripId)]),
   });
