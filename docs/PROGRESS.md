@@ -12,10 +12,10 @@
 - 브랜치는 `main`·`backend`(최명규)·`design`(이승화) 세 개만. 각자 자기 브랜치에서 작업하고 세션 끝마다 커밋 하나(메시지에 슬라이스 이름). 슬라이스가 끝나고 vitest·tsc가 통과하면 내 브랜치를 `main`에 병합 (PR·승인 없음). 상대가 병합하면 바로 `main`을 내 브랜치로 받아온다 (공동 계약 변경 직후엔 필수). `main`은 앱이 여는 운영 주소라 병합 후 앱 확인. 미리보기는 내 브랜치 Push 주소, 스크린샷은 메신저로 공유
 
 ## 백엔드 (최명규)
-- 날짜/시간: 2026-11-02 15:55
-- 완료: Git 방식을 `main`·`backend`·`design` 세 브랜치(PR·승인 없음)로 문서 반영, CI(tsc + vitest) 워크플로·`.nvmrc` 추가, `.env*` 미추적 확인
-- 다음: (사람) `backend` Push, `dev`·`chore/setup` 정리, 디자인 브랜치 `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. (AI) `api.ts`·훅·가짜 데이터 구조 슬라이스
-- 막힌 점: `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, `src/mocks/` 첫 시드를 누가 만들지, `api.ts`·훅·`native.ts` 계약 초안 승인, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE)
+- 날짜/시간: 2026-11-02
+- 완료: S0 앱 셸 파일 작성 — `mobile/`(Capacitor 8 Android 설정, `capacitor.config.ts`, 빈 `www/index.html`)와 `.gitignore`. 명령은 안 돌려서 동작은 미확인. 앞서: `src/types/api.ts` 초안, Git 방식 문서, CI·`.nvmrc`
+- 다음: (사람) `server.url`에 Vercel 운영 주소 입력·`appId` 확인 → `mobile/`에서 `npm install` → `npx cap add android` → 폰에 설치. `backend` Push, `dev`·`chore/setup` 정리, `ui/sh_1102_0` → `design` 이름 변경, Vercel 연결. 이어서 `api.ts` 합의 → 가짜 훅·`src/mocks/`·`native.ts`·`money.ts`·`providers.tsx`
+- 막힌 점: Vercel 운영 주소 미확정, `api.ts` 디자이너 승인, `ci.yml` 트리거(`dev`·PR)가 새 방식과 안 맞음, `src/mocks/` 첫 시드 담당 미정, Supabase 키 이름 통일(PUBLISHABLE/SECRET ↔ ANON/SERVICE_ROLE)
 
 
 ## 디자인·화면 (이승화)
