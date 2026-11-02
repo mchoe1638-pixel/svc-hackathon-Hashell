@@ -19,7 +19,7 @@
 
 
 ## 디자인·화면 (이승화)
-- 날짜/시간: 2026-11-02 (D0-1 ui/setup)
-- 완료: components.json, globals.css 토큰(브랜드 #0034B3, 글자·간격·둥글기), 480px 레이아웃, `BottomCTA`, shadcn Button, `src/i18n/ko.ts` + `t()`, `app/page.tsx` 템플릿 → 자리표시 화면, 화면 플로우 `docs/screens.html` + 요약 `docs/SCREENS.md`
-- 다음: 방 만들기·공유·참여 화면 (tsc·eslint 통과, 의존성 설치 완료)
-- 막힌 점: 백엔드 `src/lib/providers.tsx` 대기 (layout에서 감싸기). Node 버전 팀 통일 필요 (내 PC v26)
+- 날짜/시간: 2026-11-02 (S1 참여·링크 공유 화면)
+- 완료: `app/j/[inviteCode]/page.tsx`(이름 고르기·새 이름·마감·404·409), `app/trip/[tripId]/invite/page.tsx`(링크·참여 현황·잠금 확인), 공통 `Input`·`Skeleton`·`MemberAvatar`·`ErrorState`, `ko.ts`에 status·invite·join 문구. tsc·vitest 미실행
+- 다음: tsc·vitest 확인 → 방 만들기(`app/page.tsx`), 홈
+- 막힌 점: `src/lib/native.ts` 없음(공유는 임시 복사), QR 라이브러리 미정, 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
