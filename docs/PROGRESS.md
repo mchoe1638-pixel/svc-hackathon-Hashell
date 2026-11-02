@@ -23,5 +23,6 @@
 - 완료: `app/j/[inviteCode]/page.tsx`(이름 고르기·새 이름·마감·404·409), `app/trip/[tripId]/invite/page.tsx`(링크·참여 현황·잠금 확인), 공통 `Input`·`Skeleton`·`MemberAvatar`·`ErrorState`, `ko.ts`에 status·invite·join 문구. tsc·vitest 미실행
 - 빌드 수정: `cacheComponents`에서 `useParams`가 Suspense 밖이라 prerender 실패 → 참여·링크 공유 화면을 Suspense(스켈레톤 fallback)로 감쌈. tsc·vitest 통과, `npm run build`는 사람이 확인
 - 참여·링크 공유 화면을 `screens.html` 폰 틀(S.join·S.invite) 레이아웃으로 다시 맞춤: 공통 `AppBar` 추가, join은 이름 누르면 바로 참여·하단은 새 이름 참여, invite 하단은 총무+OPEN이면 링크 잠그기. tsc·vitest 통과
-- 다음: 브랜드 그라데이션(`hashell.html`) 적용 여부 확인 → 방 만들기(`app/page.tsx`), 홈
-- 막힌 점: `src/lib/native.ts` 없음(공유는 임시 복사), QR 라이브러리 미정, 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
+- `docs/hashell-app.html` 기준으로 첫 화면(웹 앱 안내)·참여·동행 초대 다시 만듦. 색은 파란색 단색(그라데이션 없음). 공통 `AppBar`(상태 칩)·`BottomBar`(버튼 2개)·`ConfirmSheet`(잠금 확인 시트), QR은 `qrcode.react`. tsc·vitest 통과
+- 다음: 운영 주소 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()` 필요), 홈
+- 막힌 점: `src/lib/native.ts` 없음(공유는 임시 복사), 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)

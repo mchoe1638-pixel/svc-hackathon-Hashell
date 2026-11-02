@@ -6,7 +6,7 @@
  * 라이트 모드만 지원 (다크모드 범위 밖).
  */
 :root {
-  /* 브랜드 */
+  /* 브랜드: 파란색 단색 (그라데이션 없음) */
   --brand: #0034b3;
   --brand-foreground: #ffffff;
   --brand-soft: #e8eefc;
@@ -31,6 +31,9 @@
   --border: #e5e8eb;
   --input: #d1d6db;
   --ring: var(--brand);
+
+  /* 화면 뒤 어두운 막 (확인 시트) */
+  --scrim: rgb(10 20 51 / 0.45);
 
   /* 정산 의미 색: 받을 돈 / 보낼 돈 / 추정 */
   --receive: #0034b3;
@@ -80,6 +83,7 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-soft: var(--brand-soft);
+  --color-scrim: var(--scrim);
   --color-receive: var(--receive);
   --color-send: var(--send);
   --color-estimate: var(--estimate);

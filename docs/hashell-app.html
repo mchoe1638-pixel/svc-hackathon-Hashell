@@ -1,11 +1,10 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>hashell</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
 <style>
-/* 레이아웃: 넓으면 왼쪽 안내·화면 목록 + 오른쪽 갤럭시 S25(360×780), 좁으면 폰이 맨 위. 앱 화면은 hashell 에메랄드→청록 그라데이션(정산 끝난 돈의 초록), 여행 돌아보기는 여행지 색(데이터베이스) */
+/* 레이아웃: 갤럭시 S25(360×780) 폰 화면 하나만 가운데. 앱 화면은 hashell 에메랄드→청록 그라데이션(정산 끝난 돈의 초록), 여행 돌아보기는 여행지 색(데이터베이스) */
 :root{
   --brand:#0B8A6C; --brand-ink:#08624E; --brand-soft:#E2F4EE;
   --grad:linear-gradient(135deg,#0A9470 0%,#0D9488 50%,#0E7490 100%);
@@ -23,8 +22,7 @@ body{color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.55;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2.5px solid var(--brand);outline-offset:2px}
-.shell{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:56px;align-items:start}
-@media (max-width:820px){.shell{grid-template-columns:minmax(0,1fr);gap:28px}.phone{order:-1}}
+.shell{max-width:360px;margin:0 auto}
 
 /* 안내 패널 */
 .panel{display:grid;gap:22px;padding-top:8px;min-width:0}
@@ -315,24 +313,6 @@ button.row:active{transform:scale(.985)}
 </style>
 
 <div class="shell">
-  <section class="panel" aria-label="프로토타입 안내">
-    <h1>hashell</h1>
-    <p>각자 먹은 메뉴만 체크하면 정산과 여행 돌아보기가 따라오는 여행 가계부예요. 여행 이름에 여행지를 넣으면 통화, 예시 영수증, 그림과 색이 그 여행지로 바뀌어요. 숫자와 이름은 예시예요.</p>
-    <div class="pgroup">
-      <h2>누구로 볼까요</h2>
-      <div class="pills" id="viewers"></div>
-    </div>
-    <div class="pgroup">
-      <h2>화면 바로 가기</h2>
-      <div class="pills" id="index"></div>
-    </div>
-    <div class="pgroup">
-      <h2>등록된 여행지</h2>
-      <div class="dests" id="dests"></div>
-      <p class="small" id="db-line" style="color:var(--sub)"></p>
-    </div>
-    <div class="plinks"><span id="state-line"></span><span>화면 크기: 갤럭시 S25 (360×780)</span><button type="button" data-act="reset">처음 상태로</button></div>
-  </section>
 
   <div class="phone">
     <div class="sbar" aria-hidden="true"><span>12:45</span><span class="ic">5G <span class="bat"></span></span></div>
@@ -800,6 +780,7 @@ function renderOverlay() {
 
 const INDEX = [["create", "여행 만들기"], ["invite", "동행 초대"], ["join", "참여"], ["home", "홈"], ["add", "지출 추가"], ["check", "품목 체크"], ["settle", "정산"], ["settled", "확정된 정산"], ["wrapped", "여행 돌아보기"]];
 function renderPanel() {
+  if (!$("viewers")) return;
   $("viewers").innerHTML = S.members.map(m => `<button type="button" data-act="viewer:${m.id}" aria-current="${S.viewer === m.id}">${esc(m.name)}<span class="sm">${m.org ? "총무" : m.bound ? "동행" : "미참여"}</span></button>`).join("");
   const cur = S.wrapped ? "wrapped" : ["receipt", "review", "manual"].includes(S.route) ? "add" : S.route;
   $("index").innerHTML = INDEX.map(([id, l]) => `<button type="button" data-act="jump:${id}" aria-current="${cur === id}">${l}</button>`).join("");
@@ -1246,4 +1227,3 @@ document.addEventListener("keydown", e => {
 })();
 </script>
 
-</body></html>
