@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { allocateByLargestRemainder, allocateExpense } from './allocate';
+import { allocateByLargestRemainder, allocateExpense, computeRemainder } from './allocate';
 import type {
   AdjustmentKind,
   AllocationAdjustment,
@@ -610,5 +610,80 @@ describe('allocateExpense contract', () => {
     };
 
     expect(() => allocateExpense(input)).toThrow(RangeError);
+  });
+});
+
+describe('computeRemainder — what the items and adjustments leave of the total', () => {
+  /** 몫을 나누지 않으니 체크한 사람은 필요 없다. */
+  const priced = (unitPrice: number, quantity: number) => ({ unitPrice, quantity });
+
+  it('is 0 when the items plus tax and service add up to the total', () => {
+    // 품목 합계 7,600 + 세금 760 + 봉사료 380 = 8,740
+    expect(computeRemainder(8740, MIXED_RECEIPT_ITEMS, [adj('TAX', 760), adj('SERVICE', 380)])).toBe(0);
+  });
+
+  it('is the part of the total that no item or adjustment covers', () => {
+    expect(computeRemainder(12000, [priced(3000, 1)], [])).toBe(9000);
+  });
+
+  it('is the whole total for a slip without any item', () => {
+    expect(computeRemainder(10000, [], [])).toBe(10000);
+  });
+
+  it('counts unit price times quantity for every item', () => {
+    expect(computeRemainder(4000, [priced(1200, 3)], [])).toBe(400);
+  });
+
+  it('takes a discount off, so a discounted slip leaves less to cover', () => {
+    // 품목 7,600 − 할인 500 = 7,100이 청구액이면 딱 맞는다.
+    expect(computeRemainder(7100, MIXED_RECEIPT_ITEMS, [adj('DISCOUNT', 500)])).toBe(0);
+    expect(computeRemainder(7200, MIXED_RECEIPT_ITEMS, [adj('DISCOUNT', 500)])).toBe(100);
+  });
+
+  it('is negative, not an error, when the items and adjustments are more than the total', () => {
+    // 던질지 말지는 부르는 쪽이 정한다 (allocateExpense는 던지고, 저장 API는 400으로 답한다).
+    expect(computeRemainder(2999, [priced(3000, 1)], [])).toBe(-1);
+  });
+
+  it('becomes 0 once the leftover is added as one more item that everyone shares', () => {
+    const items: readonly AllocationItem[] = [{ unitPrice: 3000, quantity: 1, checkedMemberIds: [SEOYEON] }];
+    const leftover = computeRemainder(12000, items, []);
+    const withEtc: readonly AllocationItem[] = [
+      ...items,
+      { unitPrice: leftover, quantity: 1, checkedMemberIds: MEMBERS },
+    ];
+
+    expect(computeRemainder(12000, withEtc, [])).toBe(0);
+    const shares = allocateExpense({
+      memberIds: MEMBERS,
+      total: 12000,
+      items: withEtc,
+      adjustments: [],
+      remainderMemberIds: [],
+    });
+    expect(amountsOf(shares)).toEqual([2250, 5250, 2250, 2250]);
+  });
+
+  it('does not mutate its input', () => {
+    const items = deepFreeze([priced(900, 3)]);
+    const adjustments = deepFreeze([adj('TAX', 100)]);
+
+    expect(computeRemainder(3000, items, adjustments)).toBe(200);
+  });
+
+  it.each([
+    { label: 'a negative total', total: -1, items: [], adjustments: [] },
+    { label: 'a fractional total', total: 100.5, items: [], adjustments: [] },
+    { label: 'a quantity of 0', total: 100, items: [priced(100, 0)], adjustments: [] },
+    { label: 'a fractional unit price', total: 100, items: [priced(99.5, 1)], adjustments: [] },
+    { label: 'a negative adjustment amount', total: 100, items: [], adjustments: [adj('TAX', -1)] },
+    {
+      label: 'an adjustment kind it does not know',
+      total: 100,
+      items: [],
+      adjustments: [{ kind: 'TIP', amount: 1 } as unknown as AllocationAdjustment],
+    },
+  ])('rejects $label', ({ total, items, adjustments }) => {
+    expect(() => computeRemainder(total, items, adjustments)).toThrow(RangeError);
   });
 });
