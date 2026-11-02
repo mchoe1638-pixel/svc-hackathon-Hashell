@@ -7,6 +7,8 @@ import { AppBar } from "@/components/app-bar";
 import { BottomCTA } from "@/components/bottom-cta";
 import { ErrorState } from "@/components/error-state";
 import { MemberAvatar } from "@/components/member-avatar";
+import { Screen } from "@/components/screen";
+import { useToast } from "@/components/toast";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
@@ -14,7 +16,7 @@ import { useJoinInfo, useJoinTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { MemberId } from "@/types/api";
 
-/** 참여 (동행, 웹): 초대 링크로 들어와 이름을 고르거나 새 이름을 더한다. 잠겼으면 마감 안내. */
+/** 참여 (동행, 웹) — 시안 "join": 초대 링크로 들어와 이름을 고르거나 새 이름을 더한다. 잠겼으면 마감 안내. */
 export default function JoinPage() {
   // cacheComponents: useParams는 요청 시점에 정해지므로 Suspense 안에서 읽어야 빌드가 된다.
   return (
@@ -27,12 +29,12 @@ export default function JoinPage() {
 function JoinContent() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const router = useRouter();
+  const toast = useToast();
   const joinInfo = useJoinInfo(inviteCode);
   const joinTrip = useJoinTrip();
 
   const [pickedId, setPickedId] = useState<MemberId | null>(null);
   const [newName, setNewName] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
 
   if (joinInfo.status === "pending") {
     return <JoinSkeleton />;
@@ -51,9 +53,9 @@ function JoinContent() {
     return (
       <>
         <AppBar title={t("app.name")} />
-        <main className="flex flex-1 flex-col px-gutter">
+        <Screen>
           <ErrorState onRetry={() => joinInfo.refetch()} />
-        </main>
+        </Screen>
       </>
     );
   }
@@ -79,34 +81,39 @@ function JoinContent() {
   function pick(memberId: MemberId) {
     setPickedId(memberId);
     setNewName("");
-    setNotice(null);
   }
 
   function changeNewName(value: string) {
     setNewName(value);
     if (value !== "") setPickedId(null);
-    setNotice(null);
   }
 
   function submit() {
     if (!canSubmit) return;
     if (pickedId === null && members.some((m) => m.name === trimmedName)) {
-      setNotice(t("join.nameExists"));
+      toast(t("join.nameExists"));
       return;
     }
+    const name =
+      pickedId !== null
+        ? (members.find((m) => m.id === pickedId)?.name ?? "")
+        : trimmedName;
     const input =
       pickedId !== null
         ? { inviteCode, memberId: pickedId }
         : { inviteCode, newName: trimmedName };
     joinTrip.mutate(input, {
-      onSuccess: ({ tripId }) => router.replace(`/trip/${tripId}`),
+      onSuccess: ({ tripId }) => {
+        router.replace(`/trip/${tripId}`);
+        toast(t("join.joinedToast", { name }));
+      },
       onError: (error) => {
         if (error.status === 409) {
           setPickedId(null);
-          setNotice(t("join.nameTaken"));
+          toast(t("join.nameTaken"));
           joinInfo.refetch();
         } else if (error.status !== 423) {
-          setNotice(t("common.error"));
+          toast(t("common.error"));
         }
       },
     });
@@ -114,26 +121,26 @@ function JoinContent() {
 
   return (
     <>
-      <AppBar title={title} status="OPEN" />
-      <main className="flex flex-1 flex-col gap-4 px-4.5 pt-5">
+      <AppBar title={title} />
+      <Screen>
         <div className="min-w-0">
-          <p className="truncate text-body font-bold">{title}</p>
+          <b className="block truncate text-lead font-bold">{title}</b>
           {organizer ? (
-            <p className="truncate text-caption text-muted-foreground">
+            <span className="block truncate text-caption text-sub">
               {t("join.madeBy", { name: organizer.name })}
-            </p>
+            </span>
           ) : null}
         </div>
 
         <div className="grid gap-1">
-          <h2 className="text-title font-bold tracking-tight break-keep">
+          <h2 className="mt-1 text-title font-bold tracking-tight text-balance break-keep">
             {t("join.question")}
           </h2>
-          <p className="text-sm text-muted-foreground">{t("join.hint")}</p>
+          <p className="text-hint text-sub">{t("join.hint")}</p>
         </div>
 
         <ul className="grid gap-2">
-          {members.map((member) => (
+          {members.map((member, order) => (
             <li key={member.id}>
               <button
                 type="button"
@@ -141,22 +148,22 @@ function JoinContent() {
                 aria-pressed={member.isBound ? undefined : pickedId === member.id}
                 onClick={() => pick(member.id)}
                 className={cn(
-                  "flex min-h-15 w-full items-center gap-3 rounded-xl border border-border bg-background px-3.5 text-left transition-transform",
-                  "active:scale-[0.97] aria-pressed:border-primary aria-pressed:bg-brand-soft",
-                  "disabled:active:scale-100 disabled:text-muted-foreground",
+                  "press flex min-h-15 w-full items-center gap-3 rounded-lg border-2 border-line bg-paper px-3.5 text-left",
+                  "aria-pressed:border-brand aria-pressed:bg-brand-soft",
+                  "disabled:cursor-default disabled:text-sub",
                 )}
               >
-                <MemberAvatar name={member.name} />
+                <MemberAvatar name={member.name} order={order} />
                 <span
                   className={cn(
-                    "min-w-0 flex-1 truncate text-body",
+                    "min-w-0 flex-1 truncate",
                     !member.isBound && "font-bold",
                   )}
                 >
                   {member.name}
                 </span>
                 {member.isBound ? (
-                  <span className="shrink-0 text-caption">
+                  <span className="shrink-0 text-caption text-sub">
                     {t("join.boundMeta")}
                   </span>
                 ) : null}
@@ -165,11 +172,14 @@ function JoinContent() {
           ))}
         </ul>
 
-        <label className="mt-1 grid gap-1.5 text-sm font-medium text-muted-foreground">
+        <label className="mt-1 grid gap-1.5 text-hint font-medium text-sub">
           {t("join.newNameLabel")}
           <Input
             value={newName}
             onChange={(event) => changeNewName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") submit();
+            }}
             placeholder={t("join.newNamePlaceholder")}
             autoComplete="name"
             enterKeyHint="done"
@@ -178,20 +188,10 @@ function JoinContent() {
           />
         </label>
 
-        <BottomCTA
-          disabled={!canSubmit}
-          onClick={submit}
-          top={
-            notice ? (
-              <p role="alert" className="pb-3 text-caption text-destructive">
-                {notice}
-              </p>
-            ) : null
-          }
-        >
+        <BottomCTA disabled={!canSubmit} onClick={submit}>
           {t("join.submit")}
         </BottomCTA>
-      </main>
+      </Screen>
     </>
   );
 }
@@ -208,14 +208,14 @@ function CenterMessage({
   return (
     <>
       <AppBar title={barTitle} />
-      <main className="flex flex-1 flex-col px-4.5">
+      <Screen>
         <div className="mt-12 grid justify-items-center gap-2.5 text-center">
-          <h2 className="text-title font-bold tracking-tight break-keep">
+          <h2 className="text-title font-bold tracking-tight text-balance break-keep">
             {title}
           </h2>
-          <p className="text-sm text-muted-foreground break-keep">{hint}</p>
+          <p className="text-hint text-sub break-keep">{hint}</p>
         </div>
-      </main>
+      </Screen>
     </>
   );
 }
@@ -225,16 +225,19 @@ function JoinSkeleton() {
     <main
       aria-busy
       aria-label={t("common.loading")}
-      className="flex flex-1 flex-col gap-4 px-4.5 pt-5"
+      className="flex flex-1 flex-col gap-4 bg-paper px-gutter pt-5"
     >
-      <Skeleton className="h-10 w-48" />
+      <div className="grid gap-1">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-48" />
+      </div>
       <div className="grid gap-1">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-5 w-44" />
       </div>
       <div className="grid gap-2">
         {[0, 1, 2, 3].map((key) => (
-          <Skeleton key={key} className="h-15 rounded-xl" />
+          <Skeleton key={key} className="h-15 rounded-lg" />
         ))}
       </div>
     </main>

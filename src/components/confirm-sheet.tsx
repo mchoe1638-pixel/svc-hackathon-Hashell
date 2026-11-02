@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/components/utils";
 import { t } from "@/i18n/ko";
 
 type ConfirmSheetProps = {
@@ -17,10 +18,16 @@ type ConfirmSheetProps = {
   /** 시트 안 에러 문구 등 */
   extra?: React.ReactNode;
   onConfirm: () => void;
+  /** 닫힘 애니메이션이 끝난 뒤 불린다 */
   onCancel: () => void;
 };
 
-/** 화면 아래에서 올라오는 확인 시트: 질문 + [취소] [확인]. 바깥을 누르거나 Esc면 취소. */
+const CLOSE_MS = 200;
+
+/**
+ * 확인 시트 (시안 .scrim + .sheet): 폰 서랍처럼 아래에서 올라온다.
+ * 질문 + 안내 + [취소] [확인]. 바깥을 누르거나 Esc면 취소.
+ */
 export function ConfirmSheet({
   open,
   title,
@@ -33,47 +40,60 @@ export function ConfirmSheet({
   onCancel,
 }: ConfirmSheetProps) {
   const titleId = React.useId();
+  const [closing, setClosing] = React.useState(false);
+
+  const close = React.useCallback(() => {
+    if (busy || closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onCancel();
+    }, CLOSE_MS);
+  }, [busy, closing, onCancel]);
 
   React.useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onCancel();
+      if (event.key === "Escape") close();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onCancel]);
+  }, [open, close]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-scrim animate-in fade-in"
-      onClick={() => {
-        if (!busy) onCancel();
-      }}
+      className={cn(
+        "fixed inset-0 z-50 flex items-end justify-center bg-scrim",
+        closing ? "animate-scrim-out" : "animate-scrim-in",
+      )}
+      onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="grid w-full max-w-app gap-3 rounded-t-3xl bg-background px-gutter pt-6 pb-safe animate-in slide-in-from-bottom"
+        className={cn(
+          "grid w-full max-w-app gap-3 rounded-t-2xl bg-paper px-gutter pt-6 pb-safe",
+          closing ? "animate-sheet-down" : "animate-sheet-up",
+        )}
         onClick={(event) => event.stopPropagation()}
       >
-        <p id={titleId} className="text-title font-bold tracking-tight break-keep">
+        <p
+          id={titleId}
+          className="mt-1 text-title font-bold tracking-tight text-balance break-keep"
+        >
           {title}
         </p>
-        {hint ? (
-          <p className="text-sm text-muted-foreground break-keep">{hint}</p>
-        ) : null}
+        {hint ? <p className="text-hint text-sub break-keep">{hint}</p> : null}
         {extra}
-        <div className="mt-1.5 flex gap-2 [&>*]:flex-1">
-          <Button size="lg" variant="secondary" disabled={busy} onClick={onCancel} autoFocus>
+        <div className="mt-1.5 flex gap-2 *:flex-1">
+          <Button variant="ghost" disabled={busy} onClick={close} autoFocus>
             {t("common.cancel")}
           </Button>
           <Button
-            size="lg"
-            variant={danger ? "outline" : "default"}
-            className={danger ? "border-destructive text-destructive hover:bg-background hover:text-destructive" : undefined}
+            variant={danger ? "danger" : "default"}
             disabled={busy}
             onClick={onConfirm}
           >

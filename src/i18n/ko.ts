@@ -42,6 +42,8 @@ export const ko = {
     qrLabel: "초대 링크 QR 코드",
     share: "공유하기",
     copyLink: "링크 복사",
+    copied: "초대 링크를 복사했어요",
+    copyFailed: "복사하지 못했어요. 길게 눌러 직접 복사해주세요.",
     joinedCountStrong: "{joined}명",
     joinedCountRest: " 참여, 전체 {total}명",
     organizer: " (총무)",
@@ -50,8 +52,11 @@ export const ko = {
     lock: "링크 잠그기",
     lockConfirmTitle: "링크를 잠글까요?",
     lockConfirmHint:
+      "이미 참여한 사람은 계속 쓸 수 있어요. 아직 안 들어온 {names}님은 더 들어올 수 없어요.",
+    lockConfirmHintNoOne:
       "이미 참여한 사람은 계속 쓸 수 있어요. 아직 안 들어온 사람은 더 들어올 수 없어요.",
     lockConfirm: "잠그기",
+    lockDone: "링크를 잠갔어요",
     lockSettled: "정산이 확정된 여행이라 잠글 수 없어요.",
     goHome: "홈으로",
   },
@@ -63,6 +68,7 @@ export const ko = {
     newNameLabel: "목록에 내 이름이 없어요",
     newNamePlaceholder: "내 이름",
     submit: "이 이름으로 참여",
+    joinedToast: "{name}님으로 참여했어요",
     nameExists: "이미 있는 이름이에요. 목록에서 골라주세요.",
     nameTaken: "다른 기기에서 먼저 골랐어요. 다른 이름을 골라주세요.",
     lockedTitle: "참여가 마감됐어요",

@@ -19,10 +19,7 @@
 
 
 ## 디자인·화면 (이승화)
-- 날짜/시간: 2026-11-02 (S1 참여·링크 공유 화면)
-- 완료: `app/j/[inviteCode]/page.tsx`(이름 고르기·새 이름·마감·404·409), `app/trip/[tripId]/invite/page.tsx`(링크·참여 현황·잠금 확인), 공통 `Input`·`Skeleton`·`MemberAvatar`·`ErrorState`, `ko.ts`에 status·invite·join 문구. tsc·vitest 미실행
-- 빌드 수정: `cacheComponents`에서 `useParams`가 Suspense 밖이라 prerender 실패 → 참여·링크 공유 화면을 Suspense(스켈레톤 fallback)로 감쌈. tsc·vitest 통과, `npm run build`는 사람이 확인
-- 참여·링크 공유 화면을 `screens.html` 폰 틀(S.join·S.invite) 레이아웃으로 다시 맞춤: 공통 `AppBar` 추가, join은 이름 누르면 바로 참여·하단은 새 이름 참여, invite 하단은 총무+OPEN이면 링크 잠그기. tsc·vitest 통과
-- `docs/hashell-app.html` 기준으로 첫 화면(웹 앱 안내)·참여·동행 초대 다시 만듦. 색은 파란색 단색(그라데이션 없음). 공통 `AppBar`(상태 칩)·`BottomBar`(버튼 2개)·`ConfirmSheet`(잠금 확인 시트), QR은 `qrcode.react`. tsc·vitest 통과
-- 다음: 운영 주소 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()` 필요), 홈
-- 막힌 점: `src/lib/native.ts` 없음(공유는 임시 복사), 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
+- 날짜/시간: 2026-11-02 (S1 시안 반영)
+- 완료: `docs/design-prototype.html` 기준 토큰(연한 파란 단색 #2F6FEB, Noto Sans KR, 둥글기·움직임)·공통 컴포넌트(AppBar, BottomBar/CTA, Button default·ghost·danger, MemberAvatar, MemberChip, ListRow, Banner, Toast, ConfirmSheet, Screen)·참여/동행 초대 화면, `src/lib/native.ts`(사용자 요청으로 디자인이 작성). tsc·vitest·build 통과
+- 다음: 운영 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()`로 앱/웹 구분), 홈
+- 막힌 점: 앱 공유창은 `mobile/`에 `@capacitor/share` 설치 필요(백엔드, 없으면 복사로 대체), 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
