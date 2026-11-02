@@ -5,7 +5,7 @@
  */
 export const ko = {
   app: {
-    name: "먹은만큼",
+    name: "hashell",
     description: "영수증 사진으로 먹은 만큼, 실제로 낸 만큼 나누는 여행 가계부",
   },
   common: {
