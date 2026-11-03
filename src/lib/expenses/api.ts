@@ -54,7 +54,7 @@ let sharedSession: (() => Promise<AnonymousSession>) | null = null;
  * 이 파일 안에서 세션 제공자를 하나만 쓴다. 지출은 여행에 들어온 뒤에만 쓰므로 이미 익명 계정이 있다.
  * 설정이 빠져서 던졌을 때는 보관하지 않아서, 다음 호출이 다시 시도한다.
  */
-function getSession(): Promise<AnonymousSession> {
+export function getSession(): Promise<AnonymousSession> {
   if (sharedSession === null) {
     sharedSession = createSessionProvider(getBrowserClient().auth);
   }
