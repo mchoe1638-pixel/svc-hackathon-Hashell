@@ -171,6 +171,11 @@ function ExpenseList({
       <div className="px-2 py-8 text-center">
         <p className="text-title font-bold tracking-tight text-ink">{t("home.emptyTitle")}</p>
         <p className="mt-1 text-hint text-sub">{t("home.emptyHint")}</p>
+        {trip.status !== "SETTLED" ? (
+          <Button asChild className="mt-4">
+            <Link href={`/trip/${trip.id}/expense/new`}>{t("home.addExpense")}</Link>
+          </Button>
+        ) : null}
       </div>
     );
   }

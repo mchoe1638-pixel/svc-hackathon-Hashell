@@ -13,32 +13,36 @@ import {
   percentText,
 } from "@/components/format";
 import { shrinkImage } from "@/components/image";
-import { ListRow } from "@/components/list-row";
 import { ReceiptScan, ReceiptSum } from "@/components/receipt";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { Segmented } from "@/components/segmented";
 import { useToast } from "@/components/toast";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/components/utils";
-import { formatMoney } from "@/core/money";
+import { formatMoney, sumAmounts } from "@/core/money";
 import { itemLineAmount } from "@/core/tripStats";
 import { useCreateExpense, useParseReceipt, useTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type {
   ApiError,
   ExpenseContent,
+  ExpenseItemInput,
+  ItemCategory,
   MemberId,
   ParsedReceiptDraft,
   PaymentMethod,
+  SplitType,
   TripDetail,
 } from "@/types/api";
 
-type Step = "add" | "receipt" | "review" | "manual";
+type Step = "add" | "receipt" | "failed" | "review" | "manual";
 
 /**
  * 지출 추가 — 시안 "add" · "receipt" · "review" · "manual"을 한 주소 안의 단계로.
- * 영수증 찍기 → 읽는 중 → 읽은 내용 확인 → 저장하면 품목 체크로. 직접 입력은 저장하면 홈으로.
+ * 영수증 찍기(또는 앨범) → 읽는 중 → 읽은 내용 확인·수정 → 저장하면 품목 체크로.
+ * 읽기에 실패하면 다시 찍기 / 직접 입력. 직접 입력은 저장하면 홈으로.
  */
 export default function NewExpensePage() {
   return (
@@ -64,6 +68,7 @@ function NewExpense() {
       </>
     );
   }
+  // 정산 확정 뒤에는 읽기 전용: 추가 화면 대신 안내만
   if (trip.data.status === "SETTLED") {
     return (
       <>
@@ -82,7 +87,8 @@ function Flow({ trip }: { trip: TripDetail }) {
   const toast = useToast();
   const parse = useParseReceipt();
   const create = useCreateExpense();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const albumRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("add");
   const [draft, setDraft] = useState<ParsedReceiptDraft | null>(null);
@@ -94,6 +100,7 @@ function Flow({ trip }: { trip: TripDetail }) {
   async function onPhoto(file: File | undefined) {
     if (!file) return;
     setStep("receipt");
+    // TODO(백엔드 요청): `src/lib/image/resize.ts`가 생기면 그걸로 바꾼다.
     const image = await shrinkImage(file);
     parse.mutate(
       { tripId: trip.id, image },
@@ -102,9 +109,13 @@ function Flow({ trip }: { trip: TripDetail }) {
           setDraft(result);
           setStep("review");
         },
-        onError: () => {
-          setStep("add");
-          toast(t("expense.parseFailed"));
+        onError: (error) => {
+          if (error.status === 423) {
+            toast(t("expense.settledBlocked"));
+            setStep("add");
+          } else {
+            setStep("failed");
+          }
         },
       },
     );
@@ -125,7 +136,12 @@ function Flow({ trip }: { trip: TripDetail }) {
           }
         },
         onError: (error: ApiError) => {
-          toast(error.status === 423 ? t("expense.settledBlocked") : t("common.error"));
+          if (error.status === 423) {
+            toast(t("expense.settledBlocked"));
+            router.replace(homeHref);
+          } else {
+            toast(t("common.error"));
+          }
         },
       },
     );
@@ -147,6 +163,33 @@ function Flow({ trip }: { trip: TripDetail }) {
     />
   );
 
+  // 파일 고르기 창. 카메라는 capture로 바로 촬영, 앨범은 capture 없이 사진 보관함.
+  const fileInputs = (
+    <>
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(event) => {
+          void onPhoto(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={albumRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(event) => {
+          void onPhoto(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+    </>
+  );
+
   if (step === "receipt") {
     return (
       <>
@@ -155,6 +198,27 @@ function Flow({ trip }: { trip: TripDetail }) {
           <ReceiptScan />
           <p className="text-center text-title font-bold tracking-tight">{t("expense.reading")}</p>
           <p className="-mt-3 text-center text-hint text-sub">{t("expense.readingHint")}</p>
+        </Screen>
+      </>
+    );
+  }
+
+  if (step === "failed") {
+    return (
+      <>
+        <AppBar title={t("expense.addTitle")} onBack={back} />
+        <Screen>
+          <div role="alert" className="mt-10 grid justify-items-center gap-2.5 text-center">
+            <h2 className="text-title font-bold tracking-tight text-balance break-keep">
+              {t("expense.failedTitle")}
+            </h2>
+            <p className="text-hint text-sub break-keep">{t("expense.failedHint")}</p>
+          </div>
+          <Button variant="ghost" className="mt-2" onClick={() => cameraRef.current?.click()}>
+            {t("expense.retake")}
+          </Button>
+          {fileInputs}
+          <BottomCTA onClick={() => setStep("manual")}>{t("expense.goManual")}</BottomCTA>
         </Screen>
       </>
     );
@@ -191,29 +255,24 @@ function Flow({ trip }: { trip: TripDetail }) {
         <h2 className="mt-1 text-title font-bold tracking-tight text-balance break-keep">
           {t("expense.addQuestion")}
         </h2>
-        <OptionCard
-          main
-          title={t("expense.receiptOpt")}
-          hint={t("expense.receiptOptHint")}
-          onClick={() => fileRef.current?.click()}
-        />
+        <div className="grid gap-2">
+          <OptionCard
+            main
+            title={t("expense.receiptOpt")}
+            hint={t("expense.receiptOptHint")}
+            onClick={() => cameraRef.current?.click()}
+          />
+          <Button variant="link" size="sm" className="self-start" onClick={() => albumRef.current?.click()}>
+            {t("expense.pickFromAlbum")}
+          </Button>
+        </div>
         <OptionCard
           title={t("expense.manualOpt")}
           hint={t("expense.manualOptHint")}
           onClick={() => setStep("manual")}
         />
         <p className="text-hint text-sub">{t("expense.photoNote")}</p>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          hidden
-          onChange={(event) => {
-            void onPhoto(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
+        {fileInputs}
       </Screen>
     </>
   );
@@ -296,7 +355,29 @@ function PaymentFields({
   );
 }
 
-/** 읽은 내용 확인 (시안 "review"). `needsReview`면 합계를 직접 확인·수정하게 한다. */
+/** 확인 화면에서 고치는 품목 한 줄. 숫자는 입력창 글자 그대로 들고 있다가 저장할 때 정수로 바꾼다. */
+interface EditItem {
+  readonly key: number;
+  readonly originalName: string;
+  readonly koreanName: string;
+  readonly price: string;
+  readonly qty: string;
+  readonly splitType: SplitType;
+  readonly category: ItemCategory;
+}
+
+/** 입력 글자 → 단가·수량·한 줄 금액. 하나라도 숫자가 아니면 null. */
+function readItem(item: EditItem, currency: string) {
+  const unitPrice = parseAmountInput(item.price, currency);
+  const quantity = /^\d+$/.test(item.qty.trim()) ? Number(item.qty.trim()) : null;
+  if (unitPrice === null || quantity === null || quantity < 1 || !item.koreanName.trim()) return null;
+  return { unitPrice, quantity, line: itemLineAmount(unitPrice, quantity) };
+}
+
+/**
+ * 읽은 내용 확인 (시안 "review"): 가게 이름·품목(이름·단가·수량)을 고칠 수 있다.
+ * 메뉴 합계(세금·할인 포함)와 영수증 합계가 다르거나 `needsReview`면 경고를 띄우고, 다르면 저장을 막는다.
+ */
 function Review({
   draft,
   payment,
@@ -310,31 +391,76 @@ function Review({
   onBack: () => void;
   onSave: (content: ExpenseContent) => void;
 }) {
+  const currency = draft.currency;
   const [title, setTitle] = useState(draft.title);
-  const [totalText, setTotalText] = useState(amountInputText(draft.amount, draft.currency));
+  const [items, setItems] = useState<readonly EditItem[]>(() =>
+    draft.items.map((item, key) => ({
+      key,
+      originalName: item.originalName,
+      koreanName: item.koreanName,
+      price: amountInputText(item.unitPrice, currency),
+      qty: String(item.quantity),
+      splitType: item.splitType,
+      category: item.category,
+    })),
+  );
+  const [nextKey, setNextKey] = useState(draft.items.length);
+  const [totalText, setTotalText] = useState(amountInputText(draft.amount, currency));
   const [error, setError] = useState<string | null>(null);
   const errorId = useId();
 
+  const read = items.map((item) => readItem(item, currency));
+  const allValid = read.every((value) => value !== null);
+  const adjustmentAmounts = draft.adjustments.map((a) => (a.kind === "DISCOUNT" ? -a.amount : a.amount));
+  // 합계는 core의 정수 합(sumAmounts)으로 낸다. 화면은 더한 값을 비교·표시만 한다.
+  const itemsSum =
+    allValid && items.length > 0
+      ? sumAmounts([...read.map((value) => value!.line), ...adjustmentAmounts])
+      : null;
+  const total = parseAmountInput(totalText, currency);
+  const mismatch = itemsSum !== null && total !== null && itemsSum !== total;
+  const warn = draft.needsReview || mismatch;
+
+  function patch(key: number, change: Partial<EditItem>) {
+    setItems((list) => list.map((item) => (item.key === key ? { ...item, ...change } : item)));
+    setError(null);
+  }
+
+  function addItem() {
+    setItems((list) => [
+      ...list,
+      {
+        key: nextKey,
+        originalName: "",
+        koreanName: "",
+        price: "",
+        qty: "1",
+        splitType: "EACH",
+        category: "other",
+      },
+    ]);
+    setNextKey((key) => key + 1);
+  }
+
   function submit() {
-    const amount = draft.needsReview ? parseAmountInput(totalText, draft.currency) : draft.amount;
-    if (amount === null || amount <= 0) {
-      setError(t("expense.amountMissing"));
-      return;
-    }
+    if (!allValid) return setError(t("expense.itemInvalid"));
+    if (total === null || total <= 0) return setError(t("expense.amountMissing"));
+    if (mismatch) return setError(t("expense.mismatchBlock"));
+    const saved: ExpenseItemInput[] = items.map((item, index) => ({
+      originalName: item.originalName.trim() || item.koreanName.trim(),
+      koreanName: item.koreanName.trim(),
+      unitPrice: read[index]!.unitPrice,
+      quantity: read[index]!.quantity,
+      splitType: item.splitType,
+      category: item.category,
+    }));
     onSave({
       title: title.trim() || draft.title,
-      currency: draft.currency,
-      amount,
-      // 참고용 suggestedEaters는 저장 요청에 싣지 않는다
-      items: draft.items.map((item) => ({
-        originalName: item.originalName,
-        koreanName: item.koreanName,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-        splitType: item.splitType,
-        category: item.category,
-      })),
-      adjustments: draft.adjustments,
+      currency,
+      amount: total,
+      items: saved,
+      // 품목을 전부 지웠으면 세금·할인도 합계 안에 들어 있는 것으로 보고 싣지 않는다
+      adjustments: saved.length > 0 ? draft.adjustments : [],
     });
   }
 
@@ -342,72 +468,78 @@ function Review({
     <>
       <AppBar title={t("expense.reviewTitle")} onBack={onBack} />
       <Screen>
-        <p className="rounded-md bg-brand-soft px-3.5 py-3 text-hint text-brand-ink break-keep">
-          {t("expense.reviewInfo")}
-        </p>
-        {draft.needsReview ? (
-          <p role="alert" className="rounded-sm bg-estimate-soft px-3 py-2.5 text-caption text-estimate break-keep">
-            {t("expense.reviewWarn")}
+        {warn ? (
+          <div role="alert" className="rounded-md bg-estimate-soft px-3.5 py-3 text-estimate break-keep">
+            <b className="block text-hint font-bold">{t("expense.reviewWarn")}</b>
+            <span className="text-caption">{t("expense.reviewWarnHint")}</span>
+          </div>
+        ) : (
+          <p className="rounded-md bg-brand-soft px-3.5 py-3 text-hint text-brand-ink break-keep">
+            {t("expense.reviewInfo")}
           </p>
-        ) : null}
+        )}
 
         <label className="grid gap-1.5 text-hint font-medium text-sub">
           {t("expense.shopLabel")}
           <Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={40} />
         </label>
 
-        {draft.items.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-hint text-sub">{t("expense.noItems")}</p>
         ) : (
-          <ul className="grid">
-            {draft.items.map((item, index) => (
-              <ListRow
-                key={index}
-                title={`${item.koreanName} ×${item.quantity}`}
-                meta={item.originalName !== item.koreanName ? item.originalName : undefined}
-                trailing={
-                  <span className="tabular-nums whitespace-nowrap">
-                    {formatMoney(itemLineAmount(item.unitPrice, item.quantity), draft.currency)}
-                  </span>
-                }
+          <ul className="grid gap-2">
+            {items.map((item, index) => (
+              <EditItemRow
+                key={item.key}
+                item={item}
+                line={read[index]?.line ?? null}
+                currency={currency}
+                disabled={saving}
+                onChange={(change) => patch(item.key, change)}
+                onRemove={() => setItems((list) => list.filter((other) => other.key !== item.key))}
               />
             ))}
           </ul>
         )}
+        <Button variant="ghost" size="sm" className="self-start" disabled={saving} onClick={addItem}>
+          {t("expense.addItem")}
+        </Button>
 
-        <div className="-mt-3">
-          {draft.adjustments.map((adjustment) => (
+        {items.length > 0 ? (
+          <div className="-mt-2">
+            {draft.adjustments.map((adjustment) => (
+              <ReceiptSum
+                key={adjustment.kind}
+                label={t(`adjustment.${adjustment.kind}`)}
+                value={formatMoney(
+                  adjustment.kind === "DISCOUNT" ? -adjustment.amount : adjustment.amount,
+                  currency,
+                )}
+              />
+            ))}
             <ReceiptSum
-              key={adjustment.kind}
-              label={t(`adjustment.${adjustment.kind}`)}
-              value={formatMoney(
-                adjustment.kind === "DISCOUNT" ? -adjustment.amount : adjustment.amount,
-                draft.currency,
-              )}
+              label={draft.adjustments.length > 0 ? t("expense.itemsSumWithAdj") : t("expense.itemsSum")}
+              value={itemsSum !== null ? formatMoney(itemsSum, currency) : "—"}
+              total
             />
-          ))}
-          {draft.needsReview ? null : (
-            <ReceiptSum label={t("expense.total")} value={formatMoney(draft.amount, draft.currency)} total />
-          )}
-        </div>
-
-        {draft.needsReview ? (
-          <label className="grid gap-1.5 text-hint font-medium text-sub">
-            {t("expense.totalLabel", { currency: draft.currency })}
-            <Input
-              value={totalText}
-              inputMode="decimal"
-              onChange={(event) => {
-                setTotalText(event.target.value);
-                setError(null);
-              }}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
-            />
-          </label>
+          </div>
         ) : null}
+
+        <label className="grid gap-1.5 text-hint font-medium text-sub">
+          {t("expense.totalLabel", { currency })}
+          <Input
+            value={totalText}
+            inputMode="decimal"
+            onChange={(event) => {
+              setTotalText(event.target.value);
+              setError(null);
+            }}
+            aria-invalid={mismatch || error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+          />
+        </label>
         {error ? (
-          <p id={errorId} className="-mt-2.5 text-caption font-medium text-send">
+          <p id={errorId} role="alert" className="-mt-2.5 text-caption font-medium text-send">
             {error}
           </p>
         ) : null}
@@ -419,6 +551,80 @@ function Review({
         </BottomCTA>
       </Screen>
     </>
+  );
+}
+
+/** 품목 한 줄 고치기: 이름 / 단가 × 수량 = 한 줄 금액, 카테고리 표시, 빼기. */
+function EditItemRow({
+  item,
+  line,
+  currency,
+  disabled,
+  onChange,
+  onRemove,
+}: {
+  item: EditItem;
+  line: number | null;
+  currency: string;
+  disabled: boolean;
+  onChange: (change: Partial<EditItem>) => void;
+  onRemove: () => void;
+}) {
+  const label = item.koreanName.trim() || t("expense.newItemName");
+  return (
+    <li className="grid gap-2 rounded-lg border-2 border-line p-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={item.koreanName}
+          aria-label={t("expense.itemNameLabel")}
+          placeholder={t("expense.newItemName")}
+          maxLength={40}
+          disabled={disabled}
+          onChange={(event) => onChange({ koreanName: event.target.value })}
+          className="h-11 flex-1"
+        />
+        <button
+          type="button"
+          aria-label={t("expense.removeItem", { name: label })}
+          disabled={disabled}
+          onClick={onRemove}
+          className="press grid size-11 shrink-0 place-items-center rounded-md text-xl text-sub"
+        >
+          ×
+        </button>
+      </div>
+      {item.originalName && item.originalName !== item.koreanName ? (
+        <span className="-mt-1 truncate text-caption text-sub">{item.originalName}</span>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 rounded-full bg-field px-2 py-0.5 text-xs text-sub">
+          {t(`category.${item.category}`)}
+        </span>
+        <Input
+          value={item.price}
+          inputMode="decimal"
+          aria-label={t("expense.unitPriceLabel")}
+          placeholder={t("expense.unitPriceLabel")}
+          disabled={disabled}
+          onChange={(event) => onChange({ price: event.target.value })}
+          className="h-11 min-w-0 flex-1 text-right tabular-nums"
+        />
+        <span aria-hidden className="text-sub">
+          ×
+        </span>
+        <Input
+          value={item.qty}
+          inputMode="numeric"
+          aria-label={t("expense.quantityLabel")}
+          disabled={disabled}
+          onChange={(event) => onChange({ qty: event.target.value })}
+          className="h-11 w-16 shrink-0 text-center tabular-nums"
+        />
+      </div>
+      <span className="text-right font-bold tabular-nums">
+        {line !== null ? formatMoney(line, currency) : "—"}
+      </span>
+    </li>
   );
 }
 

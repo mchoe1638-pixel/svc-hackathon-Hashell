@@ -26,7 +26,7 @@ import {
   useUnsettleTrip,
 } from "@/hooks";
 import { t } from "@/i18n/ko";
-import type { Member, MemberId, Settlement, Transfer, TripDetail } from "@/types/api";
+import type { ApiError, Member, MemberId, Settlement, Transfer, TripDetail } from "@/types/api";
 
 /** 정산 — 시안 "settle"(확정 전 미리보기) · "settled"(확정된 송금 목록, 받았어요). 한 주소에서 여행 상태로 나눈다. */
 export default function SettlePage() {
@@ -62,10 +62,16 @@ function SettleContent() {
     );
   }
 
+  // 409(다른 사람이 먼저 바꿈)이면 알리고 여행·정산을 다시 받는다
+  const reload = () => {
+    trip.refetch();
+    settlement.refetch();
+  };
+
   return trip.data.status === "SETTLED" ? (
-    <Settled trip={trip.data} settlement={settlement.data} />
+    <Settled trip={trip.data} settlement={settlement.data} onConflict={reload} />
   ) : (
-    <Preview trip={trip.data} settlement={settlement.data} />
+    <Preview trip={trip.data} settlement={settlement.data} onConflict={reload} />
   );
 }
 
@@ -98,10 +104,27 @@ function TransferWho({ members, transfer }: { members: readonly Member[]; transf
   );
 }
 
-function Preview({ trip, settlement }: { trip: TripDetail; settlement: Settlement }) {
+type ScreenProps = { trip: TripDetail; settlement: Settlement; onConflict: () => void };
+
+/** 쓰기 실패 공통 처리: 409는 최신 내용 다시 받기, 423은 이미 확정됨(다시 받기), 나머지는 짧은 안내. */
+function useWriteError(onConflict: () => void) {
   const toast = useToast();
+  return (error: ApiError) => {
+    if (error.status === 409 || error.status === 423) {
+      toast(t("common.conflict"));
+      onConflict();
+    } else {
+      toast(t("common.error"));
+    }
+  };
+}
+
+function Preview({ trip, settlement, onConflict }: ScreenProps) {
+  const toast = useToast();
+  const onWriteError = useWriteError(onConflict);
   const expenses = useExpenses(trip.id);
   const settle = useSettleTrip();
+  const [confirming, setConfirming] = useState(false);
   const homeHref = `/trip/${trip.id}`;
   const { transfers, balances } = settlement;
   const cardCount = expenses.data?.filter((expense) => expense.isEstimated).length ?? 0;
@@ -111,8 +134,14 @@ function Preview({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
     settle.mutate(
       { tripId: trip.id },
       {
-        onSuccess: () => toast(t("settle.settledToast")),
-        onError: () => toast(t("common.error")),
+        onSuccess: () => {
+          setConfirming(false);
+          toast(t("settle.settledToast"));
+        },
+        onError: (error) => {
+          setConfirming(false);
+          onWriteError(error);
+        },
       },
     );
   }
@@ -180,9 +209,7 @@ function Preview({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
 
         <BottomBar>
           {trip.me.isOrganizer ? (
-            <Button disabled={settle.isPending} aria-busy={settle.isPending || undefined} onClick={confirm}>
-              {settle.isPending ? t("settle.confirming") : t("settle.confirm")}
-            </Button>
+            <Button onClick={() => setConfirming(true)}>{t("settle.confirm")}</Button>
           ) : (
             <Button variant="ghost" asChild>
               <Link href={homeHref}>{t("settle.goHome")}</Link>
@@ -190,12 +217,23 @@ function Preview({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
           )}
         </BottomBar>
       </Screen>
+
+      <ConfirmSheet
+        open={trip.me.isOrganizer && confirming}
+        title={t("settle.confirmTitle")}
+        hint={t("settle.confirmHint")}
+        confirmLabel={settle.isPending ? t("settle.confirming") : t("settle.confirmAction")}
+        busy={settle.isPending}
+        onConfirm={confirm}
+        onCancel={() => setConfirming(false)}
+      />
     </>
   );
 }
 
-function Settled({ trip, settlement }: { trip: TripDetail; settlement: Settlement }) {
+function Settled({ trip, settlement, onConflict }: ScreenProps) {
   const toast = useToast();
+  const onWriteError = useWriteError(onConflict);
   const markReceived = useMarkReceived();
   const unsettle = useUnsettleTrip();
   const [confirmingUnsettle, setConfirmingUnsettle] = useState(false);
@@ -213,7 +251,7 @@ function Settled({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
 
   function receive(transfer: Transfer) {
     if (transfer.id === null || markReceived.isPending) return;
-    markReceived.mutate({ transferId: transfer.id }, { onError: () => toast(t("common.error")) });
+    markReceived.mutate({ transferId: transfer.id }, { onError: onWriteError });
   }
 
   function doUnsettle() {
@@ -224,7 +262,10 @@ function Settled({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
           setConfirmingUnsettle(false);
           toast(t("settle.unsettled"));
         },
-        onError: () => toast(t("common.error")),
+        onError: (error) => {
+          setConfirmingUnsettle(false);
+          onWriteError(error);
+        },
       },
     );
   }
@@ -234,7 +275,11 @@ function Settled({ trip, settlement }: { trip: TripDetail; settlement: Settlemen
       <AppBar title={t("settle.settledBarTitle")} backHref={base} status={trip.status} />
       <Screen>
         <h2 className="mt-1 text-title font-bold tracking-tight text-balance break-keep">
-          {allDone ? t("settle.allDone") : t("settle.settledQuestion")}
+          {transfers.length === 0
+            ? t("settle.none")
+            : allDone
+              ? t("settle.allDone")
+              : t("settle.settledQuestion")}
         </h2>
         <p className="-mt-3 text-hint text-sub">{t("settle.settledHint")}</p>
 

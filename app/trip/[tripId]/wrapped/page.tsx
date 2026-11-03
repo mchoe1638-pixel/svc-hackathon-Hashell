@@ -12,7 +12,7 @@ import { useToast } from "@/components/toast";
 import { TripArt } from "@/components/trip-art";
 import { cn } from "@/components/utils";
 import { CountUp, Stories, Tally, type StorySlide } from "@/components/wrapped/stories";
-import { shareStory, type StoryInput } from "@/components/wrapped/story-image";
+import { renderStoryFile, shareStoryFile, type StoryInput } from "@/components/wrapped/story-image";
 import { formatMoney } from "@/core/money";
 import { buildWrapped, type Wrapped, type WrappedCategory, type WrappedTitle } from "@/core/tripStats";
 import { useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
@@ -185,13 +185,33 @@ function WrappedStories({
     }),
   ].join("\n");
 
+  // 스토리 이미지는 화면이 뜨면 미리 만든다: 아이폰 사파리는 누른 순간에 share를 불러야 해서 누른 뒤엔 기다릴 수 없다.
+  const [storyFile, setStoryFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<File | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const input: StoryInput = { tripTitle: trip.title, wrapped, members, titleLines };
+    renderStoryFile(input).then(
+      (file) => alive && setStoryFile(file),
+      () => alive && setStoryFile(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [trip.title, wrapped, members, titleLines]);
+
   async function share() {
     if (sharing) return;
+    if (storyFile) {
+      // await 없이 바로 공유창 (사용자 누름이 살아 있을 때)
+      const result = await shareStoryFile(storyFile);
+      if (result === "fallback") setPreview(storyFile);
+      return;
+    }
+    // 아직 못 만들었으면 지금 만들고, 누름이 끝났으니 공유창 대신 길게 눌러 저장 안내로
     setSharing(true);
     try {
-      const input: StoryInput = { tripTitle: trip.title, wrapped, members, titleLines };
-      const result = await shareStory(input);
-      if (result === "saved") toast(t("wrapped.imageSaved"));
+      setPreview(await renderStoryFile({ tripTitle: trip.title, wrapped, members, titleLines }));
     } catch {
       toast(t("wrapped.shareFailed"));
     } finally {
@@ -230,7 +250,12 @@ function WrappedStories({
           onReplay: () => setRound((n) => n + 1),
         });
 
-  return <Stories key={round} slides={slides} onClose={onClose} />;
+  return (
+    <>
+      <Stories key={round} slides={slides} onClose={onClose} />
+      {preview ? <StoryPreview file={preview} onClose={() => setPreview(null)} /> : null}
+    </>
+  );
 }
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
@@ -460,4 +485,53 @@ function buildSlides({
       ),
     },
   ];
+}
+
+/**
+ * 공유창을 못 쓸 때 (아이폰 iOS 14 이하·앱 WebView·일부 데스크톱): 이미지를 크게 보여주고 길게 눌러 저장하게 한다.
+ * 파일로 받기 링크도 함께 둔다 (데스크톱·안드로이드 브라우저용).
+ */
+function StoryPreview({ file, onClose }: { file: File; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 객체 URL은 만들고 지우는 짝이 effect 안에 있어야 한다
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("wrapped.previewTitle")}
+      className="fixed inset-0 z-70 mx-auto flex max-w-app animate-scrim-in flex-col items-center gap-3 overflow-y-auto bg-scrim px-gutter pt-[calc(20px+env(safe-area-inset-top))] pb-safe text-paper"
+    >
+      <p className="text-bar font-bold">{t("wrapped.previewTitle")}</p>
+      <p className="-mt-2 text-caption opacity-85">{t("wrapped.previewHint")}</p>
+      {url ? (
+        // 길게 눌러 저장하려면 진짜 <img>여야 한다 (next/image는 쓰지 않는다)
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={t("wrapped.previewAlt")} className="w-[72%] max-w-80 rounded-lg shadow-seg" />
+      ) : null}
+      <div className="grid w-full gap-2">
+        {url ? (
+          <a
+            href={url}
+            download={file.name}
+            className="wbtn-a press grid min-h-13 place-items-center rounded-lg text-body font-bold"
+          >
+            {t("wrapped.saveImage")}
+          </a>
+        ) : null}
+        <button
+          type="button"
+          onClick={onClose}
+          className="wbtn-b press min-h-13 rounded-lg text-body font-bold"
+        >
+          {t("wrapped.close")}
+        </button>
+      </div>
+    </div>
+  );
 }

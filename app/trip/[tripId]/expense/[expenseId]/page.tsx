@@ -61,7 +61,10 @@ function ExpenseCheck() {
     );
   }
 
-  return <CheckBody trip={trip.data} expense={expense.data} onReload={() => expense.refetch()} />;
+  return <CheckBody trip={trip.data} expense={expense.data} onReload={() => {
+        trip.refetch();
+        expense.refetch();
+      }} />;
 }
 
 function CheckBody({
@@ -101,7 +104,13 @@ function CheckBody({
       {
         onError: (error) => {
           if (error.status === 400) toast(t("itemCheck.lastOne"));
-          else if (error.status === 423) toast(t("itemCheck.settledToast"));
+          else if (error.status === 409) {
+            toast(t("common.conflict"));
+            onReload();
+          } else if (error.status === 423) {
+            toast(t("itemCheck.settledToast"));
+            onReload();
+          }
           else toast(t("common.error"));
         },
       },
@@ -119,7 +128,7 @@ function CheckBody({
         onError: (error) => {
           setConfirmingDelete(false);
           if (error.status === 409) {
-            toast(t("itemCheck.conflict"));
+            toast(t("common.conflict"));
             onReload();
           } else if (error.status === 423) {
             toast(t("itemCheck.settledToast"));

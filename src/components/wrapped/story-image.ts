@@ -202,33 +202,34 @@ export async function drawStory(input: StoryInput): Promise<HTMLCanvasElement> {
   return canvas;
 }
 
-export type StoryShareResult = "shared" | "saved" | "cancelled";
-
-/** 스토리 이미지를 공유한다: 폰 공유창(navigator.share({ files }))이 되면 그걸로, 안 되면 이미지 파일로 저장. */
-export async function shareStory(input: StoryInput): Promise<StoryShareResult> {
+/** 스토리 이미지를 PNG 파일로 만든다. 공유 버튼을 누르기 전에 미리 만들어 둔다 (아래 `shareStoryFile` 설명). */
+export async function renderStoryFile(input: StoryInput): Promise<File> {
   const canvas = await drawStory(input);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("toBlob failed");
-  const name = t("wrapped.fileName");
-  const file = new File([blob], name, { type: "image/png" });
+  return new File([blob], t("wrapped.fileName"), { type: "image/png" });
+}
 
-  if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: t("wrapped.summaryHeader") });
-      return "shared";
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
-      // 공유창이 실패하면 저장으로 넘어간다
-    }
+/** shared: 공유창으로 보냄 · cancelled: 사용자가 공유창을 닫음 · fallback: 공유창을 못 씀 → 길게 눌러 저장 안내로 */
+export type StoryShareResult = "shared" | "cancelled" | "fallback";
+
+/**
+ * 폰 공유창으로 이미지 파일을 보낸다 (navigator.share({ files })).
+ *
+ * 아이폰 사파리 (코드로 확인한 조건):
+ * - iOS 15 이상에서 `navigator.canShare({ files })`가 이미지 파일에 true → 공유창에 "이미지 저장"·인스타그램이 뜬다.
+ * - 사용자가 누른 그 순간(transient activation)에 불러야 한다. 누른 뒤 `await`(글꼴 기다림·toBlob)를 먼저 하면
+ *   NotAllowedError가 난다. 그래서 파일은 미리 만들어 두고, 이 함수는 누름 처리 안에서 await 없이 바로 부른다.
+ * - title·text를 파일과 같이 넣으면 일부 앱에서 파일이 빠지고 글자만 가는 경우가 있어 files만 넣는다.
+ * - iOS 14 이하·데스크톱 파이어폭스·Android WebView(앱)는 files 공유가 없거나 막혀 있다 → fallback.
+ */
+export function shareStoryFile(file: File): Promise<StoryShareResult> {
+  if (typeof navigator.share !== "function" || !navigator.canShare?.({ files: [file] })) {
+    return Promise.resolve("fallback");
   }
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  return "saved";
+  return navigator.share({ files: [file] }).then(
+    () => "shared" as const,
+    (error: unknown) =>
+      error instanceof DOMException && error.name === "AbortError" ? ("cancelled" as const) : ("fallback" as const),
+  );
 }
