@@ -8,15 +8,26 @@ type AppBarProps = {
   title: string;
   /** 있으면 왼쪽에 뒤로 버튼을 보여준다. */
   backHref?: string;
+  /** 주소는 그대로이고 화면 안 단계만 되돌릴 때 (예: 지출 추가의 영수증 확인 → 처음). `backHref`보다 먼저. */
+  onBack?: () => void;
   /** 있으면 오른쪽에 여행 상태 칩을 보여준다. */
   status?: TripStatus;
 };
 
 /** 상단바 (시안 .bar): (뒤로) + 제목 + (여행 상태 칩). */
-export function AppBar({ title, backHref, status }: AppBarProps) {
+export function AppBar({ title, backHref, onBack, status }: AppBarProps) {
   return (
     <header className="sticky top-0 z-30 flex min-h-13.5 items-center gap-1 border-b border-line bg-paper py-1.5 pr-3.5 pl-1.5">
-      {backHref ? (
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label={t("common.back")}
+          className="press grid size-11 shrink-0 place-items-center rounded-md text-2xl leading-none"
+        >
+          ←
+        </button>
+      ) : backHref ? (
         <Link
           href={backHref}
           aria-label={t("common.back")}

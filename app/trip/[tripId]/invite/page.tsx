@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 
 import { AppBar } from "@/components/app-bar";
 import { BottomBar } from "@/components/bottom-cta";
@@ -22,10 +22,14 @@ import type { InviteCode } from "@/types/api";
 
 /** 초대 링크: 지금 열린 주소(운영·미리보기·로컬)의 `/j/{inviteCode}`. 서버 렌더 중엔 빈 값. */
 function useInviteUrl(inviteCode: InviteCode | undefined): string {
-  const [origin, setOrigin] = useState("");
-  useEffect(() => setOrigin(window.location.origin), []);
+  const origin = useSyncExternalStore(
+    noSubscribe,
+    () => window.location.origin,
+    () => "",
+  );
   return origin && inviteCode ? `${origin}/j/${inviteCode}` : "";
 }
+const noSubscribe = () => () => {};
 
 /** 동행 초대 (총무, 앱) — 시안 "invite": QR + 초대 링크 공유 + 참여 현황 + 링크 잠금. */
 export default function InvitePage() {

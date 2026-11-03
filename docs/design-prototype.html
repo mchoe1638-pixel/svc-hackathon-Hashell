@@ -6,12 +6,14 @@
 <style>
 /* 레이아웃: 갤럭시 S25(360×780) 폰 화면 하나만 가운데. 앱 화면은 hashell 에메랄드→청록 그라데이션(정산 끝난 돈의 초록), 여행 돌아보기는 여행지 색(데이터베이스) */
 :root{
-  --brand:#0B8A6C; --brand-ink:#08624E; --brand-soft:#E2F4EE;
-  --grad:linear-gradient(135deg,#0A9470 0%,#0D9488 50%,#0E7490 100%);
-  --ink:#14201C; --sub:#5F6B68; --line:#E2E8E5; --field:#F1F5F3; --paper:#FFFFFF; --stage:#DCE6E2; --bezel:#1C1E22;
-  --send:#E5484D; --ok:#0F7A5C; --est:#B25E09; --est-soft:#FFF4E5;
+  /* 기준 세 색: 파랑(기본) #4B5CF1, 빨강 #F14B5C, 초록 #5CF14B. 흰 바탕 글자용은 진한 단계 */
+  --blue:#4B5CF1; --red:#F14B5C; --green:#5CF14B;
+  --brand:#4B5CF1; --brand-ink:#3A4AD9; --brand-soft:#EDEFFE;
+  --grad:linear-gradient(135deg,#3A4AD9 0%,#4B5CF1 55%,#5E6EF4 100%);
+  --ink:#191F28; --sub:#5F6B7A; --line:#E3E7EC; --field:#F2F4F7; --paper:#FFFFFF; --stage:#E3E8F0; --bezel:#1C1E22;
+  --send:#CF404F; --ok:#328429; --est:#B25E09; --est-soft:#FFF4E5;
   --accent:#E0362C; --glow:#FFB81C; --night:#0A1433; --foam:#FFF9EC; --butter:#FFE08A;
-  --m-mk:#3F7AD6; --m-sh:#E2675A; --m-jh:#23A07C; --m-mj:#D8962A; --m-new:#7C6BD6;
+  --m-mk:#4B5CF1; --m-sh:#F14B5C; --m-jh:#5CF14B; --m-mj:#F1C14B; --m-new:#B44BF1;
   --f:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   color-scheme:light;
 }
@@ -102,7 +104,7 @@ button.row{cursor:pointer}
 .day{font-size:13px;color:var(--sub);font-weight:700;margin:8px 0 -4px}
 .banner{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;background:var(--brand-soft);color:var(--brand-ink);font-weight:500;border:0;width:100%;text-align:left;cursor:pointer;min-height:56px}
 .banner .go{margin-left:auto;font-size:18px}
-.banner.night{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 45%,#0D9488),color-mix(in srgb,var(--night) 60%,#0E7490));color:var(--foam);padding:16px}
+.banner.night{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 45%,#4B5CF1),color-mix(in srgb,var(--night) 60%,#5E6EF4));color:var(--foam);padding:16px}
 .banner.night>span{min-width:0;font-size:13px;line-height:1.45}
 .banner.night strong{display:block;font-weight:900;font-size:18px;color:var(--glow);line-height:1.3;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;margin-bottom:2px}
 .banner.night img,.banner.night svg{width:56px;height:56px;flex:none}
@@ -190,7 +192,7 @@ button.row{cursor:pointer}
 .xfer .who svg{flex:none;color:var(--sub)}
 .xfer .amt{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
 .ok{color:var(--ok);font-size:13px;font-weight:700;white-space:nowrap}
-.pos{color:var(--brand)} .neg{color:var(--send)}
+.pos{color:var(--ok)} .neg{color:var(--send)}
 .qr{display:block;width:140px;height:140px;margin:4px auto 0;image-rendering:pixelated}
 .link{display:flex;align-items:center;gap:8px;background:var(--field);border-radius:12px;padding:6px 6px 6px 14px}
 .link span,.link label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
@@ -212,12 +214,12 @@ button.row{cursor:pointer}
 .wr-close{position:absolute;top:22px;right:6px;width:44px;height:44px;border:0;background:none;color:inherit;font-size:26px;cursor:pointer;z-index:3}
 .slide{position:absolute;inset:0;padding:70px 22px 26px;display:flex;flex-direction:column;gap:14px}
 /* 장마다 색은 달라도 밝기와 방향은 같게: 첫 장(메인 그라데이션)과 무게를 맞춘다 */
-.s-brand{background:var(--brand);background-image:linear-gradient(160deg,#0A9470 0%,#0D9488 50%,#0E7490 100%);color:var(--foam)}
+.s-brand{background:var(--brand);background-image:linear-gradient(160deg,#3A4AD9 0%,#4B5CF1 50%,#5E6EF4 100%);color:var(--foam)}
 .s-glow{background:var(--glow);background-image:linear-gradient(160deg,color-mix(in srgb,var(--glow) 70%,var(--paper)) 0%,var(--glow) 55%,color-mix(in srgb,var(--glow) 72%,var(--accent)) 100%);color:var(--night)}
-.s-night{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 45%,#0D9488) 0%,color-mix(in srgb,var(--night) 60%,#0E7490) 100%);color:var(--foam)}
+.s-night{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 45%,#4B5CF1) 0%,color-mix(in srgb,var(--night) 60%,#5E6EF4) 100%);color:var(--foam)}
 .s-accent{background:var(--accent);background-image:linear-gradient(160deg,color-mix(in srgb,var(--accent) 80%,var(--glow)) 0%,var(--accent) 50%,color-mix(in srgb,var(--accent) 78%,var(--night)) 100%);color:var(--foam)}
-.s-paper{background:var(--foam);background-image:linear-gradient(160deg,var(--foam) 0%,color-mix(in srgb,var(--glow) 16%,var(--foam)) 60%,color-mix(in srgb,#0D9488 14%,var(--foam)) 100%);color:var(--night)}
-.s-deep{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 30%,#0E7490) 0%,color-mix(in srgb,var(--night) 25%,#0A9470) 100%);color:var(--foam)}
+.s-paper{background:var(--foam);background-image:linear-gradient(160deg,var(--foam) 0%,color-mix(in srgb,var(--glow) 16%,var(--foam)) 60%,color-mix(in srgb,#4B5CF1 14%,var(--foam)) 100%);color:var(--night)}
+.s-deep{background:var(--night);background-image:linear-gradient(160deg,color-mix(in srgb,var(--night) 30%,#5E6EF4) 0%,color-mix(in srgb,var(--night) 25%,#3A4AD9) 100%);color:var(--foam)}
 .d{font-weight:900;margin:0;line-height:1.08;letter-spacing:-.045em;text-wrap:balance;word-break:keep-all;max-width:100%}
 .d-xl{font-size:clamp(52px,17vw,70px)}
 .d-l{font-size:clamp(38px,12vw,48px)}
@@ -335,7 +337,7 @@ button.row:active{transform:scale(.985)}
 <script>
 /* ---------- 여행지 데이터: 데이터베이스(destinations)에서 읽고, 못 읽으면 오사카 하나로 ---------- */
 const FALLBACK_RAW = {"order": 1, "name": "오사카", "country": "일본", "match": ["오사카", "osaka", "大阪", "간사이", "도톤보리", "난바", "교토", "일본"], "cur": {"code": "JPY", "sym": "¥", "unit": "엔", "per": 100}, "cash": 905, "tts": 9124, "fee": 22, "nights": "3박 4일", "days": ["10월 24일 토", "10월 25일 일", "10월 26일 월", "10월 27일 화"], "title": "이자카야 정복대", "hb": {"name": "하이볼", "title": "하이볼 장인"}, "readNote": "일본어 영수증도 돼요.", "colors": {"accent": "#E0362C", "glow": "#FFB81C", "night": "#0A1433", "paper": "#FFF9EC"}, "art": [{"key": "osaka-castle", "label": "오사카성"}, {"key": "takoyaki", "label": "타코야키"}], "expenses": [{"id": "izakaya", "name": "이자카야 마루하치", "orig": "居酒屋 まる八 道頓堀店", "day": 0, "payer": "sh", "pay": "CASH", "items": [{"o": "お通し", "k": "오토시 (자릿세)", "u": 330, "q": 4, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール", "k": "생맥주", "u": 600, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 3, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "烏龍茶", "k": "우롱차", "u": 300, "q": 3, "cat": "drink", "eat": ["jh"], "tag": "tea"}, {"o": "お好み焼き", "k": "오코노미야키", "u": 1300, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "唐揚げ", "k": "가라아게", "u": 780, "q": 1, "cat": "snack", "eat": ["mk", "jh", "mj"]}, {"o": "枝豆", "k": "에다마메", "u": 450, "q": 1, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}]}, {"id": "ichiran", "name": "이치란 라멘", "orig": "一蘭 道頓堀店", "day": 0, "payer": "mk", "pay": "CARD", "items": [{"o": "天然とんこつラーメン", "k": "돈코츠 라멘", "u": 980, "q": 4, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "替玉", "k": "면 추가", "u": 210, "q": 3, "cat": "meal", "eat": ["mk", "sh", "jh"]}, {"o": "生ビール", "k": "생맥주", "u": 590, "q": 3, "cat": "alcohol", "eat": ["mk", "sh", "mj"], "tag": "beer"}]}, {"id": "famima", "name": "패밀리마트 난바점", "orig": "ファミリーマート 難波店", "day": 1, "payer": "jh", "pay": "CASH", "items": [{"o": "アサヒスーパードライ 350ml", "k": "아사히 캔맥주", "u": 278, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "おにぎり", "k": "오니기리", "u": 158, "q": 5, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "ファミチキ", "k": "패미치키", "u": 220, "q": 2, "cat": "snack", "eat": ["jh", "mj"]}, {"o": "綾鷹", "k": "녹차", "u": 160, "q": 2, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}, {"id": "daruma", "name": "쿠시카츠 다루마", "orig": "串カツだるま 新世界総本店", "day": 2, "payer": "mk", "pay": "CARD", "items": [{"o": "串カツ盛り合わせ", "k": "쿠시카츠 모둠", "u": 1650, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール 中", "k": "생맥주 (중)", "u": 600, "q": 3, "cat": "alcohol", "eat": ["sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 2, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "ウーロン茶", "k": "우롱차", "u": 350, "q": 1, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}], "parsed": {"name": "타코야키 쥬하치반", "orig": "たこ焼き 十八番 道頓堀店", "day": 3, "items": [{"o": "たこ焼き 8個", "k": "타코야키 8개", "u": 650, "q": 2, "cat": "snack", "eat": []}, {"o": "ねぎマヨ", "k": "파 마요 타코야키", "u": 750, "q": 1, "cat": "snack", "eat": []}, {"o": "ハイボール", "k": "하이볼", "u": 500, "q": 2, "cat": "alcohol", "eat": [], "tag": "hb"}, {"o": "ラムネ", "k": "라무네", "u": 250, "q": 1, "cat": "drink", "eat": []}]}};
-const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="46" y="62" width="108" height="104" rx="16" fill="#0D9488"/><rect x="80" y="40" width="40" height="26" rx="8" fill="none" stroke="#191F28" stroke-width="8"/><rect x="46" y="98" width="108" height="10" fill="#FFB81C"/><circle cx="70" cy="172" r="8" fill="#191F28"/><circle cx="130" cy="172" r="8" fill="#191F28"/></svg>`;
+const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="46" y="62" width="108" height="104" rx="16" fill="#4B5CF1"/><rect x="80" y="40" width="40" height="26" rx="8" fill="none" stroke="#191F28" stroke-width="8"/><rect x="46" y="98" width="108" height="10" fill="#FFB81C"/><circle cx="70" cy="172" r="8" fill="#191F28"/><circle cx="130" cy="172" r="8" fill="#191F28"/></svg>`;
 const HEX = /^#[0-9a-fA-F]{6}$/, ASSET = /^[0-9a-f]{32}$/;
 const ALL = ["mk", "sh", "jh", "mj"];
 const COLORS = { mk: "var(--m-mk)", sh: "var(--m-sh)", jh: "var(--m-jh)", mj: "var(--m-mj)" };

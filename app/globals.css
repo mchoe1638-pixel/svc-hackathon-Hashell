@@ -3,15 +3,36 @@
 
 /*
  * 디자인 토큰. 색·글자·간격·둥글기는 여기서만 정의하고 Tailwind 클래스로 쓴다.
- * 기준: docs/design-prototype.html 의 :root. 단, 브랜드 색은 연한 파란색 단색(그라데이션 없음).
+ * 기준 세 색: 파랑 #4B5CF1(기본), 빨강 #F14B5C, 초록 #5CF14B.
+ * 파랑 위 글자는 흰색(5.1:1). 흰 바탕 위 글자로 쓸 빨강·초록은 4.5:1을 넘는 진한 단계를 쓴다.
  * 라이트 모드만 지원 (다크모드 범위 밖).
  */
 :root {
+  /* 기준 세 색 (원색 그대로: 면·장식용) */
+  --blue: #4b5cf1;
+  --red: #f14b5c;
+  --green: #5cf14b;
+
   /* 브랜드 (시안 --brand / --brand-ink / --brand-soft) */
-  --brand: #2f6feb;
-  --brand-ink: #1f4fbf;
+  --brand: var(--blue);
+  --brand-ink: #3a4ad9;
   --brand-foreground: #ffffff;
-  --brand-soft: #eaf1fe;
+  --brand-soft: #edeffe;
+  --brand-light: #5e6ef4; /* 그라데이션 끝 색 */
+  /* 주요 버튼·잔액 카드·내 몫 막대 (시안 --grad) */
+  --grad: linear-gradient(135deg, var(--brand-ink) 0%, var(--brand) 55%, var(--brand-light) 100%);
+
+  /* 여행 돌아보기·여행지 그림 색 (시안 --accent / --glow / --night / --foam / --butter).
+     shadcn 의 --accent 와 겹치지 않게 --trip-accent 로 이름을 바꿨다. */
+  --trip-accent: #e0362c;
+  --glow: #ffb81c;
+  --night: #0a1433;
+  --foam: #fff9ec;
+  --butter: #ffe08a;
+
+  /* 그림자 (시안에 직접 쓴 rgba 값) */
+  --elev-seg: 0 1px 3px rgb(25 31 40 / 0.14);
+  --elev-scan: 0 10px 18px rgb(20 32 28 / 0.18);
 
   /* 바탕·글자 (시안 --paper / --ink / --sub / --line / --field / --stage) */
   --paper: #ffffff;
@@ -22,17 +43,17 @@
   --stage: #e3e8f0;
 
   /* 의미 색 (시안 --send / --ok / --est / --est-soft) */
-  --send: #e5484d;
-  --ok: #0f7a5c;
+  --send: #cf404f; /* 빨강의 글자용 단계 (흰 바탕 4.7:1) */
+  --ok: #328429; /* 초록의 글자용 단계 (흰 바탕 4.7:1) */
   --estimate: #b25e09;
   --estimate-soft: #fff4e5;
 
   /* 멤버 색: 참여 순서대로 돌려 쓴다 (시안 --m-mk, --m-sh, --m-jh, --m-mj, --m-new) */
-  --member-1: #3f7ad6;
-  --member-2: #e2675a;
-  --member-3: #23a07c;
-  --member-4: #d8962a;
-  --member-5: #7c6bd6;
+  --member-1: var(--blue);
+  --member-2: var(--red);
+  --member-3: var(--green);
+  --member-4: #f1c14b;
+  --member-5: #b44bf1;
 
   /* 화면 뒤 어두운 막 (확인 시트) */
   --scrim: rgb(10 20 51 / 0.45);
@@ -62,6 +83,7 @@
   /* 움직임 (시안 --ease-out / --ease-drawer) */
   --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-io: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* 레이아웃: 360px 폰 기준, 넓은 화면은 가운데 정렬 */
   --app-max-width: 480px;
@@ -76,6 +98,12 @@
 /* 하단 고정 버튼에 내용이 가려지지 않게 하는 빈 공간 */
 @utility h-bottom-cta-safe {
   height: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom));
+}
+
+/* 브랜드 그라데이션 면 */
+@utility bg-grad {
+  background-color: var(--brand);
+  background-image: var(--grad);
 }
 
 /* 토스트 자리: 하단 버튼 영역 바로 위 */
@@ -120,6 +148,15 @@
   --color-send: var(--send);
   --color-estimate: var(--estimate);
   --color-estimate-soft: var(--estimate-soft);
+  --color-brand-light: var(--brand-light);
+  --color-trip-accent: var(--trip-accent);
+  --color-glow: var(--glow);
+  --color-night: var(--night);
+  --color-foam: var(--foam);
+  --color-butter: var(--butter);
+
+  /* 그림자 */
+  --shadow-seg: var(--elev-seg);
 
   /* 둥글기 (시안: 작은 버튼 10, 입력·링크 12, 버튼·카드 14, 시트 22) */
   --radius-sm: 0.625rem; /* 10px */
@@ -220,6 +257,14 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    /* Tab으로 이동한 요소가 위 상단바·아래 고정 버튼에 가려지지 않게 */
+    scroll-padding-top: 4rem;
+    scroll-padding-bottom: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom) + 0.5rem);
+  }
+  button,
+  a {
+    touch-action: manipulation; /* 두 번 탭 확대 대기 없이 바로 반응 */
+    -webkit-tap-highlight-color: transparent; /* 누름 표시는 .press 가 한다 */
   }
   body {
     @apply bg-stage text-foreground font-sans antialiased;
@@ -259,14 +304,23 @@
 
   /* 멤버 동그라미: --c 는 멤버 색 (MemberAvatar 가 넣는다) */
   .avatar {
-    background: color-mix(in srgb, var(--c, var(--ink)) 22%, var(--paper));
-    color: color-mix(in srgb, var(--c, var(--ink)) 55%, var(--ink));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--c, var(--ink)) 74%, var(--butter)) 15%,
+      color-mix(in srgb, color-mix(in srgb, var(--c, var(--ink)) 45%, var(--brand)) 16%, var(--butter)) 85%
+    );
+    color: color-mix(in srgb, var(--c, var(--ink)) 40%, var(--ink));
   }
 
-  /* 멤버 칩 (시안 .mchip). 켜짐이면 멤버 색 테두리 + 옅은 바탕 */
-  .member-chip[aria-pressed="true"] {
+  /* 멤버 칩 (시안 .mchip). 켜짐이면 멤버 색 테두리 + 옅은 그라데이션 바탕 */
+  .member-chip[aria-pressed="true"],
+  .member-chip[data-on] {
     border-color: color-mix(in srgb, var(--c) 55%, var(--brand));
-    background: color-mix(in srgb, var(--c) 8%, var(--paper));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--c) 10%, var(--paper)),
+      color-mix(in srgb, var(--brand) 6%, var(--paper))
+    );
     color: var(--ink);
   }
   .member-chip[aria-pressed="false"] .member-chip-name {
@@ -277,13 +331,417 @@
     color: var(--sub);
   }
 
+  /* 영수증 모양 (시안 .receipt / .scan): 위아래 톱니 가장자리. --z 는 톱니 높이 */
+  .receipt,
+  .receipt-scan {
+    -webkit-mask:
+      linear-gradient(#000 0 0) center / 100% calc(100% - var(--z) * 2) no-repeat,
+      conic-gradient(from 135deg at top, #000 90deg, #0000 0) top / calc(var(--z) * 2) var(--z) repeat-x,
+      conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(var(--z) * 2) var(--z) repeat-x;
+    mask:
+      linear-gradient(#000 0 0) center / 100% calc(100% - var(--z) * 2) no-repeat,
+      conic-gradient(from 135deg at top, #000 90deg, #0000 0) top / calc(var(--z) * 2) var(--z) repeat-x,
+      conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(var(--z) * 2) var(--z) repeat-x;
+  }
+  .receipt {
+    --z: 9px;
+    background: var(--paper);
+    padding: calc(16px + var(--z)) 14px calc(22px + var(--z));
+  }
+  /* 영수증 읽는 중: 아래로 훑는 파란 선 */
+  .receipt-scan {
+    --z: 7px;
+    position: relative;
+    overflow: hidden;
+    background: var(--paper);
+    padding: calc(12px + var(--z)) 14px;
+  }
+  .receipt-scan::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent calc(100% - 4px), var(--brand) calc(100% - 4px));
+    box-shadow: 0 14px 18px -6px color-mix(in srgb, var(--brand) 45%, transparent);
+    transform: translateY(-100%);
+    animation: scan 1.6s ease-in-out infinite alternate;
+  }
+  .scan-shadow {
+    filter: drop-shadow(var(--elev-scan));
+  }
+
+  /* 내 몫 숫자가 바뀔 때 (시안 .mine.flash) */
+  .flash {
+    animation: flash 0.3s var(--ease-snap);
+  }
+  /* 영수증 저장 직후 품목이 차례로 (시안 .screen.stagger .item) */
+  .stagger-item {
+    animation: in-up 0.34s var(--ease-snap) both;
+    animation-delay: calc(var(--n, 0) * 45ms + 120ms);
+  }
+
+  /* 결제수단·낸 사람 고르기 (시안 .seg) */
+  .seg-button[aria-pressed="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 700;
+    box-shadow: var(--elev-seg);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .press:active,
     .press-row:active {
       transform: none;
     }
-    .screen-enter > * {
+    .screen-enter > *,
+    .receipt-scan::after,
+    .flash,
+    .stagger-item {
       animation: none;
     }
+  }
+}
+
+/* ---------- 여행 돌아보기 (시안 .wr / .slide). 색은 여행지 색 변수 ---------- */
+@layer components {
+  .wr {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    margin-inline: auto;
+    max-width: var(--app-max-width);
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    animation: wr-in 0.42s var(--ease-snap) both;
+  }
+  .wr.closing {
+    animation: wr-out 0.19s var(--ease-snap) forwards;
+  }
+  .wr-prog {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    z-index: 3;
+    display: flex;
+    gap: 4px;
+  }
+  .wr-prog i {
+    position: relative;
+    flex: 1;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: color-mix(in srgb, currentColor 30%, transparent);
+  }
+  .wr-prog i.done {
+    background: currentColor;
+  }
+  .wr-prog i.now::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    transform-origin: left;
+    animation: fill var(--dur) linear forwards;
+  }
+  .wr.paused .wr-prog i.now::after {
+    animation-play-state: paused;
+  }
+  .wr.paused .slide.on {
+    transform: scale(0.985);
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: calc(70px + env(safe-area-inset-top)) 22px calc(26px + env(safe-area-inset-bottom));
+    transition: transform 0.25s var(--ease-snap);
+  }
+  .slide.reveal {
+    animation: reveal 0.65s var(--ease-snap) both;
+  }
+  .slide.fadein {
+    animation: fade-in 0.32s var(--ease-snap) both;
+  }
+  .slide.leaving {
+    pointer-events: none;
+  }
+
+  /* 장마다 색은 달라도 밝기와 방향은 같게 */
+  .s-brand {
+    background: var(--brand);
+    background-image: linear-gradient(160deg, var(--brand-ink) 0%, var(--brand) 50%, var(--brand-light) 100%);
+    color: var(--foam);
+  }
+  .s-glow {
+    background: var(--glow);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--glow) 70%, var(--paper)) 0%,
+      var(--glow) 55%,
+      color-mix(in srgb, var(--glow) 72%, var(--trip-accent)) 100%
+    );
+    color: var(--night);
+  }
+  .s-night {
+    background: var(--night);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--night) 45%, var(--brand)) 0%,
+      color-mix(in srgb, var(--night) 60%, var(--brand-light)) 100%
+    );
+    color: var(--foam);
+  }
+  .s-accent {
+    background: var(--trip-accent);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--trip-accent) 80%, var(--glow)) 0%,
+      var(--trip-accent) 50%,
+      color-mix(in srgb, var(--trip-accent) 78%, var(--night)) 100%
+    );
+    color: var(--foam);
+  }
+  .s-paper {
+    background: var(--foam);
+    background-image: linear-gradient(
+      160deg,
+      var(--foam) 0%,
+      color-mix(in srgb, var(--glow) 16%, var(--foam)) 60%,
+      color-mix(in srgb, var(--brand) 14%, var(--foam)) 100%
+    );
+    color: var(--night);
+  }
+  .s-deep {
+    background: var(--night);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--night) 30%, var(--brand-light)) 0%,
+      color-mix(in srgb, var(--night) 25%, var(--brand-ink)) 100%
+    );
+    color: var(--foam);
+  }
+  /* 홈의 돌아보기 배너 (시안 .banner.night) */
+  .banner-night {
+    background: var(--night);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--night) 45%, var(--brand)),
+      color-mix(in srgb, var(--night) 60%, var(--brand-light))
+    );
+    color: var(--foam);
+  }
+
+  .d {
+    margin: 0;
+    max-width: 100%;
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+    word-break: keep-all;
+  }
+  .d-xl {
+    font-size: clamp(52px, 17vw, 70px);
+  }
+  .d-l {
+    font-size: clamp(38px, 12vw, 48px);
+  }
+  .d-m {
+    font-size: 28px;
+    letter-spacing: -0.03em;
+  }
+  .wr-lead {
+    margin: 0;
+    max-width: 26ch;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .wr-hero {
+    position: absolute;
+    right: -30px;
+    bottom: 56px;
+    width: 230px;
+    height: 230px;
+    pointer-events: none;
+  }
+  .wr-hero.sm {
+    right: -10px;
+    bottom: 150px;
+    width: 150px;
+    height: 150px;
+    opacity: 0.95;
+  }
+  .slide.on .wr-hero {
+    animation: hero-in 0.8s var(--ease-snap) both 0.1s;
+  }
+  .slide.on .in {
+    animation: rise 0.5s var(--ease-snap) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 140ms);
+  }
+  .slide.on .in.pop {
+    animation-name: rise-big;
+    animation-duration: 0.6s;
+  }
+  .catbar span {
+    display: block;
+    height: 100%;
+    transform-origin: left;
+  }
+  .slide.on .catbar span {
+    animation: bar-grow 0.7s var(--ease-snap) both;
+    animation-delay: calc(var(--n) * 90ms + 420ms);
+  }
+  .tally svg {
+    width: 58px;
+    height: 58px;
+    color: var(--glow);
+  }
+  .tally path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+  .slide.on .tally path {
+    animation: draw 0.26s var(--ease-snap) both;
+    animation-delay: calc(var(--k) * 150ms + 520ms);
+  }
+  .title-square {
+    background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, var(--brand)));
+  }
+  .wbtn-a {
+    background: var(--glow);
+    color: var(--night);
+  }
+  .wbtn-b {
+    background: transparent;
+    color: var(--foam);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--foam) 50%, transparent);
+  }
+  .legend-swatch {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wr,
+    .wr.closing,
+    .slide.on .in,
+    .slide.on .wr-hero,
+    .slide.on .catbar span,
+    .slide.on .tally path,
+    .wr-prog i.now::after {
+      animation: none;
+    }
+    .slide.reveal {
+      animation: fade-in 0.2s ease both;
+    }
+    .wr.paused .slide.on {
+      transform: none;
+    }
+  }
+}
+
+@keyframes scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes flash {
+  from {
+    transform: translateY(-6px);
+    opacity: 0.35;
+    filter: blur(2px);
+  }
+}
+@keyframes in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes wr-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes wr-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes reveal {
+  from {
+    clip-path: circle(0% at var(--x) var(--y));
+  }
+  to {
+    clip-path: circle(150% at var(--x) var(--y));
+  }
+}
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translate(24px, 24px) rotate(6deg) scale(0.94);
+  }
+}
+@keyframes rise {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+@keyframes rise-big {
+  from {
+    transform: translateY(10px) scale(0.94);
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+/*
+ * 동작 줄이기: 미끄러지는 움직임은 흐려졌다 나타나기로 바꾼다.
+ * animate-* 는 utilities 층이라 층 밖에 둬야 덮어쓸 수 있다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up,
+  .animate-toast-in {
+    animation: var(--animate-scrim-in);
+  }
+  .animate-sheet-down,
+  .animate-toast-out {
+    animation: var(--animate-scrim-out);
+  }
+  .animate-pop {
+    animation: none;
   }
 }
