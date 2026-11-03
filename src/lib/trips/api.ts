@@ -85,6 +85,11 @@ export async function unsettleTripRequest(tripId: TripId): Promise<TripStatusRes
   return getTripsClient().unsettleTrip(tripId);
 }
 
+/** `useDeleteTrip` — 여행 지우기 (총무만). 딸린 지출·품목·체크·송금도 같이 지워진다. 정산 확정 여행이면 423. */
+export async function deleteTripRequest(tripId: TripId): Promise<void> {
+  return getTripsClient().deleteTrip(tripId);
+}
+
 /** `useMarkReceived` — "받았어요" (받는 사람 본인만). */
 export async function markReceivedRequest(input: MarkReceivedInput): Promise<MarkReceivedResult> {
   return getTripsClient().markReceived(input.transferId);

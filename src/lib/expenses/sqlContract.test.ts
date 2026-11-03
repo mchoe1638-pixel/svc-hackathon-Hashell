@@ -26,6 +26,9 @@ const MIGRATION_URL = new URL('../../../supabase/migrations/20261103100000_expen
 const TRIPS_MIGRATION_URL = new URL('../../../supabase/migrations/20261102110000_trips_members.sql', import.meta.url);
 const sql = readFileSync(fileURLToPath(MIGRATION_URL), 'utf8');
 const tripsSql = readFileSync(fileURLToPath(TRIPS_MIGRATION_URL), 'utf8');
+/** v4 날짜: create_expense·update_expense를 지출 날짜 인자와 함께 다시 만든 마이그레이션. */
+const DATES_MIGRATION_URL = new URL('../../../supabase/migrations/20261104100000_trip_dates.sql', import.meta.url);
+const datesSql = readFileSync(fileURLToPath(DATES_MIGRATION_URL), 'utf8');
 
 const TRIP_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const MEMBER_ID = '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b';
@@ -47,8 +50,8 @@ function tableColumns(table: string): string[] {
     .map((line) => /^([a-z_]+)\s/.exec(line)?.[1] ?? '');
 }
 
-function functionParams(name: string): string[] {
-  const list = new RegExp(`create function public\\.${name}\\(([\\s\\S]*?)\\)\\s*returns`).exec(sql)?.[1];
+function functionParams(name: string, source: string = sql): string[] {
+  const list = new RegExp(`create function public\\.${name}\\(([\\s\\S]*?)\\)\\s*returns`).exec(source)?.[1];
   if (list === undefined) throw new Error(`function ${name} not found in the migration`);
   return list.split(',').map((param) => param.trim().split(/\s+/)[0]);
 }
@@ -177,7 +180,7 @@ describe('migration ↔ TypeScript contract (expenses)', () => {
 
     const [functionName, params] = lastCall(rpc);
     expect(functionName).toBe('create_expense');
-    expect(Object.keys(params).sort()).toEqual(functionParams('create_expense').sort());
+    expect(Object.keys(params).sort()).toEqual(functionParams('create_expense', datesSql).sort());
   });
 
   it('update_expense: the repository sends exactly the parameters the SQL function declares', async () => {
@@ -187,7 +190,7 @@ describe('migration ↔ TypeScript contract (expenses)', () => {
 
     const [functionName, params] = lastCall(rpc);
     expect(functionName).toBe('update_expense');
-    expect(Object.keys(params).sort()).toEqual(functionParams('update_expense').sort());
+    expect(Object.keys(params).sort()).toEqual(functionParams('update_expense', datesSql).sort());
   });
 
   it('delete_expense: the repository sends exactly the parameters the SQL function declares', async () => {

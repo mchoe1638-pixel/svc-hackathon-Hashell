@@ -64,13 +64,24 @@ const inviteCodeSchema = z
 
 const tripIdSchema = z.uuid('must be a UUID');
 
-const createTripSchema = z.object({
-  title: titleSchema,
-  localCurrency: localCurrencySchema,
-  cashRate: cashRateSchema,
-  cardFeeRate: cardFeeRateSchema,
-  memberNames: memberNamesSchema,
-});
+/** 시각 없는 달력 날짜 (`2026-11-04`). 없는 날짜(2월 30일 등)는 거부한다. 여행 기간과 지출 날짜가 같이 쓴다. */
+export const dateSchema = z.iso.date('must be a date (YYYY-MM-DD)');
+
+const createTripSchema = z
+  .object({
+    title: titleSchema,
+    localCurrency: localCurrencySchema,
+    cashRate: cashRateSchema,
+    cardFeeRate: cardFeeRateSchema,
+    memberNames: memberNamesSchema,
+    startDate: dateSchema.nullable().optional(),
+    endDate: dateSchema.nullable().optional(),
+  })
+  // DB의 trips_date_range_check와 같은 규칙. 둘 중 하나라도 없으면 통과한다. 같은 형식의 날짜 문자열은 글자 순서가 날짜 순서다.
+  .refine((value) => value.startDate == null || value.endDate == null || value.endDate >= value.startDate, {
+    error: 'must not be before startDate',
+    path: ['endDate'],
+  });
 
 const joinTripSchema = z
   .object({

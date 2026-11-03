@@ -106,6 +106,8 @@ function contentParams(expense: NewExpense | ExpenseUpdate): Record<string, unkn
     p_is_estimated: expense.isEstimated,
     p_items: itemsParams(expense.items, expense.remainder),
     p_adjustments: expense.adjustments.map(({ kind, amount }) => ({ kind, amount })),
+    // 고치기에서 null은 "날짜 그대로"다 (update_expense가 coalesce). 만들기에서 null은 "날짜 없음".
+    p_spent_on: expense.spentOn ?? null,
   };
 }
 

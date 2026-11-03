@@ -55,6 +55,7 @@ function makeGateway(overrides: Partial<TripsGateway> = {}): TripsGateway {
     selectMembers: vi.fn().mockResolvedValue(ok([])),
     lockTripIfOpen: vi.fn().mockResolvedValue(ok([])),
     unlockTripIfLocked: vi.fn().mockResolvedValue(ok([])),
+    deleteTripUnlessSettled: vi.fn().mockResolvedValue(ok([])),
     selectTripStatus: vi.fn().mockResolvedValue(ok(null)),
     selectExpenseRecords: vi.fn().mockResolvedValue(ok([])),
     ...overrides,
@@ -77,6 +78,8 @@ describe('createTrip', () => {
       p_card_fee_rate: 0.025,
       p_invite_code: INVITE_CODE,
       p_member_names: ['민수', '지수'],
+      p_start_date: null,
+      p_end_date: null,
     });
   });
 

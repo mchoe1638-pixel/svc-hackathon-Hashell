@@ -3,6 +3,7 @@ import type {
   CreateTripInput,
   CurrencyCode,
   InviteCode,
+  IsoDate,
   IsoDateTime,
   JoinTripInput,
   MemberId,
@@ -20,6 +21,9 @@ export interface TripRow {
   readonly cardFeeRate: number;
   readonly inviteCode: InviteCode;
   readonly status: TripStatus;
+  /** 여행 기간. 정하지 않았으면 null (날짜 컬럼 이전의 테스트 데이터에서는 생략된다). */
+  readonly startDate?: IsoDate | null;
+  readonly endDate?: IsoDate | null;
 }
 
 /** `members` 테이블 한 행 (camelCase). `authUserId`가 null이면 아직 아무 기기도 고르지 않은 이름이다. */
@@ -64,6 +68,9 @@ export type LockResult = 'LOCKED' | 'SETTLED' | null;
 
 /** 잠금 해제 뒤의 상태. 이미 열려 있어도 OPEN(멱등), 정산 확정이면 SETTLED(바뀌지 않음), 여행이 없으면 null. */
 export type UnlockResult = 'OPEN' | 'SETTLED' | null;
+
+/** 삭제 결과. 지웠으면 DELETED, 정산 확정이라 지우지 않았으면 SETTLED(바뀌지 않음), 여행이 없으면 null. */
+export type DeleteTripResult = 'DELETED' | 'SETTLED' | null;
 
 /** `transfers` 테이블 한 행 (camelCase). 정산을 확정할 때 고정된 송금이다. */
 export interface TransferRow {
@@ -136,6 +143,8 @@ export interface TripsRepository {
   lockTrip(tripId: TripId): Promise<LockResult>;
   /** OPEN ↔ LOCKED는 초대 링크를 닫고 여는 것이라 한 쌍이다. SETTLED는 건드리지 않는다. */
   unlockTrip(tripId: TripId): Promise<UnlockResult>;
+  /** 여행을 지운다. 멤버·지출·품목·체크·조정·송금은 FK `on delete cascade`로 같이 지워진다. SETTLED는 건드리지 않는다. */
+  deleteTrip(tripId: TripId): Promise<DeleteTripResult>;
   joinTrip(request: JoinRequest): Promise<JoinOutcome>;
   /** 정산 계산 입력: 여행의 지출 전부를 저장된 환율·수수료율 스냅샷과 함께 core 입력으로 옮겨서 돌려준다. */
   listSettlementExpenses(tripId: TripId): Promise<readonly SettlementExpense[]>;

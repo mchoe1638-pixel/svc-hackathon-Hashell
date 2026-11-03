@@ -6,6 +6,7 @@
 export { useCreateExpense } from './useCreateExpense';
 export { useCreateTrip } from './useCreateTrip';
 export { useDeleteExpense } from './useDeleteExpense';
+export { useDeleteTrip } from './useDeleteTrip';
 export { useExpense } from './useExpense';
 export { useExpenses } from './useExpenses';
 export { useJoinInfo } from './useJoinInfo';
@@ -17,6 +18,7 @@ export { useSettleTrip } from './useSettleTrip';
 export { useSettlement } from './useSettlement';
 export { useToggleShare } from './useToggleShare';
 export { useTrip } from './useTrip';
+export { useTrips } from './useTrips';
 export { useUnlockTrip } from './useUnlockTrip';
 export { useUnsettleTrip } from './useUnsettleTrip';
 export { useUpdateExpense } from './useUpdateExpense';

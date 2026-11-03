@@ -31,6 +31,9 @@ export type CurrencyCode = string;
 /** ISO 8601 일시 문자열 (예: '2026-11-02T06:40:36.000Z'). */
 export type IsoDateTime = string;
 
+/** ISO 8601 날짜 문자열, 시각 없이 날짜만 (예: '2026-11-04'). */
+export type IsoDate = string;
+
 export type TripId = string;
 /** 초대 링크에 들어가는 코드 (16자 이상). */
 export type InviteCode = string;
@@ -116,10 +119,30 @@ export interface TripDetail {
   readonly cardFeeRate: number;
   readonly inviteCode: InviteCode;
   readonly status: TripStatus;
+  /** 여행 시작일. 정하지 않았으면 null (가짜 데이터에는 없을 수 있다). */
+  readonly startDate?: IsoDate | null;
+  /** 여행 종료일. 정하지 않았으면 null. */
+  readonly endDate?: IsoDate | null;
   /** 참여 순서대로. */
   readonly members: readonly Member[];
   /** 나. */
   readonly me: Member;
+}
+
+/** `useTrips` 한 줄: 내가 멤버인 여행. 정렬은 화면이 한다. 국내·해외는 `localCurrency === 'KRW'`로 가른다. */
+export interface TripSummary {
+  readonly id: TripId;
+  readonly title: string;
+  readonly status: TripStatus;
+  readonly localCurrency: CurrencyCode;
+  /** 정하지 않았으면 null. */
+  readonly startDate: IsoDate | null;
+  /** 정하지 않았으면 null. */
+  readonly endDate: IsoDate | null;
+  /** 명단 인원 (아직 참여하지 않은 이름 포함). */
+  readonly memberCount: number;
+  /** 내 원화 잔액. `MemberBalance.krwBalance`와 같은 값 (양수 = 받을 돈, 음수 = 보낼 돈). */
+  readonly myBalance: MinorAmount;
 }
 
 // ── 지출 ─────────────────────────────────────────────────────────────────
@@ -141,6 +164,8 @@ export interface ExpenseSummary {
   readonly krwAmount: MinorAmount;
   /** true면 "추정" 배지 (카드: 전신환매도율 + 수수료로 계산한 예상 금액). */
   readonly isEstimated: boolean;
+  /** 쓴 날짜. 입력하지 않았으면 null (가짜 데이터에는 없을 수 있다). */
+  readonly spentOn?: IsoDate | null;
 }
 
 export interface ExpenseItem {
@@ -229,6 +254,10 @@ export interface CreateTripInput {
   readonly cardFeeRate: number;
   /** 총무 본인 포함 전체 멤버 이름. 첫 번째가 총무 (가정 2). */
   readonly memberNames: readonly string[];
+  /** 여행 시작일. 생략하거나 null이면 기간 없이 만든다. */
+  readonly startDate?: IsoDate | null;
+  /** 여행 종료일. 시작일보다 앞서면 400. */
+  readonly endDate?: IsoDate | null;
 }
 
 export interface CreateTripResult {
@@ -313,6 +342,8 @@ export interface CreateExpenseInput extends ExpenseContent {
   /** 낸 사람. */
   readonly payerId: MemberId;
   readonly paymentMethod: PaymentMethod;
+  /** 쓴 날짜. 생략하거나 null이면 날짜 없이 저장한다. 수정할 때 생략·null이면 저장된 날짜를 그대로 둔다. */
+  readonly spentOn?: IsoDate | null;
 }
 
 export interface CreateExpenseResult {
@@ -374,6 +405,7 @@ export interface MarkReceivedResult {
  */
 export interface QueryHookContracts {
   useJoinInfo: { args: InviteCode; data: JoinInfo };
+  useTrips: { args: void; data: readonly TripSummary[] };
   useTrip: { args: TripId; data: TripDetail };
   useExpenses: { args: TripId; data: readonly ExpenseSummary[] };
   useExpense: { args: ExpenseId; data: ExpenseDetail };
@@ -396,5 +428,6 @@ export interface MutationHookContracts {
   useUnlockTrip: { variables: TripActionInput; data: TripStatusResult };
   useSettleTrip: { variables: TripActionInput; data: TripStatusResult };
   useUnsettleTrip: { variables: TripActionInput; data: TripStatusResult };
+  useDeleteTrip: { variables: TripActionInput; data: void };
   useMarkReceived: { variables: MarkReceivedInput; data: MarkReceivedResult };
 }

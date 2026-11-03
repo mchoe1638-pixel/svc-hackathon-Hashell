@@ -63,6 +63,14 @@ export function createSupabaseGateway(client: SupabaseClient): TripsGateway {
       );
     },
 
+    async deleteTripUnlessSettled(tripId) {
+      // `status <> 'SETTLED'` 조건이 이 쿼리의 핵심이다. 빠지면 확정된 정산 기록이 통째로 사라진다.
+      // 멤버·지출·품목·체크·조정·송금·AI 사용량은 FK `on delete cascade`가 같은 문장 안에서 지운다.
+      return toResult(
+        await client.from('trips').delete().eq('id', tripId).neq('status', 'SETTLED').select('id'),
+      );
+    },
+
     async selectTripStatus(tripId) {
       return toResult(await client.from('trips').select('status').eq('id', tripId).maybeSingle());
     },

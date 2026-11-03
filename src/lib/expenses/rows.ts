@@ -134,6 +134,8 @@ const expenseSummaryRowSchema = z.object({
   payment_method: z.enum(PAYMENT_METHODS),
   krw_amount: z.int(),
   is_estimated: z.boolean(),
+  // DB는 항상 날짜나 null을 준다. 날짜 컬럼 이전에 만든 테스트 데이터에는 없어서 생략도 받는다.
+  spent_on: z.string().nullable().optional(),
 });
 
 /** 상세·정산에는 소속 여행, 환율·수수료율 스냅샷, `version`이 더 필요하다. */
@@ -207,6 +209,7 @@ function toSummary(row: ExpenseSummaryRow): ExpenseSummary {
     paymentMethod: row.payment_method,
     krwAmount: row.krw_amount,
     isEstimated: row.is_estimated,
+    spentOn: row.spent_on,
   };
 }
 

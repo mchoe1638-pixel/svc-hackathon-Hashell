@@ -53,6 +53,7 @@ export interface TripsClient {
   unlockTrip(tripId: TripId): Promise<TripStatusResult>;
   settleTrip(tripId: TripId): Promise<TripStatusResult>;
   unsettleTrip(tripId: TripId): Promise<TripStatusResult>;
+  deleteTrip(tripId: TripId): Promise<void>;
   markReceived(transferId: TransferId): Promise<MarkReceivedResult>;
 }
 
@@ -119,6 +120,11 @@ export function createTripsClient(deps: TripsClientDeps): TripsClient {
 
     async unsettleTrip(tripId) {
       return tripAction('/api/trips', 'DELETE', tripId);
+    },
+
+    async deleteTrip(tripId) {
+      // `DELETE /api/trips`는 확정 해제가 쓰고 있어서 따로 둔 경로다. 성공하면 빈 객체가 와서 돌려줄 값이 없다.
+      await call('/api/trips/delete', 'POST', { tripId });
     },
 
     async markReceived(transferId) {

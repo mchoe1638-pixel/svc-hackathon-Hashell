@@ -166,6 +166,7 @@ describe('createExpense', () => {
       p_is_estimated: true,
       p_items: [NEW_ITEM_JSON],
       p_adjustments: [{ kind: 'TAX', amount: 360 }],
+      p_spent_on: null,
     });
   });
 
@@ -221,6 +222,7 @@ describe('updateExpense', () => {
       p_is_estimated: true,
       p_items: [{ ...NEW_ITEM_JSON, id: ITEM_ID }],
       p_adjustments: [{ kind: 'TAX', amount: 360 }],
+      p_spent_on: null,
     });
   });
 

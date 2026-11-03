@@ -1,6 +1,7 @@
 import type { SettlementExpense } from '../../core/settlement';
 import type { TripsDeps } from './handlers';
 import type {
+  DeleteTripResult,
   JoinOutcome,
   JoinRequest,
   MemberRow,
@@ -111,6 +112,8 @@ export interface FakeTripsOptions {
   readonly unsettleOutcome?: UnsettleOutcome;
   /** "받았어요" 요청에 저장소가 돌려줄 판정. 생략하면 RECEIVED. */
   readonly receivedOutcome?: ReceivedOutcome;
+  /** 여행 삭제 요청에 저장소가 돌려줄 판정. 생략하면 DELETED (null은 "그런 여행 없음"). */
+  readonly deleteResult?: DeleteTripResult;
 }
 
 /** 저장소에 "누가 무엇을 요청했는지"만 남기는 기록 (`unsettle`·`received` 공통). */
@@ -131,6 +134,8 @@ export interface FakeTrips {
   readonly unsettled: readonly FakeActorRequest[];
   /** `targetId`는 송금 id. */
   readonly received: readonly FakeActorRequest[];
+  /** 삭제 요청이 들어온 여행 id. */
+  readonly deleted: readonly string[];
 }
 
 export function createFakeTrips(options: FakeTripsOptions = {}): FakeTrips {
@@ -141,6 +146,7 @@ export function createFakeTrips(options: FakeTripsOptions = {}): FakeTrips {
   const settled: SettleRequest[] = [];
   const unsettled: FakeActorRequest[] = [];
   const received: FakeActorRequest[] = [];
+  const deleted: string[] = [];
 
   const repository: TripsRepository = {
     async createTrip(newTrip) {
@@ -160,6 +166,10 @@ export function createFakeTrips(options: FakeTripsOptions = {}): FakeTrips {
     async unlockTrip(tripId) {
       unlocked.push(tripId);
       return options.unlockResult ?? 'OPEN';
+    },
+    async deleteTrip(tripId) {
+      deleted.push(tripId);
+      return options.deleteResult === undefined ? 'DELETED' : options.deleteResult;
     },
     async joinTrip(joinRequest) {
       joined.push(joinRequest);
@@ -188,7 +198,7 @@ export function createFakeTrips(options: FakeTripsOptions = {}): FakeTrips {
     generateInviteCode: () => FAKE_GENERATED_INVITE_CODE,
   };
 
-  return { deps, created, locked, unlocked, joined, settled, unsettled, received };
+  return { deps, created, locked, unlocked, joined, settled, unsettled, received, deleted };
 }
 
 export interface ApiRequestOptions {

@@ -98,6 +98,9 @@ function fakeRepository(options: FakeOptions = {}): Fake {
     async unlockTrip() {
       return trip.status === 'SETTLED' ? 'SETTLED' : 'OPEN';
     },
+    async deleteTrip() {
+      return trip.status === 'SETTLED' ? 'SETTLED' : 'DELETED';
+    },
     async joinTrip(joinRequest) {
       joined.push(joinRequest);
       return options.joinOutcome ?? { kind: 'TRIP_NOT_FOUND' };

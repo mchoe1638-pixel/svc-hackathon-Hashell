@@ -32,6 +32,9 @@ const tripSchema = z.object({
   card_fee_rate: z.number(),
   invite_code: z.string(),
   status: z.enum(TRIP_STATUSES),
+  // DB는 항상 날짜나 null을 준다. 날짜 컬럼이 생기기 전에 만든 테스트·가짜 응답에는 없어서 생략도 받는다.
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
 });
 
 const memberSchema = z.object({
@@ -96,6 +99,8 @@ function toTripRow(json: z.infer<typeof tripSchema>): TripRow {
     cardFeeRate: json.card_fee_rate,
     inviteCode: json.invite_code,
     status: json.status,
+    startDate: json.start_date,
+    endDate: json.end_date,
   };
 }
 
@@ -125,6 +130,11 @@ export function parseTripWithMembers(raw: unknown): {
 } {
   const { members, ...trip } = tripWithMembersSchema.parse(raw);
   return { trip: toTripRow(trip), members: members.map(toMemberRow) };
+}
+
+/** 여러 여행과 각 여행의 멤버 (`useTrips` 목록 조회). */
+export function parseTripsWithMembers(raw: unknown): readonly ReturnType<typeof parseTripWithMembers>[] {
+  return z.array(z.unknown()).parse(raw).map(parseTripWithMembers);
 }
 
 /** 여행 생성 RPC가 돌려준 uuid. */

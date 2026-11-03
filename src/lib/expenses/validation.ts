@@ -7,7 +7,7 @@ import type {
   ToggleShareInput,
   UpdateExpenseInput,
 } from '../../types/api';
-import { MAX_MEMBER_COUNT, parseWith, text } from '../trips/validation';
+import { dateSchema, MAX_MEMBER_COUNT, parseWith, text } from '../trips/validation';
 
 /**
  * 한도. 마이그레이션(`expenses`·`items`·`adjustments`의 CHECK)과 같은 값이어야 한다 (`sqlContract.test.ts`가 맞춰 본다).
@@ -94,6 +94,8 @@ const contentShape = {
   amount: wholeNumber(1, MAX_AMOUNT),
   items: itemsSchema,
   adjustments: adjustmentsSchema,
+  /** 쓴 날짜. 없으면 null. 고칠 때 생략하거나 null이면 저장된 날짜를 그대로 둔다 (DB 함수가 처리). */
+  spentOn: dateSchema.nullable().optional(),
 };
 
 const createExpenseSchema = z.object({ tripId: idSchema, ...contentShape });

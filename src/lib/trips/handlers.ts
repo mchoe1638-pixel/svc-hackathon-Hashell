@@ -99,6 +99,22 @@ export async function handleUnlockTrip(request: Request, deps: TripsDeps): Promi
 }
 
 /**
+ * `POST /api/trips/delete` — 여행을 지운다 (총무만). 멤버·지출·품목·체크·조정·송금도 같이 지워진다 (FK cascade).
+ * 정산 확정된 여행은 423이라, 지우려면 먼저 확정을 푼다. 성공하면 빈 객체.
+ */
+export async function handleDeleteTrip(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  requireOrganizer(await deps.repository.listMembers(tripId), userId, 'delete the trip');
+
+  const result = await deps.repository.deleteTrip(tripId);
+  if (result === null) throw tripNotFound();
+  if (result === 'SETTLED') throw tripSettled();
+
+  return jsonResponse(200, {});
+}
+
+/**
  * `PUT /api/trips` — 정산을 확정한다 (총무만, OPEN·LOCKED 어느 쪽에서든). 이미 확정이면 423.
  * 송금은 여기서 core로 계산해서 넘기기만 하고, 확인·저장·상태 전환은 DB 함수 한 번(트랜잭션)이 한다.
  * 지출을 읽은 뒤 잠금을 잡기 전에 다른 기기가 지출을 저장하면 그 지출은 이번 확정에 빠질 수 있다 (아주 드문 경합).
