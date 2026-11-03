@@ -48,11 +48,20 @@ create table public.items (
   -- 계산은 SHARED 하나로 한다. EACH는 저장만 한다.
   split_type    text not null check (split_type in ('EACH', 'SHARED')),
   category      text not null default 'other'
-    check (category in ('alcohol', 'drink', 'meal', 'snack', 'transport', 'shopping', 'lodging', 'other'))
+    check (category in ('alcohol', 'drink', 'meal', 'snack', 'transport', 'shopping', 'lodging', 'other')),
+  -- 총액과 품목 합의 차액을 담는 '기타' 줄. 서버만 만들고(지출당 최대 한 줄), 차액이 0이면 만들지 않는다.
+  -- 이름이 아니라 이 표식으로만 가른다: 이름이 '기타'인 일반 품목은 is_remainder가 false인 일반 품목이다.
+  is_remainder  boolean not null default false,
+  constraint items_remainder_has_amount check (not is_remainder or unit_price > 0)
 );
 
 create index items_expense_id_idx on public.items (expense_id);
 create index items_trip_id_idx on public.items (trip_id);
+
+-- 한 지출에 '기타' 줄은 최대 하나. 함수가 놓치더라도 DB가 두 번째 줄을 막는다.
+create unique index items_one_remainder_per_expense
+  on public.items (expense_id)
+  where is_remainder;
 
 -- ── item_shares ────────────────────────────────────────────────────────────
 -- 품목을 먹었다고 체크한 사람. 체크한 칸만 행이 있고, 체크를 풀면 행이 지워진다.
@@ -183,6 +192,10 @@ $$;
 --  · id가 없는 품목은 새로 만든다.
 --  · checked_member_ids가 있으면 체크를 그 목록으로 바꾸고, 없으면 새 품목은 전원 체크, 기존 품목은 지금 체크 그대로 둔다.
 --  · category가 없으면 새 품목은 'other', 기존 품목은 지금 값 그대로 둔다.
+--  · '기타' 줄(총액과 품목 합의 차액)은 서버가 계산해서 목록 맨 끝에 is_remainder가 참인 줄 하나로 실어 보낸다.
+--    고칠 때는 옛 '기타'를 id가 목록에 있든 없든 먼저 지우고, 목록의 '기타'는 항상 새 행으로 넣는다 (옛 id를 물려받지 않는다).
+--    옛 '기타'의 id가 목록에 실려 와도 건너뛴다. 차액이 0이면 서버가 '기타' 줄을 아예 보내지 않는다.
+--    '기타'인지는 이름이 아니라 is_remainder 열로만 가른다. 이름이 '기타'인 일반 품목은 일반 품목이다.
 -- 입력이 맞는지는 expense_input_problem으로 먼저 확인한 뒤에 부른다.
 create function public.save_expense_children(
   p_trip_id     uuid,
@@ -197,17 +210,26 @@ as $$
 declare
   v_element record;
   v_item_id uuid;
+  v_old_remainder_ids uuid[];
 begin
   if jsonb_typeof(p_adjustments) is distinct from 'array' then
     raise exception 'p_adjustments must be a JSON array' using errcode = '22023';
   end if;
 
+  -- 지우기 전에 옛 '기타'의 id를 적어 둔다. 목록에 그 id가 그대로 실려 와도 아래 반복에서 건너뛰기 위해서다.
+  select coalesce(array_agg(i.id), '{}'::uuid[]) into v_old_remainder_ids
+  from public.items i
+  where i.expense_id = p_expense_id and i.is_remainder;
+
   delete from public.items i
   where i.expense_id = p_expense_id
-    and i.id not in (
-      select (e.item ->> 'id')::uuid
-      from jsonb_array_elements(p_items) as e (item)
-      where e.item ->> 'id' is not null
+    and (
+      i.is_remainder
+      or i.id not in (
+        select (e.item ->> 'id')::uuid
+        from jsonb_array_elements(p_items) as e (item)
+        where e.item ->> 'id' is not null
+      )
     );
 
   for v_element in
@@ -217,6 +239,8 @@ begin
   loop
     if v_element.item ->> 'id' is not null then
       v_item_id := (v_element.item ->> 'id')::uuid;
+      -- 방금 지운 옛 '기타'를 되살리지 않는다: 이 줄의 새 '기타'는 id 없이 따로 들어온다.
+      continue when v_item_id = any (v_old_remainder_ids);
       update public.items
       set sort_order = v_element.sort_order,
           original_name = v_element.item ->> 'original_name',
@@ -228,7 +252,7 @@ begin
       where id = v_item_id and expense_id = p_expense_id;
     else
       insert into public.items
-        (trip_id, expense_id, sort_order, original_name, korean_name, unit_price, quantity, split_type, category)
+        (trip_id, expense_id, sort_order, original_name, korean_name, unit_price, quantity, split_type, category, is_remainder)
       values (
         p_trip_id,
         p_expense_id,
@@ -238,7 +262,8 @@ begin
         (v_element.item ->> 'unit_price')::bigint,
         (v_element.item ->> 'quantity')::integer,
         v_element.item ->> 'split_type',
-        coalesce(v_element.item ->> 'category', 'other')
+        coalesce(v_element.item ->> 'category', 'other'),
+        coalesce((v_element.item ->> 'is_remainder')::boolean, false)
       )
       returning id into v_item_id;
     end if;

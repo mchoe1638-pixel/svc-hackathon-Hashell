@@ -13,7 +13,7 @@ interface SupabaseResponse {
  * 오류는 `message`와 `code`만 옮긴다. PostgREST의 `details`·`hint`에는 키 값이나 행 내용이 섞이고,
  * 네트워크 실패의 `details`에는 스택이 들어 있어서 로그와 응답으로 새지 않게 여기서 버린다.
  */
-function toResult({ data, error }: SupabaseResponse): GatewayResult {
+export function toResult({ data, error }: SupabaseResponse): GatewayResult {
   if (error === null) return { data, error: null };
   return { data: null, error: { message: error.message, code: error.code } };
 }
