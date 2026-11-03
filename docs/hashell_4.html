@@ -1,5 +1,14 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
 <title>hashell</title>
+<!-- hashell 시안 v4: 여행 목록·여행 삭제·지출 삭제, 국내·해외·통화 규칙 정리, 직접 입력을 메뉴별로 -->
+<!-- 화면·데이터 약속은 <script id="spec">, 여행지는 <script id="destinations">, 그림은 art/*.svg. PLAN.md가 우선 -->
+<!-- 시안 규칙: 핸드폰 화면만, 색은 :root 변수만, 시안에만 있는 코드는 /* 시안 전용 */ 표시 -->
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +75,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .btn.ghost{background:var(--field);background-image:none;color:var(--ink)}
 .btn.danger{background:var(--paper);background-image:none;color:var(--send);box-shadow:inset 0 0 0 1.5px var(--send)}
 .btn.sm{flex:none;min-height:44px;padding:0 14px;font-size:14px;border-radius:10px}
-.btn:disabled{opacity:.35;cursor:default}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.35;cursor:default}
 .q{font-size:22px;line-height:1.36;font-weight:700;margin:4px 0 0;text-wrap:balance;letter-spacing:-.02em;word-break:keep-all}
 .hint{font-size:14px;color:var(--sub);margin:0}
 .field{display:grid;gap:6px;font-size:14px;color:var(--sub);font-weight:500}
@@ -309,6 +318,25 @@ button.row{cursor:pointer}
 .qchip:active,.cal-head button:active{transform:scale(.97)}
 @media (prefers-reduced-motion:reduce){.qchip:active,.cal-head button:active{transform:none}}
 
+/* ---------- v4: 상단 바 ⋯, 여행 목록, 메뉴 서랍, 직접 입력 메뉴별 ---------- */
+.more{width:44px;height:44px;border:0;background:none;border-radius:12px;font-size:20px;line-height:1;cursor:pointer;margin-right:-8px;flex:none}
+.trip-row .tart{flex:none;display:grid}
+.trip-row .tart img,.trip-row .tart svg{width:48px;height:48px}
+.trip-row .bal{display:block;font-size:13px;font-weight:500}
+.trip-row .status{flex:none;align-self:flex-start;margin-top:2px}
+.menu-row{min-height:60px}
+.menu-row b{color:var(--send)}
+.menu-row[aria-disabled="true"]{opacity:.4}
+.mlines{display:grid}
+.mline{display:grid;gap:8px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.mline-row{display:flex;gap:8px;align-items:flex-end}
+.mline-row>.field:first-child{flex:1;min-width:0}
+.qty{display:flex;align-items:center;background:var(--field);border-radius:12px;min-height:52px}
+.qty button{width:44px;height:52px;border:0;background:none;font-size:20px;color:var(--ink);cursor:pointer}
+.qty button:disabled{opacity:.35;cursor:default}
+.qty b{min-width:22px;text-align:center;color:var(--ink);font-variant-numeric:tabular-nums}
+.mline-del{width:44px;height:52px;border:0;background:none;font-size:22px;color:var(--sub);cursor:pointer;flex:none}
+
 /* ---------- 움직임: 들어올 땐 빠르게 시작해 부드럽게 멈춘다 ---------- */
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-io:cubic-bezier(.77,0,.175,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
 /* 누르는 즉시 살짝 눌리는 느낌 */
@@ -370,6 +398,7 @@ button.row:active{transform:scale(.985)}
         <button class="back" id="back" type="button" aria-label="뒤로">←</button>
         <h2 class="t" id="title" tabindex="-1"></h2>
         <span class="status" id="status"></span>
+        <button class="more" id="more" type="button" aria-label="더보기" data-act="more" hidden>⋯</button>
       </div>
       <main class="screen" id="screen" tabindex="-1"></main>
       <div class="foot" id="foot"></div>
@@ -379,6 +408,1632 @@ button.row:active{transform:scale(.985)}
     </div>
     <div class="gest" aria-hidden="true"><i></i></div>
   </div>
+
+<!-- 백엔드 인계용 데이터 (화면에 쓰이지 않음). docs/handoff/spec.json·destinations.json 과 같아야 한다 -->
+<script type="application/json" id="spec">
+{
+  "version": "v4",
+  "source": "https://claude.ai/artifact/6KFf9rA4MPm5HbBqABK2fa",
+  "note": "시안(프로토타입)의 화면·데이터 약속. PLAN.md가 우선이고, 실제 이름이 다르면 실제 이름을 따른다.",
+  "changes": [
+    "여행 목록(/) 추가: 여행지 그림·이름·기간·인원·상태·내 잔액. 정산 확정 전 먼저, 그다음 최근 순. 여행이 없으면 바로 새 여행 만들기",
+    "새 여행 만들기 주소를 /new로 (국내·해외 → 여행 만들기 → 동행 초대). 만든 여행은 목록 맨 위",
+    "여행 홈 상단 바: ← 목록으로(총무), ⋯ → 여행 삭제(총무만, 확인 창)",
+    "품목 체크 상단 바: ⋯ → 지출 삭제(올린 사람·총무만, 확인 창). 정산 확정 후에는 흐리게 두고 안내",
+    "지출에 '올린 사람'(by) 추가: 예시는 낸 사람과 같게, 새 지출은 지금 보는 사람",
+    "국내·해외가 통화를 정한다: 국내는 늘 원(환율·수수료 없음, '카드'), 해외는 원이 아닌 통화",
+    "국내·해외와 맞지 않는 등록 여행지는 여행 만들기를 막고, 여행지 칸 아래에 알림 + 카드의 ‘…로 바꾸기’",
+    "등록되지 않은 여행지는 다른 여행지로 바꾸지 않고 '직접 적은 여행지'로: 이름만, 기본 그림, 예시 지출 없음(빈 홈)",
+    "해외 직접 적은 여행지는 통화 목록(12개)에서 고르고 환율은 빈칸(예시는 placeholder), 수수료 기본 2.2%",
+    "예시 날짜는 등록된 여행지이고 날짜를 안 골랐을 때만. 예시 지출 날짜는 고른 기간 안으로",
+    "금액 표시를 money()/loc()/won() 한 곳에서: 화면마다 기호를 직접 쓰지 않음",
+    "직접 입력: '메뉴별로 적기'(기본, 메뉴 이름·금액·수량) / '총액만 적기'. 메뉴별은 저장 후 품목 체크로",
+    "현금 환율을 소수 둘째 자리까지 받음 (계산은 정수로 바꿔서)"
+  ],
+  "newData": [
+    {
+      "entity": "trip",
+      "field": "scope",
+      "column": "trips.scope",
+      "type": "text 'DOMESTIC'|'OVERSEAS'",
+      "nullable": false,
+      "why": "국내는 원화 그대로(환율 입력 없음), 해외는 환율·수수료 입력",
+      "screens": [
+        "scope",
+        "create"
+      ],
+      "priority": "🟡"
+    },
+    {
+      "entity": "trip",
+      "field": "title",
+      "column": "trips.title",
+      "type": "text",
+      "nullable": false,
+      "why": "이름을 따로 적거나 비우면 '여행지 n박 n일'로 자동",
+      "screens": [
+        "create",
+        "home",
+        "wrapped",
+        "story"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "trip",
+      "field": "destinationId",
+      "column": "trips.destination_id",
+      "type": "text",
+      "nullable": true,
+      "why": "여행지 그림·색·칭호 이름(하이볼 장인 등), 예시 데이터",
+      "screens": [
+        "create",
+        "home",
+        "wrapped",
+        "story"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "trip",
+      "field": "startDate",
+      "column": "trips.start_date",
+      "type": "date",
+      "nullable": true,
+      "why": "홈의 날짜 묶음, '10월 24일부터', 하루 평균",
+      "screens": [
+        "create",
+        "home",
+        "check",
+        "wrapped",
+        "story"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "trip",
+      "field": "endDate",
+      "column": "trips.end_date",
+      "type": "date",
+      "nullable": true,
+      "why": "n박 n일, 하루 평균",
+      "screens": [
+        "create",
+        "home",
+        "wrapped",
+        "story"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "expense",
+      "field": "spentOn",
+      "column": "expenses.spent_on",
+      "type": "date",
+      "nullable": true,
+      "why": "홈의 날짜별 묶음('10월 24일 토'), 영수증 머리, 가장 비싼 한 끼",
+      "screens": [
+        "home",
+        "check",
+        "wrapped"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "expense",
+      "field": "shopOriginal",
+      "column": "expenses.shop_original",
+      "type": "text",
+      "nullable": true,
+      "why": "영수증 원문 가게 이름(居酒屋 まる八 道頓堀店)",
+      "screens": [
+        "check",
+        "review"
+      ],
+      "priority": "🟡"
+    },
+    {
+      "entity": "item",
+      "field": "tag",
+      "column": "items.tag",
+      "type": "text 'beer'|'hb'|'tea'|null",
+      "nullable": true,
+      "why": "맥주왕(잔 수), 하이볼 장인, 차 한 잔 수호자 칭호",
+      "screens": [
+        "wrapped",
+        "story"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "trip",
+      "field": "wrappedTitle",
+      "column": "trips.wrapped_title",
+      "type": "text",
+      "nullable": true,
+      "why": "여행 이름표(이자카야 정복대). PLAN: Claude가 한 번 만들어 저장",
+      "screens": [
+        "wrapped",
+        "story"
+      ],
+      "priority": "🟡"
+    },
+    {
+      "entity": "transfer",
+      "field": "transfers",
+      "column": "transfers",
+      "type": "table",
+      "nullable": false,
+      "why": "정산 확정 시 고정한 송금 목록, 받았어요",
+      "screens": [
+        "settled"
+      ],
+      "priority": "🔴"
+    },
+    {
+      "entity": "trip",
+      "field": "place",
+      "column": "trips.place_name",
+      "type": "text",
+      "nullable": true,
+      "why": "직접 적은 여행지(destination_id가 null)의 이름. 홈 머리 '부산, 2박 3일', 여행 이름 자동 짓기",
+      "screens": [
+        "create",
+        "trips",
+        "home",
+        "wrapped"
+      ],
+      "priority": "🔴"
+    }
+  ],
+  "existingAssumed": [
+    "members.join_order (참여 순서) — 멤버 색과 남는 1원 배분 순서",
+    "items.category — 여행 돌아보기 종류별 비율",
+    "members.is_organizer — 총무 전용 버튼",
+    "expenses.created_by (시안 expense.by, 올린 사람) — 지출 삭제 권한. 이미 있음"
+  ],
+  "screens": [
+    {
+      "id": "trips",
+      "path": "/ (앱)",
+      "who": "총무(앱)",
+      "shows": [
+        "여행 카드: 여행지 그림, 이름, 'n박 n일, 날짜부터', 인원, 상태 칩, 내 잔액(받을 돈 초록 / 보낼 돈 빨강 / 없어요)"
+      ],
+      "actions": [
+        "카드 → home",
+        "새 여행 만들기 → scope(/new)"
+      ],
+      "states": [
+        "여행이 없으면 바로 scope",
+        "로딩: 카드 자리표시 3개(앱)",
+        "에러: 여행 목록을 불러오지 못했어요 + 다시 시도(앱)"
+      ]
+    },
+    {
+      "id": "scope",
+      "path": "/new (앱)",
+      "who": "총무",
+      "shows": [
+        "국내 여행 카드",
+        "해외 여행 카드"
+      ],
+      "actions": [
+        "카드 → create"
+      ],
+      "states": [
+        "웹이면 앱 안내"
+      ]
+    },
+    {
+      "id": "create",
+      "path": "/new (앱)",
+      "who": "총무",
+      "shows": [
+        "여행 이름(선택)",
+        "여행지 + 여행지 카드(등록: 나라·통화 / 직접 적은 곳: 이름만)",
+        "국내·해외와 다르면 여행지 칸 아래 알림",
+        "달력(가는 날·오는 날, n박 n일)",
+        "해외: 현지 통화(등록 여행지면 고정, 아니면 12개 중 선택)·현금 환율(빈칸)·카드 수수료(2.2%)",
+        "함께 가는 사람"
+      ],
+      "actions": [
+        "여행 만들기 → invite"
+      ],
+      "states": [
+        "국내·해외와 여행지가 다르면 여행 만들기 막힘(흐림) → ‘…로 바꾸기’",
+        "여행지·날짜·통화·환율 빠지면 그 칸 아래 오류"
+      ]
+    },
+    {
+      "id": "invite",
+      "path": "/trip/[tripId]/invite",
+      "who": "모두(잠금은 총무)",
+      "shows": [
+        "QR",
+        "링크",
+        "참여 현황"
+      ],
+      "actions": [
+        "공유하기/링크 복사",
+        "링크 잠그기(확인 창) → LOCKED",
+        "홈으로"
+      ],
+      "states": [
+        "LOCKED 안내"
+      ]
+    },
+    {
+      "id": "join",
+      "path": "/j/[inviteCode]",
+      "who": "동행(웹)",
+      "shows": [
+        "여행 이름·총무",
+        "이름 목록(묶인 이름 비활성)",
+        "새 이름"
+      ],
+      "actions": [
+        "이 이름으로 참여 → home"
+      ],
+      "states": [
+        "잠김이면 참여 마감",
+        "없는 링크"
+      ]
+    },
+    {
+      "id": "home",
+      "path": "/trip/[tripId]",
+      "who": "모두",
+      "shows": [
+        "여행 머리(그림·나라·기간·인원)",
+        "받을 돈/보낼 돈 카드",
+        "날짜별 지출 목록(내 몫, 추정 배지)"
+      ],
+      "actions": [
+        "← 목록으로(총무)",
+        "⋯ → 여행 삭제(총무만, 확인 창)",
+        "정산 보기",
+        "지출 추가",
+        "미참여 배너 → invite",
+        "SETTLED: 여행 돌아보기"
+      ],
+      "states": [
+        "지출 0개: 첫 지출을 추가해보세요"
+      ]
+    },
+    {
+      "id": "add",
+      "path": "/trip/[tripId]/expense/new",
+      "who": "모두",
+      "shows": [
+        "영수증 찍기",
+        "직접 입력"
+      ],
+      "actions": [
+        "→ receipt / manual"
+      ],
+      "states": []
+    },
+    {
+      "id": "receipt",
+      "path": "/trip/[tripId]/expense/new",
+      "who": "모두",
+      "shows": [
+        "읽는 중 영수증(3:4, 위아래 지그재그)"
+      ],
+      "actions": [
+        "→ review"
+      ],
+      "states": [
+        "실패면 직접 입력으로"
+      ]
+    },
+    {
+      "id": "review",
+      "path": "/trip/[tripId]/expense/new",
+      "who": "모두",
+      "shows": [
+        "가게 이름",
+        "품목",
+        "합계",
+        "누가 냈어요",
+        "어떻게 냈어요"
+      ],
+      "actions": [
+        "저장 → check"
+      ],
+      "states": [
+        "확인 필요(needsReview)"
+      ]
+    },
+    {
+      "id": "manual",
+      "path": "/trip/[tripId]/expense/new",
+      "who": "모두",
+      "shows": [
+        "어디서 썼어요(공통)",
+        "누가 냈어요(공통)",
+        "어떻게 냈어요(공통)",
+        "메뉴별로 적기 / 총액만 적기",
+        "메뉴별: 줄마다 메뉴 이름·금액(여행 통화)·수량(− +), 줄 지우기, 메뉴 추가, 합계(해외면 원화 어림값)"
+      ],
+      "actions": [
+        "메뉴별 저장 → check (품목 그대로, 단가×수량, category other, 전원 체크)",
+        "총액만 저장 → home ('기타' 한 줄)"
+      ],
+      "states": [
+        "이름·금액이 빈 줄은 그 칸 아래 오류 + 초점",
+        "완전히 빈 줄은 무시",
+        "줄이 하나도 없으면 막기"
+      ]
+    },
+    {
+      "id": "check",
+      "path": "/trip/[tripId]/expense/[id]",
+      "who": "모두(남의 칩은 총무만)",
+      "shows": [
+        "내 몫 띠",
+        "영수증 모양 품목",
+        "내 칩 + 다른 사람 동그라미",
+        "원화·추정"
+      ],
+      "actions": [
+        "칩 켜고 끄기",
+        "다 체크했어요 → home",
+        "⋯ → 지출 삭제(올린 사람·총무, 확인 창) → home"
+      ],
+      "states": [
+        "마지막 한 명은 못 뺌",
+        "SETTLED 읽기 전용",
+        "정산 확정 후 지출 삭제 흐림 + 안내 토스트",
+        "권한 없으면 ⋯ 버튼 없음"
+      ]
+    },
+    {
+      "id": "settle",
+      "path": "/trip/[tripId]/settle",
+      "who": "모두(확정은 총무)",
+      "shows": [
+        "송금 n번",
+        "각자 먹은 몫·낸 돈·차액",
+        "추정 안내"
+      ],
+      "actions": [
+        "정산 확정 → settled"
+      ],
+      "states": []
+    },
+    {
+      "id": "settled",
+      "path": "/trip/[tripId]/settle",
+      "who": "모두",
+      "shows": [
+        "고정된 송금 목록"
+      ],
+      "actions": [
+        "받았어요(받는 사람)",
+        "금액 복사(보내는 사람)",
+        "확정 해제(총무, 확인 창)",
+        "여행 돌아보기"
+      ],
+      "states": [
+        "모두 받았어요"
+      ]
+    },
+    {
+      "id": "wrapped",
+      "path": "/trip/[tripId]/wrapped",
+      "who": "모두",
+      "shows": [
+        "표지",
+        "쓴 돈·종류별 비율",
+        "맥주왕·正 자",
+        "가장 비싼 한 끼",
+        "칭호",
+        "여행 이름표"
+      ],
+      "actions": [
+        "누르면 넘김, 길게 누르면 멈춤",
+        "인스타 스토리 이미지 만들기 → 저장",
+        "글로 복사",
+        "처음부터"
+      ],
+      "states": [
+        "지출 0개",
+        "7명 이상이면 칭호 목록 스크롤"
+      ]
+    }
+  ],
+  "prototypeOnly": [
+    "여행지 데이터를 claude.ai 아티팩트 데이터베이스에서 읽는 부분 (실제 앱은 정적 데이터 또는 Supabase)",
+    "정산·배분 계산이 페이지 안 JavaScript에 있음 (실제 앱은 src/core)",
+    "QR 모양 흉내(실제 앱은 qrcode.react)",
+    "영수증 읽기 결과가 고정 예시(PARSED)",
+    "처음 상태 예시 여행 3개(오사카 OPEN, 상하이 SETTLED, 제주 LOCKED)와 그 예시 지출",
+    "권한 함수 canDeleteTrip·canDeleteExpense는 버튼 표시용 (실제 앱은 서버 판정이 기준)",
+    "직접 적은 여행지의 영수증 읽기 예시 금액"
+  ],
+  "openQuestions": [
+    {
+      "q": "여행 목록 '/'와 만들기 '/new' 주소 (PLAN은 '/'가 만들기)",
+      "who": "디자인+백엔드"
+    },
+    {
+      "q": "여행지 데이터를 정적 파일로 둘지 Supabase 표로 둘지",
+      "who": "백엔드"
+    },
+    {
+      "q": "국내·해외(scope)를 따로 저장할지, local_currency='KRW'로 갈음할지",
+      "who": "백엔드"
+    },
+    {
+      "q": "여행 이름표(wrapped_title)를 Claude로 만들지, 여행지 기본값으로 둘지",
+      "who": "디자인+백엔드"
+    },
+    {
+      "q": "items.tag를 AI 판독에서 정할지(정해진 값 목록), 사람이 고를지",
+      "who": "백엔드"
+    },
+    {
+      "q": "여행 삭제 시 딸린 데이터 정리 방식(cascade로 충분한지)",
+      "who": "백엔드"
+    },
+    {
+      "q": "직접 적은 해외 여행지의 통화 목록(12개: JPY CNY USD EUR THB VND TWD HKD SGD PHP GBP AUD)을 어디 둘지 (정적 파일 / Supabase)",
+      "who": "백엔드"
+    },
+    {
+      "q": "위안·달러처럼 소수점 금액을 받을지 (지금 시안은 정수만. CLAUDE.md는 '통화 최소 단위 정수'라 USD는 센트로 받아야 함)",
+      "who": "디자인+백엔드"
+    }
+  ],
+  "rules": {
+    "money": "통화 최소 단위 정수만. float 금지",
+    "split": "최대 잔여법, 동점은 참여 순서",
+    "convert": "지출 단위로 먼저 원화로 바꾼 뒤 사람별로 배분",
+    "cash": "원화 = round(현지금액 × 현금환율 / per)",
+    "card": "원화 = round(현지금액 × TTS × (1 + 수수료) / per), 추정 배지"
+  },
+  "changesV3": [
+    "여행 만들기 앞에 국내·해외 고르기 화면(scope) 추가",
+    "여행 만들기: '오사카 3박 4일' 한 칸 대신 여행 이름(선택) / 여행지 / 여행 날짜(달력)로 나눔. 이름을 비우면 '여행지 n박 n일'로 지음",
+    "여행지를 적으면 여행지 데이터로 나라·통화·환율 기본값·예시 영수증·그림·색을 맞춤",
+    "여행 날짜로 홈·영수증 날짜와 여행 돌아보기의 '하루 평균'을 계산",
+    "품목 체크: 내 칩만 크게(나도 먹었어요/안 먹었어요), 다른 사람은 이니셜 동그라미",
+    "멤버 색: 참여 순서로 계산하는 연한 단색 (OKLCH L0.86 C0.085, H 272+순서×137.508)",
+    "기준 세 색: 파랑 #4B5CF1(기본), 빨강 #F14B5C, 초록 #5CF14B. 흰 바탕 글자용은 #CF404F, #328429",
+    "여행 돌아보기(스토리 6장) + 인스타 스토리 이미지(1080×1920) 저장",
+    "가로 선택(누가 냈어요/어떻게 냈어요)은 바탕이 미끄러짐, 달력 날짜는 누를 때 움직임 없음",
+    "안내 패널 제거, 폰 화면만"
+  ],
+  "menus": [
+    {
+      "id": "trip-menu",
+      "where": "home 상단 바 ⋯",
+      "items": [
+        {
+          "label": "여행 삭제",
+          "who": "총무",
+          "confirm": "「이름」을 지울까요? / 지출, 품목 체크, 송금 기록이 모두 지워지고 되돌릴 수 없어요. / 취소 · 삭제하기",
+          "after": "목록 + '여행을 지웠어요' (남은 여행 없으면 /new)"
+        }
+      ]
+    },
+    {
+      "id": "expense-menu",
+      "where": "check 상단 바 ⋯",
+      "items": [
+        {
+          "label": "지출 삭제",
+          "who": "올린 사람·총무 (SETTLED면 흐림)",
+          "confirm": "이 지출을 지울까요? / 「가게」 금액(원화)이 정산에서 빠지고 송금 금액이 다시 계산돼요. / 취소 · 삭제하기",
+          "after": "home + '지출을 지웠어요'",
+          "settled": "정산을 확정해서 지울 수 없어요. 총무가 확정을 해제하면 지울 수 있어요"
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "list-home",
+      "steps": [
+        "/ 여행 목록",
+        "카드 누름 → /trip/[id] 홈",
+        "← → / 목록"
+      ]
+    },
+    {
+      "id": "new-trip",
+      "steps": [
+        "/ 새 여행 만들기",
+        "/new 국내·해외",
+        "/new 여행 만들기",
+        "/trip/[id]/invite",
+        "목록 맨 위에 새 여행"
+      ]
+    },
+    {
+      "id": "delete-trip",
+      "steps": [
+        "홈 ⋯",
+        "여행 삭제(총무만)",
+        "확인 창(danger)",
+        "삭제하기 → / 목록 + 토스트 (남은 여행 없으면 /new)"
+      ]
+    },
+    {
+      "id": "delete-expense",
+      "steps": [
+        "품목 체크 ⋯",
+        "지출 삭제(올린 사람·총무)",
+        "확인 창(danger)",
+        "삭제하기 → 홈 + 토스트, 잔액·내 몫 다시 계산",
+        "SETTLED면 메뉴 흐림 + 안내"
+      ]
+    },
+    {
+      "id": "manual-menu",
+      "steps": [
+        "지출 추가 → 직접 입력",
+        "메뉴별로 적기",
+        "저장 → 품목 체크(안 먹은 메뉴 빼기)"
+      ]
+    }
+  ]
+}
+</script>
+<script type="application/json" id="destinations">
+[
+  {
+    "order": 1,
+    "name": "오사카",
+    "country": "일본",
+    "match": [
+      "오사카",
+      "osaka",
+      "大阪",
+      "간사이",
+      "도톤보리",
+      "난바",
+      "교토",
+      "일본"
+    ],
+    "cur": {
+      "code": "JPY",
+      "sym": "¥",
+      "unit": "엔",
+      "per": 100
+    },
+    "cash": 905,
+    "tts": 9124,
+    "fee": 22,
+    "nights": "3박 4일",
+    "days": [
+      "10월 24일 토",
+      "10월 25일 일",
+      "10월 26일 월",
+      "10월 27일 화"
+    ],
+    "title": "이자카야 정복대",
+    "hb": {
+      "name": "하이볼",
+      "title": "하이볼 장인"
+    },
+    "readNote": "일본어 영수증도 돼요.",
+    "colors": {
+      "accent": "#E0362C",
+      "glow": "#FFB81C",
+      "night": "#0A1433",
+      "paper": "#FFF9EC"
+    },
+    "art": [
+      {
+        "key": "osaka-castle",
+        "label": "오사카성",
+        "file": "osaka-castle.svg"
+      },
+      {
+        "key": "takoyaki",
+        "label": "타코야키",
+        "file": "takoyaki.svg"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "izakaya",
+        "name": "이자카야 마루하치",
+        "orig": "居酒屋 まる八 道頓堀店",
+        "day": 0,
+        "payer": "sh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "お通し",
+            "k": "오토시 (자릿세)",
+            "u": 330,
+            "q": 4,
+            "cat": "snack",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "生ビール",
+            "k": "생맥주",
+            "u": 600,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "ハイボール",
+            "k": "하이볼",
+            "u": 550,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "烏龍茶",
+            "k": "우롱차",
+            "u": 300,
+            "q": 3,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          },
+          {
+            "o": "お好み焼き",
+            "k": "오코노미야키",
+            "u": 1300,
+            "q": 2,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "唐揚げ",
+            "k": "가라아게",
+            "u": 780,
+            "q": 1,
+            "cat": "snack",
+            "eat": [
+              "mk",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "枝豆",
+            "k": "에다마메",
+            "u": 450,
+            "q": 1,
+            "cat": "snack",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ichiran",
+        "name": "이치란 라멘",
+        "orig": "一蘭 道頓堀店",
+        "day": 0,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "天然とんこつラーメン",
+            "k": "돈코츠 라멘",
+            "u": 980,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "替玉",
+            "k": "면 추가",
+            "u": 210,
+            "q": 3,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh"
+            ]
+          },
+          {
+            "o": "生ビール",
+            "k": "생맥주",
+            "u": 590,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh",
+              "mj"
+            ],
+            "tag": "beer"
+          }
+        ]
+      },
+      {
+        "id": "famima",
+        "name": "패밀리마트 난바점",
+        "orig": "ファミリーマート 難波店",
+        "day": 1,
+        "payer": "jh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "アサヒスーパードライ 350ml",
+            "k": "아사히 캔맥주",
+            "u": 278,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "おにぎり",
+            "k": "오니기리",
+            "u": 158,
+            "q": 5,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "ファミチキ",
+            "k": "패미치키",
+            "u": 220,
+            "q": 2,
+            "cat": "snack",
+            "eat": [
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "綾鷹",
+            "k": "녹차",
+            "u": 160,
+            "q": 2,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      },
+      {
+        "id": "daruma",
+        "name": "쿠시카츠 다루마",
+        "orig": "串カツだるま 新世界総本店",
+        "day": 2,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "串カツ盛り合わせ",
+            "k": "쿠시카츠 모둠",
+            "u": 1650,
+            "q": 2,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "生ビール 中",
+            "k": "생맥주 (중)",
+            "u": 600,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "ハイボール",
+            "k": "하이볼",
+            "u": 550,
+            "q": 2,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "ウーロン茶",
+            "k": "우롱차",
+            "u": 350,
+            "q": 1,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      }
+    ],
+    "parsed": {
+      "name": "타코야키 쥬하치반",
+      "orig": "たこ焼き 十八番 道頓堀店",
+      "day": 3,
+      "items": [
+        {
+          "o": "たこ焼き 8個",
+          "k": "타코야키 8개",
+          "u": 650,
+          "q": 2,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "ねぎマヨ",
+          "k": "파 마요 타코야키",
+          "u": 750,
+          "q": 1,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "ハイボール",
+          "k": "하이볼",
+          "u": 500,
+          "q": 2,
+          "cat": "alcohol",
+          "eat": [],
+          "tag": "hb"
+        },
+        {
+          "o": "ラムネ",
+          "k": "라무네",
+          "u": 250,
+          "q": 1,
+          "cat": "drink",
+          "eat": []
+        }
+      ]
+    },
+    "id": "osaka"
+  },
+  {
+    "order": 2,
+    "name": "상하이",
+    "country": "중국",
+    "match": [
+      "상하이",
+      "상해",
+      "shanghai",
+      "上海",
+      "와이탄",
+      "중국"
+    ],
+    "cur": {
+      "code": "CNY",
+      "sym": "元",
+      "unit": "위안",
+      "per": 1
+    },
+    "cash": 191,
+    "tts": 1928,
+    "fee": 22,
+    "nights": "3박 4일",
+    "days": [
+      "11월 6일 금",
+      "11월 7일 토",
+      "11월 8일 일",
+      "11월 9일 월"
+    ],
+    "title": "샤오롱바오 원정대",
+    "hb": {
+      "name": "황주",
+      "title": "황주 애호가"
+    },
+    "readNote": "중국어 영수증도 돼요.",
+    "colors": {
+      "accent": "#C8102E",
+      "glow": "#F2C14E",
+      "night": "#101B3B",
+      "paper": "#FFF8EE"
+    },
+    "art": [
+      {
+        "key": "oriental-pearl",
+        "label": "동방명주",
+        "file": "oriental-pearl.svg"
+      },
+      {
+        "key": "xiaolongbao",
+        "label": "샤오롱바오",
+        "file": "xiaolongbao.svg"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "nanxiang",
+        "name": "난샹 만두점",
+        "orig": "南翔馒头店 豫园店",
+        "day": 0,
+        "payer": "sh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "鲜肉小笼",
+            "k": "고기 샤오롱바오",
+            "u": 48,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "青岛啤酒",
+            "k": "칭다오 맥주",
+            "u": 22,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "绍兴黄酒",
+            "k": "사오싱 황주",
+            "u": 38,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "菊花茶",
+            "k": "국화차",
+            "u": 18,
+            "q": 3,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          },
+          {
+            "o": "蟹黄汤包",
+            "k": "게알 탕바오",
+            "u": 68,
+            "q": 2,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "葱油拌面",
+            "k": "파기름 비빔면",
+            "u": 28,
+            "q": 1,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "拍黄瓜",
+            "k": "오이무침",
+            "u": 16,
+            "q": 1,
+            "cat": "snack",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "haidilao",
+        "name": "하이디라오 와이탄점",
+        "orig": "海底捞 外滩店",
+        "day": 0,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "肥牛卷",
+            "k": "소고기 롤",
+            "u": 58,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "虾滑",
+            "k": "새우 완자",
+            "u": 48,
+            "q": 3,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh"
+            ]
+          },
+          {
+            "o": "雪花啤酒",
+            "k": "쉐화 맥주",
+            "u": 15,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh",
+              "mj"
+            ],
+            "tag": "beer"
+          }
+        ]
+      },
+      {
+        "id": "lawson",
+        "name": "로손 난징동루점",
+        "orig": "罗森 南京东路店",
+        "day": 1,
+        "payer": "jh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "青岛啤酒 罐装",
+            "k": "칭다오 캔맥주",
+            "u": 8,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "茶叶蛋",
+            "k": "차예단",
+            "u": 3,
+            "q": 5,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "关东煮",
+            "k": "관동자 (어묵)",
+            "u": 12,
+            "q": 2,
+            "cat": "snack",
+            "eat": [
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "东方树叶",
+            "k": "녹차",
+            "u": 5,
+            "q": 2,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      },
+      {
+        "id": "yangs",
+        "name": "샤오양 셩지엔",
+        "orig": "小杨生煎 黄河路店",
+        "day": 2,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "生煎包",
+            "k": "셩지엔바오",
+            "u": 26,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "鲜啤",
+            "k": "생맥주",
+            "u": 18,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "黄酒",
+            "k": "황주",
+            "u": 15,
+            "q": 2,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "豆浆",
+            "k": "두유",
+            "u": 6,
+            "q": 1,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      }
+    ],
+    "parsed": {
+      "name": "디엔두더 우캉루점",
+      "orig": "点都德 武康路店",
+      "day": 3,
+      "items": [
+        {
+          "o": "虾饺皇",
+          "k": "하가우",
+          "u": 32,
+          "q": 2,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "叉烧包",
+          "k": "차슈바오",
+          "u": 22,
+          "q": 1,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "黄酒",
+          "k": "황주",
+          "u": 25,
+          "q": 2,
+          "cat": "alcohol",
+          "eat": [],
+          "tag": "hb"
+        },
+        {
+          "o": "柠檬茶",
+          "k": "레몬티",
+          "u": 18,
+          "q": 1,
+          "cat": "drink",
+          "eat": []
+        }
+      ]
+    },
+    "id": "shanghai"
+  },
+  {
+    "order": 3,
+    "name": "제주",
+    "country": "한국",
+    "match": [
+      "제주",
+      "jeju",
+      "濟州",
+      "서귀포",
+      "애월",
+      "성산",
+      "한라산"
+    ],
+    "cur": {
+      "code": "KRW",
+      "sym": "₩",
+      "unit": "원",
+      "per": 1
+    },
+    "cash": 1,
+    "tts": 10,
+    "fee": 0,
+    "nights": "3박 4일",
+    "days": [
+      "7월 18일 토",
+      "7월 19일 일",
+      "7월 20일 월",
+      "7월 21일 화"
+    ],
+    "title": "흑돼지 원정대",
+    "hb": {
+      "name": "한라산 소주",
+      "title": "한라산 지킴이"
+    },
+    "readNote": "카드 전표와 손글씨 영수증도 돼요.",
+    "colors": {
+      "accent": "#F28C28",
+      "glow": "#FFD23F",
+      "night": "#26282B",
+      "paper": "#FFFAF2"
+    },
+    "art": [
+      {
+        "key": "dolhareubang",
+        "label": "돌하르방",
+        "file": "dolhareubang.svg"
+      },
+      {
+        "key": "tangerine",
+        "label": "감귤",
+        "file": "tangerine.svg"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "donsadon",
+        "name": "돈사돈 본점",
+        "orig": "",
+        "day": 0,
+        "payer": "sh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "",
+            "k": "흑돼지 근고기 600g",
+            "u": 54000,
+            "q": 2,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "제주 위트에일",
+            "u": 7000,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "",
+            "k": "한라산 소주",
+            "u": 6000,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "",
+            "k": "감귤 주스",
+            "u": 4000,
+            "q": 3,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          },
+          {
+            "o": "",
+            "k": "김치찌개",
+            "u": 8000,
+            "q": 1,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "멜젓 볶음밥",
+            "u": 3000,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "jamae",
+        "name": "자매국수",
+        "orig": "",
+        "day": 0,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "",
+            "k": "고기국수",
+            "u": 9000,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "돔베고기 (소)",
+            "u": 15000,
+            "q": 1,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh"
+            ]
+          },
+          {
+            "o": "",
+            "k": "제주 펠롱에일",
+            "u": 6000,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh",
+              "mj"
+            ],
+            "tag": "beer"
+          }
+        ]
+      },
+      {
+        "id": "cu",
+        "name": "CU 애월해안점",
+        "orig": "",
+        "day": 1,
+        "payer": "jh",
+        "pay": "CASH",
+        "items": [
+          {
+            "o": "",
+            "k": "제주 위트에일 캔",
+            "u": 3900,
+            "q": 4,
+            "cat": "alcohol",
+            "eat": [
+              "mk",
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "",
+            "k": "삼각김밥",
+            "u": 1500,
+            "q": 5,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "노지 감귤 1kg",
+            "u": 6000,
+            "q": 1,
+            "cat": "snack",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "녹차 (오설록)",
+            "u": 1800,
+            "q": 2,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      },
+      {
+        "id": "haenyeo",
+        "name": "성산 해녀의 집",
+        "orig": "",
+        "day": 2,
+        "payer": "mk",
+        "pay": "CARD",
+        "items": [
+          {
+            "o": "",
+            "k": "전복죽",
+            "u": 15000,
+            "q": 4,
+            "cat": "meal",
+            "eat": [
+              "mk",
+              "sh",
+              "jh",
+              "mj"
+            ]
+          },
+          {
+            "o": "",
+            "k": "제주 맥주",
+            "u": 7000,
+            "q": 3,
+            "cat": "alcohol",
+            "eat": [
+              "sh"
+            ],
+            "tag": "beer"
+          },
+          {
+            "o": "",
+            "k": "한라산 소주",
+            "u": 6000,
+            "q": 2,
+            "cat": "alcohol",
+            "eat": [
+              "mj"
+            ],
+            "tag": "hb"
+          },
+          {
+            "o": "",
+            "k": "보리차",
+            "u": 2000,
+            "q": 1,
+            "cat": "drink",
+            "eat": [
+              "jh"
+            ],
+            "tag": "tea"
+          }
+        ]
+      }
+    ],
+    "parsed": {
+      "name": "동문시장 야시장",
+      "orig": "",
+      "day": 3,
+      "items": [
+        {
+          "o": "",
+          "k": "흑돼지 꼬치",
+          "u": 7000,
+          "q": 2,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "",
+          "k": "한치 버터구이",
+          "u": 12000,
+          "q": 1,
+          "cat": "snack",
+          "eat": []
+        },
+        {
+          "o": "",
+          "k": "한라산 소주",
+          "u": 6000,
+          "q": 2,
+          "cat": "alcohol",
+          "eat": [],
+          "tag": "hb"
+        },
+        {
+          "o": "",
+          "k": "한라봉 주스",
+          "u": 5000,
+          "q": 1,
+          "cat": "drink",
+          "eat": []
+        }
+      ]
+    },
+    "id": "jeju"
+  }
+]
+</script>
 
 <script>
 /* ---------- 여행지 데이터: 데이터베이스(destinations)에서 읽고, 못 읽으면 오사카 하나로 ---------- */
@@ -395,46 +2050,109 @@ function cleanDest(d) {
     ...d,
     match: (Array.isArray(d.match) ? d.match : [d.name]).map(s => String(s).toLowerCase()),
     colors: Object.fromEntries(["accent", "glow", "night", "paper"].map(k => [k, HEX.test(c[k]) ? c[k] : null])),
-    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && ASSET.test(a.asset)).slice(0, 2),
+    // 그림: 아티팩트에서는 데이터베이스의 asset, 파일로 열면 art/ 폴더의 file
+    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && (ASSET.test(a.asset) || /^[a-z0-9-]+\.svg$/.test(a.file || ""))).slice(0, 2),
   };
 }
+// 등록된 여행지만 찾는다. 못 찾으면 null (다른 여행지로 바꾸지 않는다)
 function detect(name) {
-  const n = String(name).toLowerCase();
+  const n = String(name || "").trim().toLowerCase();
+  if (!n) return null;
   for (const [id, d] of Object.entries(DESTS)) if (d.match.some(m => m && n.includes(m))) return id;
   return null;
 }
+// 여행지: 이 파일의 <script id="destinations"> 블록을 먼저 쓰고, 아티팩트에서는 데이터베이스 값으로 덮는다 /* 시안 전용 */
+function readDestBlock() {
+  try {
+    const out = {};
+    JSON.parse(document.getElementById("destinations").textContent).forEach(d => { const c = cleanDest(d); if (c) out[d.id] = c; });
+    return out;
+  } catch (e) { return {}; }
+}
 const FALLBACK = cleanDest(FALLBACK_RAW);
-let DESTS = { osaka: FALLBACK };
+let DESTS = Object.assign({ osaka: FALLBACK }, readDestBlock());
 let dbState = "loading";
-const destOf = id => DESTS[id] || DESTS.osaka || FALLBACK;
-const D = () => destOf(S.trip.dest);
+const destOf = id => DESTS[id] || null;
 const artImg = (d, k, cls) => {
-  const a = d && d.art[k];
-  return a ? `<img${cls ? ` class="${cls}"` : ""} src="/_blob/${a.asset}" alt="${esc(a.label || "")}" width="200" height="200" data-art>` : GENERIC_ART.replace("<svg", `<svg${cls ? ` class="${cls}"` : ""}`);
+  const a = d && d.art && d.art[k], c = cls ? ` class="${cls}"` : "";
+  if (!a) return GENERIC_ART.replace("<svg", `<svg${c}`);
+  const src = ASSET.test(a.asset || "") ? `/_blob/${a.asset}` : `art/${a.file}`;
+  return `<img${c} src="${src}" alt="${esc(a.label || "")}" width="200" height="200" data-art>`;
 };
 
-function tripFrom(id, name, cash, fee) {
-  const d = destOf(id);
-  return { dest: id, name, cur: clone(d.cur), cash: cash ?? d.cash, fee: fee ?? d.fee, tts: d.tts,
-    nights: d.nights, days: clone(d.days), title: d.title, code: "7KQ2" + (id || "trip").slice(0, 5).toUpperCase() };
-}
-function initial() {
-  const d = destOf("osaka");
+// 통화 목록 (여행지 데이터와 따로). per = 환율을 몇 단위당 원으로 적는지. ex = 환율 칸 예시(빈칸 안내용, 기본값 아님)
+const CURRENCIES = [
+  { code: "JPY", sym: "¥", unit: "엔", name: "일본 엔", per: 100, ex: 905 },
+  { code: "CNY", sym: "元", unit: "위안", name: "중국 위안", per: 1, ex: 191, after: true },
+  { code: "USD", sym: "$", unit: "달러", name: "미국 달러", per: 1, ex: 1380 },
+  { code: "EUR", sym: "€", unit: "유로", name: "유로", per: 1, ex: 1500 },
+  { code: "THB", sym: "฿", unit: "바트", name: "태국 바트", per: 1, ex: 40 },
+  { code: "VND", sym: "₫", unit: "동", name: "베트남 동", per: 100, ex: 5.4, after: true },
+  { code: "TWD", sym: "NT$", unit: "대만 달러", name: "대만 달러", per: 1, ex: 43 },
+  { code: "HKD", sym: "HK$", unit: "홍콩 달러", name: "홍콩 달러", per: 1, ex: 177 },
+  { code: "SGD", sym: "S$", unit: "싱가포르 달러", name: "싱가포르 달러", per: 1, ex: 1030 },
+  { code: "PHP", sym: "₱", unit: "페소", name: "필리핀 페소", per: 1, ex: 24 },
+  { code: "GBP", sym: "£", unit: "파운드", name: "영국 파운드", per: 1, ex: 1780 },
+  { code: "AUD", sym: "A$", unit: "호주 달러", name: "호주 달러", per: 1, ex: 900 },
+];
+const KRW = { code: "KRW", sym: "₩", unit: "원", name: "원", per: 1 };
+const curOf = code => (code === "KRW" ? KRW : CURRENCIES.find(c => c.code === code) || null);
+
+// 여행 하나 = { id, draft, createdAt, trip, members, expenses, status, frozen, recv }. 지금 보는 여행은 S.tripId
+const TRIP_KEYS = ["trip", "members", "expenses", "status", "frozen", "recv"];
+const defaultMembers = allBound => [
+  { id: "mk", name: "명규", org: true, bound: true },
+  { id: "sh", name: "승화", bound: true },
+  { id: "jh", name: "지훈", bound: true },
+  { id: "mj", name: "민지", bound: allBound },
+];
+/* 시안 전용: 처음 상태 예시 여행 (여행지 데이터의 예시 지출·날짜). 만든 시각은 지난 날짜로 둬서 새로 만든 여행이 위에 온다 */
+const SAMPLE_CREATED = { osaka: "2026-10-20T09:00:00Z", shanghai: "2026-10-28T09:00:00Z", jeju: "2026-07-10T09:00:00Z" };
+function sampleTrip(destId, allBound) {
+  const d = destOf(destId), a = sampleDate(d.days[0]), b = sampleDate(d.days[d.days.length - 1]);
   return {
-    viewer: "mk", status: "OPEN", route: "scope", expId: null, frozen: null, recv: {},
-    pick: null, draft: null, wrapped: false, slide: 0,
-    form: { scope: null, name: "", place: "", start: null, end: null, cur: null, datesTouched: false, month: null },
-    trip: tripFrom("osaka", `${d.name} ${d.nights}`),
-    members: [
-      { id: "mk", name: "명규", org: true, bound: true },
-      { id: "sh", name: "승화", bound: true },
-      { id: "jh", name: "지훈", bound: true },
-      { id: "mj", name: "민지", bound: false },
-    ],
-    expenses: clone(d.expenses),
+    id: "t-" + destId, draft: false, createdAt: SAMPLE_CREATED[destId] || a,
+    trip: { dest: destId, place: d.name, name: `${d.name} ${d.nights}`, cur: clone(d.cur), cash: d.cash, fee: d.fee, tts: d.tts,
+      nights: d.nights, days: clone(d.days), start: a, end: b, title: d.title, code: "7KQ2" + destId.slice(0, 5).toUpperCase() },
+    members: defaultMembers(allBound),
+    expenses: clone(d.expenses).map(e => ({ ...e, by: e.by || e.payer })),
+    status: "OPEN", frozen: null, recv: {},
   };
 }
-let S = initial();
+// 새 여행 만들기 동안 쓰는 빈 여행. 만들기 전에는 목록에 안 보인다
+function blankTrip() {
+  return {
+    id: "t-" + Date.now(), draft: true, createdAt: null,
+    trip: { dest: null, place: "", name: "새 여행", cur: KRW, cash: 1, fee: 0, tts: 10, nights: "", days: [], start: null, end: null, title: "", code: "7KQ2NEW" },
+    members: defaultMembers(false), expenses: [], status: "OPEN", frozen: null, recv: {},
+  };
+}
+const newForm = () => ({ scope: null, name: "", place: "", start: null, end: null, curCode: "", cash: "", fee: "2.2",
+  rateTouched: false, datesTouched: false, autoDates: false, month: null });
+const curTrip = () => S.trips.find(t => t.id === S.tripId) || S.trips[0];
+function initial() {
+  const s = { viewer: "mk", route: "trips", expId: null, pick: null, draft: null, wrapped: false, slide: 0, form: newForm(),
+    trips: ["osaka", "shanghai", "jeju"].filter(id => DESTS[id]).map(id => sampleTrip(id, id !== "osaka")), tripId: null };
+  // S.trip·S.members·S.expenses·S.status·S.frozen·S.recv 는 지금 보는 여행의 값을 읽고 쓴다
+  TRIP_KEYS.forEach(k => Object.defineProperty(s, k, { get: () => curTrip()[k], set: v => { curTrip()[k] = v; }, enumerable: true }));
+  return s;
+}
+/* 시안 전용: 예시 여행 상태 — 상하이는 정산 확정, 제주는 링크 잠금 */
+function seedStatuses() {
+  if (S.trips.some(t => t.id === "t-shanghai")) withTrip("t-shanghai", () => { S.status = "SETTLED"; S.frozen = transfers(); });
+  if (S.trips.some(t => t.id === "t-jeju")) withTrip("t-jeju", () => { S.status = "LOCKED"; });
+}
+function withTrip(id, fn) {
+  const prev = S.tripId;
+  S.tripId = id;
+  try { return fn(); } finally { S.tripId = prev; }
+}
+// 목록 정렬: 정산 확정 전 여행 먼저, 그 안에서는 최근 순
+const listTrips = () => sortTrips(S.trips.filter(t => !t.draft));
+function sortTrips(list) {
+  return [...list].sort((a, b) => (a.status === "SETTLED") - (b.status === "SETTLED") || String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+let S = null;
 
 /* ---------- 계산 (정수만, 최대 잔여법, 동점은 참여 순서) ---------- */
 const order = () => S.members.map(m => m.id);
@@ -462,7 +2180,8 @@ const yenOf = e => e.items.reduce((s, i) => s + i.u * i.q, 0);
 function krwOf(e) {
   const y = yenOf(e), T = S.trip, per = T.cur.per;
   if (!foreign()) return y;
-  return e.pay === "CASH" ? rd(y * T.cash, per) : rd(y * T.tts * (1000 + T.fee), per * 10000);
+  // 현금 환율은 소수 둘째 자리까지 받는다 (정수로 바꿔 계산)
+  return e.pay === "CASH" ? rd(y * Math.round(T.cash * 100), per * 100) : rd(y * T.tts * (1000 + T.fee), per * 10000);
 }
 function sharesOf(e) {
   const local = {};
@@ -509,8 +2228,26 @@ function glasses(tag) {
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const won = n => "₩" + n.toLocaleString("ko-KR");
-// 현지 통화 표시: 엔은 ¥1,300, 위안은 48元, 원은 ₩
-const loc = n => { const c = S.trip.cur; return c.code === "KRW" ? won(n) : c.code === "CNY" ? n.toLocaleString("ko-KR") + esc(c.sym) : esc(c.sym) + n.toLocaleString("ko-KR"); };
+// 금액 표시는 여기서만 정한다: 원은 ₩, 그 밖은 통화 기호 (元·₫는 숫자 뒤)
+const money = (n, c) => { if (c.code === "KRW") return won(n); const m = curOf(c.code) || c, v = n.toLocaleString("ko-KR"); return m.after ? v + esc(m.sym) : esc(m.sym) + v; };
+const loc = n => money(n, S.trip.cur);
+// 지금 여행의 여행지 (직접 적은 여행지면 그림·색·예시 없이 이름만)
+const D = () => destOf(S.trip.dest) || genericDest();
+const placeLabel = () => { const d = D(); return d.country ? `${d.country} ${d.name}` : d.name; };
+function genericDest() {
+  const T = S.trip;
+  return { name: T.place, country: "", art: [], colors: {}, hb: { name: "하이볼", title: "하이볼 장인" }, readNote: "",
+    title: T.title, parsed: genericParsed() };
+}
+/* 시안 전용: 직접 적은 여행지의 영수증 읽기 예시 (원화 금액을 이 여행 통화로 바꿔 둔다) */
+function genericParsed() {
+  const k = amtExample;
+  return { name: "동네 식당", orig: "", day: 0, items: [
+    { o: "", k: "대표 메뉴", u: k(12000), q: 2, cat: "meal", eat: [] },
+    { o: "", k: "곁들임", u: k(8000), q: 1, cat: "snack", eat: [] },
+    { o: "", k: "맥주", u: k(6000), q: 2, cat: "alcohol", tag: "beer", eat: [] },
+    { o: "", k: "음료", u: k(3000), q: 1, cat: "drink", eat: [] }] };
+}
 const perLabel = () => `${S.trip.cur.per === 1 ? "1" : S.trip.cur.per}${esc(S.trip.cur.unit)}`;
 const mem = id => S.members.find(m => m.id === id);
 const nm = id => esc(mem(id).name);
@@ -570,38 +2307,62 @@ function sampleDate(label) {
   const m = /(\d+)월 (\d+)일/.exec(label || "");
   return m ? ymd(new Date(2026, +m[1] - 1, +m[2])) : null;
 }
-function defaultFor(scope) {
-  const hit = destsSorted().find(([, d]) => (scope === "domestic") === isDomestic(d));
-  return hit ? hit[0] : "osaka";
+// 등록된 여행지면 그 여행지, 아니면 null ('직접 적은 여행지')
+const curDest = () => destOf(detect(S.form.place));
+function previewId() { return detect(S.form.place); }
+// 국내·해외 선택과 등록 여행지가 맞지 않으면 여행을 만들 수 없다
+function scopeMismatch() {
+  const d = curDest(), f = S.form;
+  return !!(d && f.scope && (f.scope === "domestic") !== isDomestic(d));
 }
-// 여행지 글자로 데이터베이스의 여행지를 찾고, 없으면 고른 통화(또는 국내·해외 기본값)로
-function previewId() {
-  const f = S.form, cur = f.cur && DESTS[f.cur];
-  const curOk = cur && (!f.scope || (f.scope === "domestic") === isDomestic(cur));
-  return detect(f.place) || (curOk ? f.cur : null) || defaultFor(f.scope);
+// 여행의 통화: 국내는 늘 원, 해외는 등록 여행지의 통화 또는 고른 통화 (아직 안 골랐으면 null)
+function formCur() {
+  const f = S.form, d = curDest();
+  if (f.scope === "domestic") return KRW;
+  if (d && !isDomestic(d)) return curOf(d.cur.code) || d.cur;
+  return curOf(f.curCode);
 }
-// 날짜를 아직 안 골랐으면 그 여행지 예시 날짜로 채워 둔다 (예시 영수증 날짜와 맞도록)
+// 날짜: 사람이 고른 날짜가 먼저. 예시 날짜는 등록된 여행지이고 아직 날짜를 안 골랐을 때만 채운다
 function syncDates() {
   const f = S.form;
   if (f.datesTouched) return;
-  const d = destOf(previewId()), a = sampleDate(d.days[0]), b = sampleDate(d.days[d.days.length - 1]);
-  if (!a || !b) return;
-  f.start = a; f.end = b;
-  f.month = { y: toDate(a).getFullYear(), m: toDate(a).getMonth() };
+  const d = curDest();
+  if (d && !scopeMismatch()) {
+    const a = sampleDate(d.days[0]), b = sampleDate(d.days[d.days.length - 1]);
+    if (a && b) { f.start = a; f.end = b; f.month = { y: toDate(a).getFullYear(), m: toDate(a).getMonth() }; f.autoDates = true; return; }
+  }
+  if (f.autoDates) { f.start = null; f.end = null; f.autoDates = false; }
+}
+// 환율: 사람이 고치지 않았으면 등록 해외 여행지는 그 값, 그 밖은 빈칸(예시는 placeholder)
+function syncRate() {
+  const f = S.form, d = curDest();
+  if (f.rateTouched) return;
+  if (d && !isDomestic(d) && !scopeMismatch()) { f.cash = String(d.cash); f.fee = (d.fee / 10).toFixed(1); }
+  else { f.cash = ""; f.fee = "2.2"; }
 }
 function destCard() {
-  const f = S.form, d = destOf(previewId()), hit = !!detect(f.place), place = f.place.trim();
-  const off = hit && f.scope && (f.scope === "domestic") !== isDomestic(d);
-  const accent = d.colors && d.colors.accent;
+  const f = S.form, d = curDest(), place = f.place.trim(), off = scopeMismatch();
+  const accent = d && d.colors && d.colors.accent;
   let body;
   if (!place) body = `<b>여행지를 적어주세요</b><span>적으면 ${f.scope === "domestic" ? "예시를" : "나라와 통화를"} 맞춰 드려요</span>`;
   else if (off) body = `<b>${esc(d.country)} ${esc(d.name)}</b><span>${isDomestic(d) ? "국내" : "해외"} 여행지예요. 앞에서 고른 것과 달라요.</span>
     <button class="btn sm ghost" type="button" data-act="scope-switch" style="margin-top:6px">${isDomestic(d) ? "국내 여행으로 바꾸기" : "해외 여행으로 바꾸기"}</button>`;
-  else if (hit) body = `<b>${esc(d.country)} ${esc(d.name)}</b><span>${isDomestic(d) ? "원화 그대로 나눠요" : `${esc(d.cur.unit)}(${esc(d.cur.code)})로 쓰고 원화로 정산해요`}</span>`;
-  else body = `<b>등록된 여행지가 아니에요</b><span>${f.scope === "domestic" ? "원화로 계산해요" : "아래에서 현지 통화를 골라주세요"}</span>`;
-  return `<div class="dest" id="dest-card" style="${accent ? `--accent:${accent}` : ""}">
-    <div class="pics">${hit ? artImg(d, 0) + artImg(d, 1) : GENERIC_ART}</div>
+  else if (d) body = `<b>${esc(d.country)} ${esc(d.name)}</b><span>${isDomestic(d) ? "원화 그대로 나눠요" : `${esc(d.cur.unit)}(${esc(d.cur.code)})로 쓰고 원화로 정산해요`}</span>`;
+  else body = `<b>${esc(place)}</b><span>직접 적은 여행지예요. ${f.scope === "domestic" ? "원화 그대로 나눠요" : "아래에서 현지 통화를 골라주세요"}</span>`;
+  // 등록 여행지는 그 여행지 색, 직접 적은 곳·안 맞는 곳은 기본 파랑
+  return `<div class="dest" id="dest-card" style="--accent:${accent && !off ? accent : "var(--brand)"}">
+    <div class="pics">${d ? artImg(d, 0) + artImg(d, 1) : GENERIC_ART}</div>
     <div>${body}</div></div>`;
+}
+// 국내·해외와 여행지가 다를 때 여행지 칸 바로 아래 문구
+function placeErr() {
+  if (!scopeMismatch()) return `<span id="place-err" hidden></span>`;
+  const d = curDest(), want = S.form.scope === "domestic" ? "국내" : "해외";
+  return `<p class="err" id="place-err" role="alert">${isDomestic(d) ? "국내" : "해외"} 여행지라서 ${want} 여행으로 만들 수 없어요. 아래 ‘${isDomestic(d) ? "국내" : "해외"} 여행으로 바꾸기’를 누르거나 여행지를 고쳐주세요.</p>`;
+}
+function syncCreateBtn() {
+  const b = $("foot").querySelector('[data-act="create-trip"]');
+  if (b) b.setAttribute("aria-disabled", String(scopeMismatch()));
 }
 function placeChips() {
   const want = S.form.scope === "domestic", now = detect(S.form.place);
@@ -654,39 +2415,100 @@ function refreshCal() {
   if (c) c.outerHTML = calendar();
 }
 function curField() {
-  if (S.form.scope === "domestic") return `<div id="cur-box" hidden></div>`;
-  return `<label class="field" id="cur-box">현지 통화<select id="f-cur" name="currency">${curOptions()}</select></label>`;
+  const f = S.form, d = curDest();
+  if (f.scope === "domestic") return `<div id="cur-box" hidden></div>`;
+  if (d && !isDomestic(d)) {
+    const c = curOf(d.cur.code) || d.cur;
+    return `<label class="field" id="cur-box">현지 통화<select id="f-cur" name="currency" disabled><option>${esc(c.code)} ${esc(c.name || c.unit)} (여행지에 맞춤)</option></select></label>`;
+  }
+  return `<label class="field" id="cur-box">현지 통화<select id="f-cur" name="currency"><option value="">통화를 골라주세요</option>${CURRENCIES.map(c => `<option value="${c.code}"${f.curCode === c.code ? " selected" : ""}>${c.code} ${esc(c.name)}</option>`).join("")}</select></label>`;
 }
 function rateFields() {
-  const d = destOf(previewId());
-  if (d.cur.code === "KRW") return `<p class="hint" id="rate-box">원화 여행이라 환율 입력이 필요 없어요.</p>`;
+  const f = S.form, c = formCur();
+  if (f.scope === "domestic") return `<p class="hint" id="rate-box">국내 여행이라 원화 그대로 나눠요. 환율 입력이 필요 없어요.</p>`;
+  const unit = c ? `₩/${c.per === 1 ? "1" : c.per}${esc(c.unit)}` : "₩";
+  const ex = c && curOf(c.code) ? `예: ${curOf(c.code).ex}` : "";
   return `<div class="two" id="rate-box">
-    <label class="field">현금 환율 (₩/${d.cur.per === 1 ? "1" : d.cur.per}${esc(d.cur.unit)})<input id="f-cash" type="number" inputmode="decimal" value="${d.cash}"></label>
-    <label class="field">카드 수수료 (%)<input id="f-fee" type="number" inputmode="decimal" step="0.1" value="${(d.fee / 10).toFixed(1)}"></label></div>`;
+    <label class="field">현금 환율 (${unit})<input id="f-cash" name="cash-rate" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(f.cash)}" placeholder="${ex}"></label>
+    <label class="field">카드 수수료 (%)<input id="f-fee" name="card-fee" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(f.fee)}"></label></div>`;
 }
-function curOptions() {
-  const seen = new Set(), id = previewId(), want = S.form.scope === "domestic";
-  return destsSorted().filter(([, d]) => isDomestic(d) === want && !seen.has(d.cur.code) && seen.add(d.cur.code))
-    .map(([k, d]) => `<option value="${k}"${destOf(id).cur.code === d.cur.code ? " selected" : ""}>${esc(d.cur.code)} ${esc(d.cur.unit)}</option>`).join("");
-}
+// 여행지 글자가 바뀔 때마다 카드·통화·환율·달력을 다시 그린다 (한글 조합 중에는 부르지 않음)
 function refreshCreate(flip) {
   const card = $("dest-card");
   if (!card) return;
   syncDates();
+  syncRate();
   card.outerHTML = destCard();
+  $("place-err").outerHTML = placeErr();
   $("rate-box").outerHTML = rateFields();
   $("cur-box").outerHTML = curField();
   $("qchips").outerHTML = placeChips();
   refreshCal();
   if (flip) $("dest-card").classList.add("flip");
+  syncCreateBtn();
   refit();
+}
+
+/* ---------- 권한: 버튼을 보일지만 정한다 ---------- */
+/* 시안 전용: 실제 앱은 서버 권한과 같이 (서버 판정이 기준) */
+const canDeleteTrip = m => !!(m && m.org);
+// 지출을 지울 자격(올린 사람 또는 총무). 확정 후에는 자격이 있어도 못 지운다
+const isExpenseOwner = (m, e) => !!(m && e && (m.org || e.by === m.id));
+const canDeleteExpense = (m, e, status) => isExpenseOwner(m, e) && status !== "SETTLED";
+// 상단 바 ⋯ 메뉴 항목. 없으면 ⋯ 버튼을 숨긴다
+function menuItems() {
+  if (S.route === "home" && canDeleteTrip(me())) return [{ act: "ask-del-trip", label: "여행 삭제" }];
+  if (S.route === "check" && S.expenses.length && isExpenseOwner(me(), exp())) {
+    return [{ act: "ask-del-exp", label: "지출 삭제", dim: !canDeleteExpense(me(), exp(), S.status) }];
+  }
+  return [];
+}
+
+/* ---------- 직접 입력: 메뉴별로 적기 ---------- */
+const blankLine = () => ({ name: "", amt: "", qty: 1 });
+const lastDay = () => Math.max(0, S.trip.days.length - 1);
+const toKrw = y => (foreign() ? rd(y * Math.round(S.trip.cash * 100), S.trip.cur.per * 100) : y);
+// 입력 예시 금액: 원화 18,000쯤을 이 여행 통화로
+const amtExample = krw => (foreign() ? Math.max(1, Math.round(krw * S.trip.cur.per / (S.trip.cash || 1))) : krw);
+function menuTotal() {
+  return S.draft.lines.reduce((s, l) => { const u = parseInt(l.amt, 10); return s + (u > 0 ? u * l.qty : 0); }, 0);
+}
+function menuTotalHtml() {
+  const y = menuTotal();
+  return `<span>합계</span><span class="num">${loc(y)}${foreign() && y ? ` <span class="meta">약 ${won(toKrw(y))}</span>` : ""}</span>`;
+}
+function menuLines() {
+  const d = S.draft, many = d.lines.length > 1, unit = esc(S.trip.cur.unit);
+  return `<div class="mlines">${d.lines.map((l, k) => `<div class="mline">
+      <label class="field">메뉴 이름<input id="ml-name-${k}" type="text" autocomplete="off" value="${esc(l.name)}" placeholder="예: 생맥주"></label>
+      <div class="mline-row">
+        <label class="field">금액 (${unit})<input id="ml-amt-${k}" type="number" inputmode="numeric" min="0" value="${esc(l.amt)}" placeholder="예: ${amtExample(6000)}"></label>
+        <div class="field">수량<div class="qty"><button type="button" data-act="qty:${k}:-1" aria-label="${k + 1}번째 메뉴 수량 줄이기"${l.qty <= 1 ? " disabled" : ""}>−</button><b aria-live="polite">${l.qty}</b><button type="button" data-act="qty:${k}:1" aria-label="${k + 1}번째 메뉴 수량 늘리기">+</button></div></div>
+        ${many ? `<button class="mline-del" type="button" data-act="mline-del:${k}" aria-label="${k + 1}번째 메뉴 지우기">×</button>` : ""}
+      </div></div>`).join("")}</div>
+    <button class="btn ghost" type="button" data-act="mline-add">+ 메뉴 추가</button>
+    <div class="sum total" id="m-total">${menuTotalHtml()}</div>`;
 }
 
 /* ---------- 화면 ---------- */
 const TRIP_SCREENS = ["home", "add", "receipt", "review", "manual", "check", "settle", "settled"];
 const V = {
+  trips: {
+    title: () => "내 여행", path: "/",
+    body() {
+      return `<div class="list">${listTrips().map(t => withTrip(t.id, () => {
+        const T = S.trip, d = D(), m = me();
+        const b = m ? (({ eaten, paid }) => paid[m.id] - eaten[m.id])(ledger()) : 0;
+        const bal = b > 0 ? `<span class="bal pos">받을 돈 ${won(b)}</span>` : b < 0 ? `<span class="bal neg">보낼 돈 ${won(-b)}</span>` : `<span class="bal meta">주고받을 돈 없어요</span>`;
+        return `<button class="row trip-row" type="button" data-act="open-trip:${t.id}"><span class="tart">${artImg(d, 0)}</span>
+          <span class="main"><b>${esc(T.name)}</b><span class="meta">${esc(T.nights)}, ${esc(T.days[0] || "")}부터, ${S.members.length}명</span>${bal}</span>
+          <span class="status ${t.status}">${STATUS[t.status]}</span></button>`;
+      })).join("")}</div>`;
+    },
+    foot: () => [["새 여행 만들기", "new-trip"]],
+  },
   scope: {
-    title: () => isOrg() ? "새 여행" : "hashell", path: "/",
+    title: () => isOrg() ? "새 여행" : "hashell", path: "/new", back: () => (listTrips().length ? "trips" : null),
     body() {
       if (!isOrg()) return V.create.body();
       const card = (key, title, desc) => {
@@ -701,7 +2523,7 @@ const V = {
     foot: () => [],
   },
   create: {
-    title: () => isOrg() ? "여행 만들기" : "hashell", path: "/", back: "scope",
+    title: () => isOrg() ? "여행 만들기" : "hashell", path: "/new", back: "scope",
     body() {
       if (!isOrg()) return `<div class="center"><div class="wordmark">hashell</div>
         <p class="q">방은 hashell 앱에서 만들 수 있어요</p>
@@ -709,7 +2531,8 @@ const V = {
       return `<p class="q">어디로 가요?</p>
         <label class="field">여행 이름<input id="f-name" name="trip-name" type="text" value="${esc(S.form.name)}" placeholder="예: 졸업 기념 여행" autocomplete="off" maxlength="20" aria-describedby="f-name-hint"></label>
         <p class="hint" id="f-name-hint" style="margin-top:-10px">비워 두면 여행지와 날짜로 지어요. 예: 오사카 3박 4일</p>
-        <label class="field">여행지<input id="f-place" name="place" type="text" value="${esc(S.form.place)}" placeholder="${S.form.scope === "domestic" ? "예: 제주" : "예: 오사카, 상하이"}" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
+        <label class="field">여행지<input id="f-place" name="place" type="text" value="${esc(S.form.place)}" placeholder="${S.form.scope === "domestic" ? "예: 제주, 부산" : "예: 오사카, 방콕"}" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
+        ${placeErr()}
         ${placeChips()}
         ${destCard()}
         ${calendar()}
@@ -750,11 +2573,11 @@ const V = {
     foot: () => S.status === "OPEN" ? [["이 이름으로 참여", "join-confirm"]] : [],
   },
   home: {
-    title: () => S.trip.name, path: "/trip/7kq2",
+    title: () => S.trip.name, path: "/trip/7kq2", back: () => (isOrg() ? "trips" : null),
     body() {
       const { eaten, paid } = ledger(), b = paid[S.viewer] - eaten[S.viewer], d = D();
       const waiting = S.members.filter(m => !m.bound);
-      let h = `<div class="trip">${artImg(d, 0)}<div><b>${esc(d.country)} ${esc(d.name)}, ${esc(S.trip.nights)}</b><span class="meta">${esc(S.trip.days[0])}부터, ${S.members.length}명</span></div></div>`;
+      let h = `<div class="trip">${artImg(d, 0)}<div><b>${esc(placeLabel())}, ${esc(S.trip.nights)}</b><span class="meta">${esc(S.trip.days[0])}부터, ${S.members.length}명</span></div></div>`;
       if (settled()) h += `<button class="banner night" type="button" data-act="wrapped" style="${wrStyle()}">${artImg(d, 1)}<span><strong>여행 돌아보기가 나왔어요</strong>누가 맥주를 제일 많이 마셨는지 확인해 보세요</span></button>`;
       else if (waiting.length && S.status === "OPEN") h += `<button class="banner" type="button" data-act="go:invite"><span>${waiting.map(m => esc(m.name)).join(", ")}님이 아직 안 들어왔어요</span><span class="go">›</span></button>`;
       h += `<div class="balance"><span class="lbl">${b > 0 ? "받을 돈" : b < 0 ? "보낼 돈" : "주고받을 돈"}</span>
@@ -808,11 +2631,15 @@ const V = {
   },
   manual: {
     title: () => "직접 입력", path: "/trip/7kq2/expense/new", back: "add",
-    body: () => `<p class="q">얼마를 썼어요?</p>
-      <label class="field">어디서 썼어요?<input id="f-shop" name="shop" type="text" autocomplete="off" placeholder="예: 로손 신사이바시점"></label>
-      <label class="field">총액 (${esc(S.trip.cur.unit)})<input id="f-amt" name="amount" type="number" inputmode="numeric" placeholder="예: 1850"></label>
+    body() {
+      const d = S.draft;
+      return `<p class="q">얼마를 썼어요?</p>
+      <label class="field">어디서 썼어요?<input id="f-shop" name="shop" type="text" autocomplete="off" value="${esc(d.name)}" placeholder="예: 동네 편의점"></label>
       <p class="hint">누가 냈어요?</p>${payerSeg()}
-      <p class="hint">어떻게 냈어요?</p>${paySeg()}`,
+      <p class="hint">어떻게 냈어요?</p>${paySeg()}
+      ${seg("mmode", [{ act: "mmode:menu", on: d.mode === "menu", label: "메뉴별로 적기" }, { act: "mmode:total", on: d.mode === "total", label: "총액만 적기" }])}
+      ${d.mode === "menu" ? menuLines() : `<label class="field">총액 (${esc(S.trip.cur.unit)})<input id="f-amt" name="amount" type="number" inputmode="numeric" min="0" value="${esc(d.total)}" placeholder="예: ${amtExample(18000)}"></label>`}`;
+    },
     foot: () => [["저장", "save-manual"]],
   },
   check: {
@@ -901,6 +2728,12 @@ function paySeg() {
 /* ---------- 이동 ---------- */
 function go(r, dir) {
   const prev = S.route;
+  // 목록: 만들다 만 여행은 버리고, 여행이 하나도 없으면 바로 새 여행 만들기로
+  if (r === "trips") {
+    S.trips = S.trips.filter(t => !t.draft);
+    if (!S.trips.length) return startNewTrip();
+    if (!S.trips.some(t => t.id === S.tripId)) S.tripId = listTrips()[0].id;
+  }
   // 새 화면에 들어올 때는 가로 선택 바탕이 미끄러지지 않고 제자리에서 시작한다
   if (prev !== r) Object.keys(segPos).forEach(k => delete segPos[k]);
   if (TRIP_SCREENS.includes(r) && !me().bound) r = "join";
@@ -908,8 +2741,9 @@ function go(r, dir) {
   if (r === "settle" && settled()) r = "settled";
   if (r === "settled" && !settled()) r = "settle";
   if (r === "check" && !S.expenses.length) r = "home";
-  if ((r === "review" || r === "manual") && !S.draft) S.draft = { payer: S.viewer, pay: "CASH", name: D().parsed.name };
-  if (r === "create") { if (!S.form.scope) S.form.scope = "overseas"; syncDates(); }
+  if (r === "review" && !S.draft) S.draft = { payer: S.viewer, pay: "CASH", name: D().parsed.name };
+  if (r === "manual" && !(S.draft && S.draft.lines)) S.draft = { payer: S.viewer, pay: "CASH", name: "", mode: "menu", lines: [blankLine()], total: "" };
+  if (r === "create") { if (!S.form.scope) S.form.scope = "overseas"; syncDates(); syncRate(); }
   clearTimeout(parseTimer);
   if (r === "receipt") {
     S.draft = { payer: S.viewer, pay: "CASH", name: D().parsed.name };
@@ -934,8 +2768,10 @@ function render() {
   $("title").textContent = v.title();
   const st = $("status");
   st.textContent = STATUS[S.status]; st.className = "status " + S.status;
-  st.hidden = S.route === "create" || S.route === "join";
-  const b = $("back"); b.hidden = !v.back; b.onclick = () => go(v.back, "back");
+  st.hidden = ["trips", "scope", "create", "join"].includes(S.route);
+  const back = typeof v.back === "function" ? v.back() : v.back;
+  const b = $("back"); b.hidden = !back; b.onclick = () => go(back, "back");
+  $("more").hidden = !menuItems().length;
   const sc = $("screen");
   sc.className = "screen " + (v.cls || "");
   sc.innerHTML = v.body();
@@ -945,6 +2781,7 @@ function render() {
   f.hidden = !fs.length;
   f.innerHTML = fs.map(([l, act, c]) => `<button class="btn ${c || ""}" type="button" data-act="${act}">${l}</button>`).join("");
   if (S.route === "invite") drawQR();
+  syncCreateBtn();
   slideSegs();
   renderOverlay();
   renderToast();
@@ -959,7 +2796,7 @@ function fieldError(id, msg) {
   if (!e) {
     e = document.createElement("p");
     e.className = "err"; e.id = id + "-err";
-    (inp.closest("label") || inp).after(e);
+    (inp.closest(".mline-row") || inp.closest("label") || inp).after(e);
     inp.setAttribute("aria-describedby", e.id);
     inp.addEventListener("input", () => { inp.removeAttribute("aria-invalid"); inp.removeAttribute("aria-describedby"); e.remove(); }, { once: true });
   }
@@ -1022,7 +2859,7 @@ function renderToast() {
 function renderOverlay() {
   const o = $("overlay");
   o.innerHTML = S.sheet ? `<div class="scrim" data-act="sheet-close"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-q">${S.sheet.html}
-    <div class="acts"><button class="btn ghost" type="button" data-act="sheet-close">취소</button><button class="btn ${S.sheet.danger ? "danger" : ""}" type="button" data-act="${S.sheet.act}">${S.sheet.ok}</button></div></div></div>` : "";
+    <div class="acts"><button class="btn ghost" type="button" data-act="sheet-close">${S.sheet.menu ? "닫기" : "취소"}</button>${S.sheet.menu ? "" : `<button class="btn ${S.sheet.danger ? "danger" : ""}" type="button" data-act="${S.sheet.act}">${S.sheet.ok}</button>`}</div></div></div>` : "";
   if (S.wrapped) { o.appendChild(buildWrapped()); runCounts(o); }
   refit();
 }
@@ -1046,7 +2883,7 @@ function drawQR() {
 }
 
 /* ---------- 여행 돌아보기 ---------- */
-const CAT = [["alcohol", "술", "var(--night)"], ["meal", "식사", "var(--accent)"], ["snack", "안주·간식", "var(--brand)"], ["drink", "음료", "var(--foam)"]];
+const CAT = [["alcohol", "술", "var(--night)"], ["meal", "식사", "var(--accent)"], ["snack", "안주·간식", "var(--brand)"], ["drink", "음료", "var(--foam)"], ["other", "기타", "var(--butter)"]];
 // 正 한 글자 = 다섯 잔. 쓰는 순서대로 획
 const STROKES = ["M14 14H86", "M50 14V86", "M50 50H80", "M24 46V86", "M8 86H92"];
 function tallySVG(n) {
@@ -1410,12 +3247,13 @@ function forceSettled() {
   if (!me().bound) S.viewer = "mk";
   S.status = "SETTLED"; S.frozen = transfers(); S.recv = {};
 }
-// 여행 이름에 맞는 여행지로 통화·예시 영수증·날짜·칭호·색을 모두 바꾼다
-function applyTrip(id, name, cash, fee) {
-  const d = destOf(id);
-  S.trip = tripFrom(id, name, cash, fee);
-  S.expenses = clone(d.expenses);
-  S.expId = null; S.status = "OPEN"; S.frozen = null; S.recv = {}; S.touched = true;
+// 새 여행 만들기: 빈 여행을 하나 만들고 국내·해외 고르기부터
+function startNewTrip() {
+  S.trips = S.trips.filter(t => !t.draft);
+  const t = blankTrip();
+  S.trips.push(t);
+  S.tripId = t.id; S.form = newForm(); S.expId = null; S.draft = null; S.lastPreview = null;
+  return go("scope");
 }
 
 /* ---------- 입력 처리 ---------- */
@@ -1428,27 +3266,38 @@ document.addEventListener("error", e => {
   t.replaceWith(w.firstChild);
 }, true);
 document.addEventListener("input", e => {
-  if (e.target.id === "f-name") { S.form.name = e.target.value; return; }
-  if (e.target.id !== "f-place") return;
-  S.form.place = e.target.value;
+  const id = e.target.id, f = S.form;
+  if (id === "f-name") { f.name = e.target.value; return; }
+  if (id === "f-cash") { f.cash = e.target.value; f.rateTouched = true; return; }
+  if (id === "f-fee") { f.fee = e.target.value; f.rateTouched = true; return; }
+  if (id === "f-shop" && S.draft) { S.draft.name = e.target.value; return; }
+  if (id === "f-amt" && S.draft) { S.draft.total = e.target.value; return; }
+  const ml = /^ml-(name|amt)-(\d+)$/.exec(id);
+  if (ml && S.draft && S.draft.lines) {
+    S.draft.lines[+ml[2]][ml[1] === "name" ? "name" : "amt"] = e.target.value;
+    const tot = $("m-total");
+    if (tot) tot.innerHTML = menuTotalHtml();
+    return;
+  }
+  if (id !== "f-place") return;
+  f.place = e.target.value;
   if (e.isComposing) return;
   const before = S.lastPreview;
   S.lastPreview = previewId();
-  if (before !== S.lastPreview) refreshCreate(true);
+  refreshCreate(before !== S.lastPreview);
 });
 document.addEventListener("compositionend", e => {
   if (e.target.id !== "f-place") return;
   S.form.place = e.target.value;
   const before = S.lastPreview;
   S.lastPreview = previewId();
-  if (before !== S.lastPreview) refreshCreate(true);
+  refreshCreate(before !== S.lastPreview);
 });
 document.addEventListener("change", e => {
   if (e.target.id !== "f-cur") return;
-  S.form.cur = e.target.value;
-  const before = S.lastPreview;
-  S.lastPreview = previewId();
-  if (before !== S.lastPreview) refreshCreate(false);
+  S.form.curCode = e.target.value;
+  $("rate-box").outerHTML = rateFields();
+  $("f-cur-err")?.remove();
 });
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-act]");
@@ -1458,14 +3307,84 @@ document.addEventListener("click", e => {
   switch (a) {
     case "go": return go(p);
     case "open": S.expId = p; return go("check");
+    case "open-trip": S.tripId = p; S.expId = null; S.draft = null; return go("home");
+    case "new-trip": return startNewTrip();
+    case "more": {
+      const items = menuItems();
+      if (!items.length) return;
+      S.sheet = { menu: true, html: `<p class="sr" id="sheet-q">더보기</p><div class="list">${items.map(i => `<button class="row menu-row" type="button" data-act="${i.act}"${i.dim ? ' aria-disabled="true"' : ""}><span class="main"><b>${i.label}</b></span></button>`).join("")}</div>` };
+      S.sheetReturn = t; renderOverlay();
+      return $("overlay").querySelector(".menu-row")?.focus();
+    }
+    case "ask-del-trip":
+      if (!canDeleteTrip(me())) return;
+      S.sheet = { html: `<p class="q" id="sheet-q">「${esc(S.trip.name)}」을 지울까요?</p><p class="hint">지출, 품목 체크, 송금 기록이 모두 지워지고 되돌릴 수 없어요.</p>`, ok: "삭제하기", act: "del-trip", danger: true };
+      renderOverlay();
+      return $("overlay").querySelector(".sheet .btn")?.focus();
+    case "del-trip": {
+      if (!canDeleteTrip(me())) return;
+      S.trips = S.trips.filter(x => x.id !== S.tripId);
+      S.sheet = null; S.expId = null;
+      if (!S.trips.length) { startNewTrip(); return toast("여행을 지웠어요"); }
+      S.tripId = listTrips()[0].id;
+      go("trips");
+      return toast("여행을 지웠어요");
+    }
+    case "ask-del-exp": {
+      const e = exp();
+      if (!isExpenseOwner(me(), e)) return;
+      if (!canDeleteExpense(me(), e, S.status)) { S.sheet = null; renderOverlay(); return toast("정산을 확정해서 지울 수 없어요. 총무가 확정을 해제하면 지울 수 있어요"); }
+      const amount = foreign() ? `${loc(yenOf(e))}(${won(krwOf(e))})` : won(krwOf(e));
+      S.sheet = { html: `<p class="q" id="sheet-q">이 지출을 지울까요?</p><p class="hint">「${esc(e.name)}」 ${amount}이 정산에서 빠지고 송금 금액이 다시 계산돼요.</p>`, ok: "삭제하기", act: "del-exp", danger: true };
+      renderOverlay();
+      return $("overlay").querySelector(".sheet .btn")?.focus();
+    }
+    case "del-exp": {
+      const e = exp();
+      if (!canDeleteExpense(me(), e, S.status)) return;
+      S.expenses = S.expenses.filter(x => x.id !== e.id);
+      S.sheet = null; S.expId = null;
+      go("home");
+      return toast("지출을 지웠어요");
+    }
+    case "mmode": S.draft.mode = p; return render();
+    case "qty": {
+      const l = S.draft.lines[+p];
+      l.qty = Math.max(1, l.qty + Number(q));
+      const sc = $("screen").scrollTop;
+      render();
+      $("screen").scrollTop = sc;
+      return;
+    }
+    case "mline-add": {
+      S.draft.lines.push(blankLine());
+      const sc = $("screen").scrollTop;
+      render();
+      $("screen").scrollTop = sc;
+      return $(`ml-name-${S.draft.lines.length - 1}`)?.focus();
+    }
+    case "mline-del": {
+      if (S.draft.lines.length < 2) return;
+      S.draft.lines.splice(+p, 1);
+      const sc = $("screen").scrollTop;
+      render();
+      $("screen").scrollTop = sc;
+      return;
+    }
     case "scope":
-      S.form.scope = p; S.form.cur = null; S.lastPreview = previewId();
+      S.form.scope = p; S.form.curCode = ""; S.form.rateTouched = false; S.lastPreview = previewId();
       return go("create");
-    case "scope-switch":
-      S.form.scope = isDomestic(destOf(previewId())) ? "domestic" : "overseas"; S.form.cur = null;
-      return render();
+    case "scope-switch": {
+      const d = curDest();
+      if (!d) return;
+      S.form.scope = isDomestic(d) ? "domestic" : "overseas"; S.form.curCode = ""; S.form.rateTouched = false;
+      syncDates(); syncRate();
+      render();
+      return $("f-place")?.focus();
+    }
     case "place":
-      S.form.place = destOf(p).name; S.form.cur = null; S.lastPreview = previewId(); syncDates();
+      S.form.place = destOf(p).name; S.form.curCode = ""; S.form.rateTouched = false; S.lastPreview = previewId();
+      syncDates(); syncRate();
       return render();
     case "month": {
       const f = S.form, next = new Date(f.month.y, f.month.m + Number(p), 1);
@@ -1492,25 +3411,35 @@ document.addEventListener("click", e => {
     case "create-trip": {
       const f = S.form, place = ($("f-place")?.value || "").trim();
       if (!place) return fieldError("f-place", `어디로 가는지 적어주세요. 예: ${f.scope === "domestic" ? "제주" : "오사카"}`);
+      f.place = place;
+      // 국내·해외와 맞지 않는 등록 여행지면 막는다 (카드의 ‘…로 바꾸기’나 여행지를 고쳐야 진행)
+      if (scopeMismatch()) { refreshCreate(false); return $("f-place").focus(); }
       if (!f.start) {
         const c = $("cal-box");
         if (c && !$("cal-err")) c.insertAdjacentHTML("beforeend", `<p class="err" id="cal-err" role="alert">달력에서 가는 날과 오는 날을 눌러주세요</p>`);
         return c?.querySelector(".cal-day")?.focus();
       }
-      f.place = place;
-      const id = previewId(), d = destOf(id), end = f.end || f.start;
-      let cash, fee;
-      if (d.cur.code !== "KRW") {
-        cash = Math.round(parseFloat($("f-cash").value)); fee = Math.round(parseFloat($("f-fee").value) * 10);
-        if (!(cash > 0)) return fieldError("f-cash", "환전 영수증의 환율을 숫자로 적어주세요. 예: 905");
-        if (!(fee >= 0)) fee = d.fee;
+      const d = curDest(), cur = formCur();
+      if (!cur) return fieldError("f-cur", "현지 통화를 골라주세요");
+      let cash = 1, fee = 0, tts = 10;
+      if (cur.code !== "KRW") {
+        cash = Math.round(parseFloat(f.cash) * 100) / 100;
+        fee = Math.round(parseFloat(f.fee) * 10);
+        if (!(cash > 0)) return fieldError("f-cash", `환전 영수증의 환율을 숫자로 적어주세요. 예: ${curOf(cur.code)?.ex ?? 905}`);
+        if (!(fee >= 0)) fee = 22;
+        tts = d ? d.tts : Math.round(cash * 10);
       }
-      // 여행 이름은 여행지 + 날짜로 만든다 (예: 오사카 3박 4일)
-      const n = nightsOf(f.start, end), days = rangeDays(f.start, end);
-      const title = ($("f-name")?.value || "").trim();
-      applyTrip(id, title || `${detect(place) ? d.name : place} ${nightsLabel(n)}`, cash, fee);
-      S.trip.days = days; S.trip.nights = nightsLabel(n);
-      S.expenses.forEach(e => { e.day = Math.min(e.day, days.length - 1); });
+      const end = f.end || f.start, n = nightsOf(f.start, end), days = rangeDays(f.start, end);
+      const placeName = d ? d.name : place, title = ($("f-name")?.value || "").trim();
+      Object.assign(curTrip(), {
+        draft: false, createdAt: new Date().toISOString(),
+        trip: { dest: d ? previewId() : null, place: placeName, name: title || `${placeName} ${nightsLabel(n)}`, cur: clone(cur), cash, fee, tts,
+          nights: nightsLabel(n), days, start: f.start, end, title: d ? d.title : `${placeName} 원정대`, code: "7KQ2" + String(Date.now()).slice(-6) },
+        // 등록된 여행지만 예시 지출을 넣고, 날짜는 고른 기간 안으로 맞춘다 /* 시안 전용 */
+        expenses: d ? clone(d.expenses).map(e => ({ ...e, by: e.by || e.payer, day: Math.min(e.day, days.length - 1) })) : [],
+        status: "OPEN", frozen: null, recv: {},
+      });
+      S.expId = null;
       return go("invite");
     }
     case "copy-link": return copy(`https://hashell.app/j/${S.trip.code}`, "초대 링크를 복사했어요");
@@ -1561,21 +3490,37 @@ document.addEventListener("click", e => {
     }
     case "save-review": {
       const P = D().parsed, id = "x" + Date.now();
-      S.expenses.push({ id, name: $("f-shop").value.trim() || P.name, orig: P.orig, day: Math.min(P.day, S.trip.days.length - 1), payer: S.draft.payer, pay: S.draft.pay,
+      S.expenses.push({ id, name: $("f-shop").value.trim() || P.name, orig: P.orig, day: Math.min(P.day, lastDay()), payer: S.draft.payer, by: S.viewer, pay: S.draft.pay,
         items: P.items.map(i => ({ ...i, eat: order() })) });
       S.draft = null; S.expId = id; S.stagger = true;
       go("check");
       return toast("저장했어요. 안 먹은 메뉴에서 이름을 빼주세요");
     }
     case "save-manual": {
-      const n = $("f-shop").value.trim(), y = parseInt($("f-amt").value, 10);
+      const d = S.draft, n = ($("f-shop").value || "").trim();
       if (!n) return fieldError("f-shop", "어디서 썼는지 적어주세요");
-      if (!(y > 0)) return fieldError("f-amt", `총액을 ${S.trip.cur.unit} 단위 숫자로 적어주세요`);
-      S.expenses.push({ id: "m" + Date.now(), name: n, orig: "", day: Math.max(0, S.trip.days.length - 1), payer: S.draft.payer, pay: S.draft.pay,
-        items: [{ o: "", k: "전체 금액", u: y, q: 1, cat: "meal", eat: order() }] });
-      S.draft = null;
-      go("home");
-      return toast("저장했어요");
+      if (d.mode === "total") {
+        const y = parseInt(d.total, 10);
+        if (!(y > 0)) return fieldError("f-amt", `총액을 ${S.trip.cur.unit} 단위 숫자로 적어주세요`);
+        S.expenses.push({ id: "m" + Date.now(), name: n, orig: "", day: lastDay(), payer: d.payer, by: S.viewer, pay: d.pay,
+          items: [{ o: "", k: "기타", u: y, q: 1, cat: "other", eat: order() }] });
+        S.draft = null;
+        go("home");
+        return toast("저장했어요");
+      }
+      // 메뉴별: 완전히 빈 줄은 무시하고, 반만 적은 줄은 그 칸 아래에 알려준다. 적은 금액이 단가, 단가×수량이 줄 합계
+      const lines = d.lines.map((l, k) => ({ ...l, k })).filter(l => l.name.trim() || String(l.amt).trim());
+      if (!lines.length) return fieldError("ml-name-0", "메뉴를 하나 이상 적어주세요");
+      for (const l of lines) {
+        if (!l.name.trim()) return fieldError(`ml-name-${l.k}`, "메뉴 이름을 적어주세요");
+        if (!(parseInt(l.amt, 10) > 0)) return fieldError(`ml-amt-${l.k}`, `금액을 ${S.trip.cur.unit} 단위 숫자로 적어주세요`);
+      }
+      const id = "m" + Date.now();
+      S.expenses.push({ id, name: n, orig: "", day: lastDay(), payer: d.payer, by: S.viewer, pay: d.pay,
+        items: lines.map(l => ({ o: "", k: l.name.trim(), u: parseInt(l.amt, 10), q: l.qty, cat: "other", eat: order() })) });
+      S.draft = null; S.expId = id; S.stagger = true;
+      go("check");
+      return toast("저장했어요. 안 먹은 메뉴에서 이름을 빼주세요");
     }
     case "settle-confirm": S.status = "SETTLED"; S.frozen = transfers(); S.recv = {}; go("settled"); return toast("정산을 확정했어요");
     case "recv": S.recv[p] = true; return render();
@@ -1621,7 +3566,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") wrStep(-1);
 });
 // 다시 그린 뒤에도 방금 누른 버튼에 초점을 돌려준다 (키보드로 칩을 연달아 누를 수 있게)
-const KEEP_FOCUS = /^(toggle|payer|pay|pick|est-info|month|place|scope-switch)(:|$)/;
+const KEEP_FOCUS = /^(toggle|payer|pay|pick|est-info|month|place|mmode|qty|mline-del)(:|$)/;
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-act]");
   if (!t || t.isConnected || !KEEP_FOCUS.test(t.dataset.act)) return;
@@ -1630,12 +3575,17 @@ document.addEventListener("click", e => {
 
 /* ---------- 시작 ---------- */
 (function boot() {
+  S = initial();
+  seedStatuses();
+  S.tripId = listTrips()[0]?.id ?? null;
   const h = location.hash.slice(1);
-  if (h === "wrapped") { forceSettled(); S.route = "home"; render(); openWrapped(); }
+  if (!S.tripId) startNewTrip();
+  else if (h === "scope" || h === "create") { startNewTrip(); if (h === "create") go("create"); }
+  else if (h === "wrapped") { forceSettled(); S.route = "home"; render(); openWrapped(); }
   else {
     if (h === "settled") forceSettled();
     if (h === "join") S.viewer = "mj";
-    go(V[h] ? h : "scope");
+    go(V[h] ? h : "trips");
   }
   S.lastPreview = previewId();
   getDownloads();
@@ -1648,17 +3598,16 @@ document.addEventListener("click", e => {
       const next = {};
       snap.docs.forEach(doc => { const d = cleanDest(doc.data()); if (d) next[doc.id] = d; });
       if (!Object.keys(next).length) { dbState = "off"; return; }
-      DESTS = next;
-      if (!DESTS.osaka) DESTS.osaka = FALLBACK;
+      // 데이터베이스 값(그림 asset 등)으로 덮는다 /* 시안 전용 */
+      DESTS = Object.assign({}, DESTS, next);
       dbState = "ok";
       syncDates();
       S.lastPreview = previewId();
-      // 아직 아무것도 바꾸지 않은 첫 상태면 데이터베이스 내용으로 다시 채운다
-      if (S.route === "create" && !S.touched) S.expenses = clone(destOf(S.trip.dest).expenses);
       render();
     }, () => { clearTimeout(giveUp); dbState = "off"; });
   }, () => { clearTimeout(giveUp); dbState = "off"; });
 })();
 </script>
 
-</body></html>
+</body>
+</html>
