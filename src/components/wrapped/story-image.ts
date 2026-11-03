@@ -21,7 +21,7 @@ export interface StoryInput {
   readonly titleLines: ReadonlyMap<string, readonly [string, string]>;
 }
 
-/** CSS 변수 값을 읽는다. `--member-1: var(--blue)`처럼 다른 변수를 가리키면 끝까지 따라간다. */
+/** CSS 변수 값을 읽는다. `--brand: var(--blue)`처럼 다른 변수를 가리키면 끝까지 따라간다. */
 function cssVar(name: string): string {
   const root = getComputedStyle(document.documentElement);
   let value = root.getPropertyValue(name).trim();
@@ -31,12 +31,6 @@ function cssVar(name: string): string {
     value = root.getPropertyValue(ref[1]).trim();
   }
   return value;
-}
-
-/** `var(--x)` 글자를 실제 색으로. */
-function resolveColor(cssValue: string): string {
-  const ref = /^var\((--[\w-]+)\)$/.exec(cssValue);
-  return ref ? cssVar(ref[1]) : cssValue;
 }
 
 const CATEGORY_COLOR: Record<WrappedCategory, string> = {
@@ -89,6 +83,7 @@ export async function drawStory(input: StoryInput): Promise<HTMLCanvasElement> {
   const foam = cssVar("--foam");
   const glow = cssVar("--glow");
   const paper = cssVar("--paper");
+  const ink = cssVar("--ink");
 
   // 바탕: 시안 .s-deep 와 같은 방향의 그라데이션
   const bg = ctx.createLinearGradient(0, 0, W * 0.6, H);
@@ -173,10 +168,10 @@ export async function drawStory(input: StoryInput): Promise<HTMLCanvasElement> {
     const line = input.titleLines.get(title.memberId);
     if (!member || !line) continue;
     const size = 96;
-    ctx.fillStyle = resolveColor(memberColor(member.order));
+    ctx.fillStyle = memberColor(member.order);
     roundRect(ctx, PAD, ty, size, size, 24);
     ctx.fill();
-    ctx.fillStyle = paper;
+    ctx.fillStyle = ink;
     ctx.font = `900 48px ${family}`;
     ctx.textAlign = "center";
     ctx.fillText(member.name.slice(0, 1), PAD + size / 2, ty + 66);

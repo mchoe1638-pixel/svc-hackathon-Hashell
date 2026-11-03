@@ -1,16 +1,10 @@
 import type { CSSProperties } from "react";
 
+import { memberColor } from "@/components/member-color";
 import { cn } from "@/components/utils";
 
-/** 멤버 색 개수 (globals.css 의 --member-1 ~ --member-5) */
-const MEMBER_COLOR_COUNT = 5;
-
-/** 참여 순서(0부터)로 멤버 색을 고른다. 같은 여행 안에서는 화면마다 같은 색. */
-export function memberColor(order: number): string {
-  const index =
-    (((order % MEMBER_COLOR_COUNT) + MEMBER_COLOR_COUNT) % MEMBER_COLOR_COUNT) + 1;
-  return `var(--member-${index})`;
-}
+/** 참여 순서(0부터)로 정해지는 멤버 색(hex). 계산은 member-color.ts. */
+export { memberColor };
 
 type MemberAvatarProps = {
   name: string;

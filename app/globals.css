@@ -48,12 +48,7 @@
   --estimate: #b25e09;
   --estimate-soft: #fff4e5;
 
-  /* 멤버 색: 참여 순서대로 돌려 쓴다 (시안 --m-mk, --m-sh, --m-jh, --m-mj, --m-new) */
-  --member-1: var(--blue);
-  --member-2: var(--red);
-  --member-3: var(--green);
-  --member-4: #f1c14b;
-  --member-5: #b44bf1;
+  /* 멤버 색은 토큰이 아니라 참여 순서로 계산한다 (src/components/member-color.ts → style 의 --c) */
 
   /* 화면 뒤 어두운 막 (확인 시트) */
   --scrim: rgb(10 20 51 / 0.45);
@@ -302,25 +297,17 @@
     animation: var(--animate-screen-fwd);
   }
 
-  /* 멤버 동그라미: --c 는 멤버 색 (MemberAvatar 가 넣는다) */
+  /* 멤버 동그라미: --c 는 멤버 색 (MemberAvatar 가 넣는다). 연한 단색 + 진한 글자 (대비 10:1 이상) */
   .avatar {
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--c, var(--ink)) 74%, var(--butter)) 15%,
-      color-mix(in srgb, color-mix(in srgb, var(--c, var(--ink)) 45%, var(--brand)) 16%, var(--butter)) 85%
-    );
-    color: color-mix(in srgb, var(--c, var(--ink)) 40%, var(--ink));
+    background: var(--c, var(--field));
+    color: var(--ink);
   }
 
-  /* 멤버 칩 (시안 .mchip). 켜짐이면 멤버 색 테두리 + 옅은 그라데이션 바탕 */
+  /* 멤버 칩 (시안 .mchip). 켜짐이면 멤버 색이 옅게 깔린 단색 바탕 + 같은 색 계열의 진한 테두리 */
   .member-chip[aria-pressed="true"],
   .member-chip[data-on] {
-    border-color: color-mix(in srgb, var(--c) 55%, var(--brand));
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--c) 10%, var(--paper)),
-      color-mix(in srgb, var(--brand) 6%, var(--paper))
-    );
+    border-color: color-mix(in srgb, var(--c) 70%, var(--ink));
+    background: color-mix(in srgb, var(--c) 18%, var(--paper));
     color: var(--ink);
   }
   .member-chip[aria-pressed="false"] .member-chip-name {
@@ -615,7 +602,8 @@
     animation-delay: calc(var(--k) * 150ms + 520ms);
   }
   .title-square {
-    background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 45%, var(--brand)));
+    background: var(--c);
+    color: var(--ink);
   }
   .wbtn-a {
     background: var(--glow);
