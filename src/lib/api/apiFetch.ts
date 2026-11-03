@@ -11,7 +11,7 @@ import { ApiRequestError, NETWORK_ERROR_STATUS } from '../apiError';
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 export interface ApiFetchOptions {
-  readonly method: 'GET' | 'POST' | 'PATCH';
+  readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   readonly accessToken: string;
   readonly body?: unknown;
 }

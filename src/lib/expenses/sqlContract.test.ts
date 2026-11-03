@@ -98,7 +98,7 @@ function ok(data: unknown): GatewayResult {
 }
 
 function gatewayWith(rpc: ExpensesGateway['rpc']): ExpensesGateway {
-  return { rpc, selectTripWithMembers: vi.fn(), selectExpenseTripId: vi.fn() };
+  return { rpc, selectTripWithMembers: vi.fn(), selectExpenseContext: vi.fn() };
 }
 
 /** 선택 키까지 전부 채운 품목: SQL이 읽는 모든 키가 실려 나가는지 보려는 것이다. */
@@ -125,6 +125,7 @@ const NEW_EXPENSE: NewExpense = {
   amount: 3960,
   items: [FULL_ITEM],
   adjustments: [{ kind: 'TAX', amount: 360 }],
+  remainder: null,
   ...SNAPSHOT,
 };
 
@@ -139,6 +140,7 @@ const EXPENSE_UPDATE: ExpenseUpdate = {
   amount: 3960,
   items: [FULL_ITEM],
   adjustments: [{ kind: 'TAX', amount: 360 }],
+  remainder: null,
   ...SNAPSHOT,
 };
 

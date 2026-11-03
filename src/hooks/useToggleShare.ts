@@ -5,7 +5,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { toggleShareRequest } from '@/lib/expenses/api';
 import { mockRequest, mockToggleShare } from '@/mocks';
 import type { ApiError, ExpenseDetail, MemberId, ToggleShareInput } from '@/types/api';
 
@@ -82,8 +82,8 @@ export function useToggleShare(): UseMutationResult<
         const current = queryClient.getQueryData<ExpenseDetail>(key);
         return mockRequest(() => mockToggleShare(input, current));
       }
-      // TODO(real-api): 체크 변경. 본인 몫만(총무는 대신 가능), 0명이 되는 해제는 400, 정산 확정이면 423.
-      throw notImplemented('useToggleShare');
+      // 본인 몫만(총무는 대신 가능), 0명이 되는 해제는 400, 정산 확정이면 423은 서버가 판정한다.
+      return toggleShareRequest(input);
     },
     onMutate: async (input) => {
       const key = queryKeys.expense(input.expenseId);
