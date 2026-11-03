@@ -23,7 +23,7 @@ const MAX_ITEM_NAME_LENGTH = 100;
 /** `expenses.version`은 4바이트 정수라서 그 위로는 올릴 수 없다. */
 const MAX_VERSION = 2_147_483_647;
 
-const ITEM_CATEGORIES = [
+export const ITEM_CATEGORIES = [
   'alcohol',
   'drink',
   'meal',
