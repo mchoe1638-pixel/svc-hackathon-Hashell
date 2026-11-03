@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   FAKE_CREATED_TRIP_ID,
+  FAKE_EXPECTED_TRANSFERS,
   FAKE_GENERATED_INVITE_CODE,
   FAKE_TRIP_ID,
   FRIEND_TOKEN,
@@ -130,8 +131,91 @@ describe('PATCH /api/trips', () => {
   });
 });
 
+describe('PUT /api/trips', () => {
+  it('lets the organizer confirm the settlement, hands the transfers core computed to the DB function, and answers 200', async () => {
+    const fake = createFakeTrips();
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.PUT(
+      apiRequest('PUT', '/api/trips', { token: ORGANIZER_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'SETTLED' });
+    // 송금은 화면이 아니라 서버가 core로 계산해서 넘긴다. 확정하는 사람은 토큰의 계정이다.
+    expect(fake.settled).toEqual([
+      { tripId: FAKE_TRIP_ID, authUserId: ORGANIZER_USER_ID, transfers: FAKE_EXPECTED_TRANSFERS },
+    ]);
+  });
+
+  it('answers 403 and confirms nothing when a friend, not the organizer, asks', async () => {
+    const fake = createFakeTrips();
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.PUT(
+      apiRequest('PUT', '/api/trips', { token: FRIEND_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual(errorBody('NOT_ORGANIZER'));
+    expect(fake.settled).toEqual([]);
+  });
+
+  it('answers 423 TRIP_SETTLED when the trip was already settled', async () => {
+    const fake = createFakeTrips({ settleOutcome: { kind: 'ALREADY_SETTLED' } });
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.PUT(
+      apiRequest('PUT', '/api/trips', { token: ORGANIZER_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(423);
+    expect(await response.json()).toEqual(errorBody('TRIP_SETTLED'));
+  });
+});
+
+describe('DELETE /api/trips', () => {
+  it('lets the organizer undo the settlement and answers 200 with the status it went back to', async () => {
+    const fake = createFakeTrips();
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.DELETE(
+      apiRequest('DELETE', '/api/trips', { token: ORGANIZER_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'LOCKED' });
+    expect(fake.unsettled).toEqual([{ authUserId: ORGANIZER_USER_ID, targetId: FAKE_TRIP_ID }]);
+  });
+
+  it('answers 403 and undoes nothing when a friend, not the organizer, asks', async () => {
+    const fake = createFakeTrips();
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.DELETE(
+      apiRequest('DELETE', '/api/trips', { token: FRIEND_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual(errorBody('NOT_ORGANIZER'));
+    expect(fake.unsettled).toEqual([]);
+  });
+
+  it('answers 409 NOT_SETTLED when there is no settlement to undo', async () => {
+    const fake = createFakeTrips({ unsettleOutcome: { kind: 'NOT_SETTLED' } });
+    vi.mocked(getTripsDeps).mockReturnValue(fake.deps);
+
+    const response = await route.DELETE(
+      apiRequest('DELETE', '/api/trips', { token: ORGANIZER_TOKEN, body: { tripId: FAKE_TRIP_ID } }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual(errorBody('NOT_SETTLED'));
+  });
+});
+
 describe('the route module', () => {
-  it('exports only POST and PATCH, because Next rejects any other export name', () => {
-    expect(Object.keys(route).sort()).toEqual(['PATCH', 'POST']);
+  it('exports only the four HTTP methods, because Next rejects any other export name', () => {
+    expect(Object.keys(route).sort()).toEqual(['DELETE', 'PATCH', 'POST', 'PUT']);
   });
 });

@@ -393,6 +393,7 @@ export interface MutationHookContracts {
   useParseReceipt: { variables: ParseReceiptInput; data: ParsedReceiptDraft };
   useToggleShare: { variables: ToggleShareInput; data: void };
   useLockTrip: { variables: TripActionInput; data: TripStatusResult };
+  useUnlockTrip: { variables: TripActionInput; data: TripStatusResult };
   useSettleTrip: { variables: TripActionInput; data: TripStatusResult };
   useUnsettleTrip: { variables: TripActionInput; data: TripStatusResult };
   useMarkReceived: { variables: MarkReceivedInput; data: MarkReceivedResult };

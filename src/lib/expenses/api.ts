@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { minimizeTransfers } from '../../core/minimizeTransfers';
 import { computeBalances, computeExpenseShares } from '../../core/settlement';
-import type { SettlementExpense } from '../../core/settlement';
 import type {
   CreateExpenseInput,
   CreateExpenseResult,
@@ -26,12 +25,14 @@ import type { AnonymousSession } from '../supabase/anonymousSession';
 import { getBrowserClient } from '../supabase/client';
 import { fetchTrip } from '../trips/api';
 import { parseApiResponse } from '../trips/responses';
+import { TRANSFER_COLUMNS, parseTransferRows } from '../trips/rows';
 import {
   EXPENSE_RECORD_COLUMNS,
   EXPENSE_SUMMARY_COLUMNS,
   parseExpenseRecord,
   parseExpenseRecords,
   parseExpenseSummaries,
+  toSettlementExpense,
 } from './rows';
 import type { ExpenseRecord } from './rows';
 
@@ -130,20 +131,6 @@ function memberIdsOf(trip: TripDetail): readonly string[] {
   return trip.members.map((member) => member.id);
 }
 
-/** 저장된 스냅샷을 core 입력으로 옮긴다. '기타' 줄은 일반 SHARED 품목이라 품목 밖 금액이 남지 않는다. */
-function toSettlementExpense(record: ExpenseRecord): SettlementExpense {
-  return {
-    payerId: record.summary.payerId,
-    total: record.summary.amount,
-    currency: record.summary.currency,
-    rate: record.appliedRate,
-    feeRate: record.appliedFeeRate,
-    items: record.items,
-    adjustments: record.adjustments,
-    remainderMemberIds: [],
-  };
-}
-
 /** 사람별 몫은 core가 구한다. `canEdit`은 올린 사람이거나 총무이면서 정산 확정 전일 때만 참이다 (가정 8). */
 function toExpenseDetail(record: ExpenseRecord, trip: TripDetail): ExpenseDetail {
   const shares = computeOrFail(() => computeExpenseShares(memberIdsOf(trip), toSettlementExpense(record)));
@@ -201,13 +188,39 @@ export async function fetchExpense(expenseId: ExpenseId): Promise<ExpenseDetail>
 }
 
 /**
- * `useSettlement` — 지금까지의 지출로 만든 정산 미리보기.
- * 확정 송금 테이블(S5)이 아직 없어서 송금은 항상 `id: null`, `receivedAt: null`이다.
+ * 확정(SETTLED) 뒤의 송금. `settle_trip`이 고정해 둔 `transfers`를 RLS로 읽고, 순서는 `parseTransferRows`가 `sort_order`로 맞춘다.
+ * 오류 이름과 문구는 지출 읽기와 같은 `queryError`·`parseRows`를 그대로 써서 `EXPENSE_…`로 나온다.
+ */
+async function selectFixedTransfers(tripId: TripId, myMemberId: string): Promise<readonly Transfer[]> {
+  const { data, error, status } = await getBrowserClient()
+    .from('transfers')
+    .select(TRANSFER_COLUMNS)
+    .eq('trip_id', tripId)
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  return parseRows(parseTransferRows, data).map(
+    (row): Transfer => ({
+      id: row.id,
+      fromMemberId: row.fromMemberId,
+      toMemberId: row.toMemberId,
+      krwAmount: row.krwAmount,
+      isMeReceiver: row.toMemberId === myMemberId,
+      receivedAt: row.receivedAt,
+    }),
+  );
+}
+
+/**
+ * `useSettlement` — 정산 결과. 확정 전(OPEN·LOCKED)에는 지금까지의 지출로 만든 미리보기라 송금의 `id`·`receivedAt`이 null이고,
+ * 확정 뒤에는 고정된 송금(`transfers`)을 그대로 돌려준다. 잔액은 어느 쪽이든 core가 구한다 (확정 뒤에는 지출이 바뀌지 않는다).
  */
 export async function fetchSettlement(tripId: TripId): Promise<Settlement> {
   await getSession();
   const [trip, records] = await Promise.all([fetchTrip(tripId), selectExpenseRecords(tripId)]);
   const balances = computeOrFail(() => computeBalances(memberIdsOf(trip), records.map(toSettlementExpense)));
+  if (trip.status === 'SETTLED') {
+    return { balances, transfers: await selectFixedTransfers(tripId, trip.me.id) };
+  }
   const plans = computeOrFail(() => minimizeTransfers(balances));
   const transfers = plans.map(
     (plan): Transfer => ({

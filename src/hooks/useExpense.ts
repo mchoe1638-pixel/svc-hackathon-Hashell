@@ -19,7 +19,8 @@ export function useExpense(expenseId: ExpenseId): UseQueryResult<ExpenseDetail, 
         return mockRequest(() => getMockExpense(expenseId));
       }
       // 진짜 API: 지출 상세 조회. 사람별 부담액은 src/core가 구하고, `canEdit`은 내 권한(올린 사람·총무)과 여행 상태로 정한다.
-      // TODO(real-api): 실시간 구독은 S5에서 읽기 훅 안에 자동으로 건다 (PLAN 5장).
+      // 실시간: 이 훅은 여행 id를 몰라서 직접 구독하지 않는다. 같은 여행의 `useTrip`·`useExpenses`·`useSettlement`가
+      // 화면에 있으면 그쪽 `useTripRealtime`이 지출 상세 캐시(`['expense']` 접두)도 무효화한다.
       return fetchExpense(expenseId);
     },
   });

@@ -54,7 +54,9 @@ function gatewayWith(rpc: TripsGateway['rpc']): TripsGateway {
     selectTripByInviteCode: vi.fn(),
     selectMembers: vi.fn(),
     lockTripIfOpen: vi.fn(),
+    unlockTripIfLocked: vi.fn(),
     selectTripStatus: vi.fn(),
+    selectExpenseRecords: vi.fn(),
   };
 }
 

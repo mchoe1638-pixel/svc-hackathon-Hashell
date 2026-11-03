@@ -6,6 +6,8 @@ import type {
   InviteCode,
   JoinTripInput,
   JoinTripResult,
+  MarkReceivedResult,
+  TransferId,
   TripDetail,
   TripId,
   TripStatusResult,
@@ -18,6 +20,7 @@ import {
   createTripResultSchema,
   joinInfoSchema,
   joinTripResultSchema,
+  markReceivedResultSchema,
   parseApiResponse,
   tripStatusResultSchema,
 } from './responses';
@@ -47,6 +50,10 @@ export interface TripsClient {
   joinTrip(input: JoinTripInput): Promise<JoinTripResult>;
   getTrip(tripId: TripId): Promise<TripDetail>;
   lockTrip(tripId: TripId): Promise<TripStatusResult>;
+  unlockTrip(tripId: TripId): Promise<TripStatusResult>;
+  settleTrip(tripId: TripId): Promise<TripStatusResult>;
+  unsettleTrip(tripId: TripId): Promise<TripStatusResult>;
+  markReceived(transferId: TransferId): Promise<MarkReceivedResult>;
 }
 
 function tripNotFound(): ApiRequestError {
@@ -75,6 +82,15 @@ export function createTripsClient(deps: TripsClientDeps): TripsClient {
     return deps.request(path, { method, accessToken, body });
   }
 
+  /** 잠금·잠금 해제·정산 확정·확정 해제는 모두 본문 `{ tripId }`를 보내고 `{ status }`를 돌려받는다. */
+  async function tripAction(
+    path: string,
+    method: ApiFetchOptions['method'],
+    tripId: TripId,
+  ): Promise<TripStatusResult> {
+    return parseApiResponse(tripStatusResultSchema, await call(path, method, { tripId }));
+  }
+
   return {
     async createTrip(input) {
       return parseApiResponse(createTripResultSchema, await call('/api/trips', 'POST', input));
@@ -90,7 +106,23 @@ export function createTripsClient(deps: TripsClientDeps): TripsClient {
     },
 
     async lockTrip(tripId) {
-      return parseApiResponse(tripStatusResultSchema, await call('/api/trips', 'PATCH', { tripId }));
+      return tripAction('/api/trips', 'PATCH', tripId);
+    },
+
+    async unlockTrip(tripId) {
+      return tripAction('/api/trips/unlock', 'POST', tripId);
+    },
+
+    async settleTrip(tripId) {
+      return tripAction('/api/trips', 'PUT', tripId);
+    },
+
+    async unsettleTrip(tripId) {
+      return tripAction('/api/trips', 'DELETE', tripId);
+    },
+
+    async markReceived(transferId) {
+      return parseApiResponse(markReceivedResultSchema, await call('/api/transfers', 'POST', { transferId }));
     },
 
     async getTrip(tripId) {

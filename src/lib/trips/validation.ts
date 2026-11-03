@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import type { CreateTripInput, InviteCode, JoinTripInput, TripActionInput } from '../../types/api';
+import type {
+  CreateTripInput,
+  InviteCode,
+  JoinTripInput,
+  MarkReceivedInput,
+  TripActionInput,
+} from '../../types/api';
 import { HttpError } from '../api/errors';
 import { INVITE_CODE_PATTERN } from './inviteCode';
 
@@ -77,7 +83,10 @@ const joinTripSchema = z
     path: ['memberId'],
   });
 
-const lockTripSchema = z.object({ tripId: tripIdSchema });
+/** 잠금·잠금 해제·정산 확정·확정 해제가 같이 쓰는 본문: `{ tripId }`. */
+const tripActionSchema = z.object({ tripId: tripIdSchema });
+
+const markReceivedSchema = z.object({ transferId: z.uuid('must be a UUID') });
 
 /** 첫 번째 문제만 "필드: 이유" 형태로 알려준다. 값 자체는 메시지에 싣지 않는다. */
 export function parseWith<T>(schema: z.ZodType<T>, raw: unknown, rootLabel: string): T {
@@ -101,8 +110,12 @@ export function parseJoinTripInput(raw: unknown): JoinTripInput {
   throw new HttpError(400, 'INVALID_REQUEST', 'memberId: provide exactly one of memberId or newName');
 }
 
-export function parseLockTripInput(raw: unknown): TripActionInput {
-  return parseWith(lockTripSchema, raw, 'body');
+export function parseTripActionInput(raw: unknown): TripActionInput {
+  return parseWith(tripActionSchema, raw, 'body');
+}
+
+export function parseMarkReceivedInput(raw: unknown): MarkReceivedInput {
+  return parseWith(markReceivedSchema, raw, 'body');
 }
 
 export function parseInviteCodeParam(raw: string | null): InviteCode {

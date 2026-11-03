@@ -17,5 +17,6 @@ export { useSettleTrip } from './useSettleTrip';
 export { useSettlement } from './useSettlement';
 export { useToggleShare } from './useToggleShare';
 export { useTrip } from './useTrip';
+export { useUnlockTrip } from './useUnlockTrip';
 export { useUnsettleTrip } from './useUnsettleTrip';
 export { useUpdateExpense } from './useUpdateExpense';

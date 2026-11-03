@@ -54,7 +54,9 @@ function makeGateway(overrides: Partial<TripsGateway> = {}): TripsGateway {
     selectTripByInviteCode: vi.fn().mockResolvedValue(ok(null)),
     selectMembers: vi.fn().mockResolvedValue(ok([])),
     lockTripIfOpen: vi.fn().mockResolvedValue(ok([])),
+    unlockTripIfLocked: vi.fn().mockResolvedValue(ok([])),
     selectTripStatus: vi.fn().mockResolvedValue(ok(null)),
+    selectExpenseRecords: vi.fn().mockResolvedValue(ok([])),
     ...overrides,
   };
 }
