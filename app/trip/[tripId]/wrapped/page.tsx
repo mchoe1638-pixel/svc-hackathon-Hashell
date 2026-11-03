@@ -422,7 +422,7 @@ function buildSlides({
               return (
                 <div key={title.memberId} className="in flex items-center gap-3.5" style={i(k + 1)}>
                   <span
-                    className="title-square grid size-12.5 shrink-0 place-items-center rounded-md text-[22px] font-black text-paper"
+                    className="title-square grid size-12.5 shrink-0 place-items-center rounded-md text-[22px] font-black"
                     style={{ "--c": memberColor(order) } as CSSProperties}
                   >
                     {nameOf(title.memberId).slice(0, 1)}
