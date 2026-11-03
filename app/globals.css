@@ -3,15 +3,21 @@
 
 /*
  * 디자인 토큰. 색·글자·간격·둥글기는 여기서만 정의하고 Tailwind 클래스로 쓴다.
- * 기준: docs/design-prototype.html 의 :root. 단, 브랜드 색은 연한 파란색 단색(그라데이션 없음).
+ * 기준 세 색: 파랑 #4B5CF1(기본), 빨강 #F14B5C, 초록 #5CF14B.
+ * 파랑 위 글자는 흰색(5.1:1). 흰 바탕 위 글자로 쓸 빨강·초록은 4.5:1을 넘는 진한 단계를 쓴다.
  * 라이트 모드만 지원 (다크모드 범위 밖).
  */
 :root {
+  /* 기준 세 색 (원색 그대로: 면·장식용) */
+  --blue: #4b5cf1;
+  --red: #f14b5c;
+  --green: #5cf14b;
+
   /* 브랜드 (시안 --brand / --brand-ink / --brand-soft) */
-  --brand: #2f6feb;
-  --brand-ink: #1f4fbf;
+  --brand: var(--blue);
+  --brand-ink: #3a4ad9;
   --brand-foreground: #ffffff;
-  --brand-soft: #eaf1fe;
+  --brand-soft: #edeffe;
 
   /* 바탕·글자 (시안 --paper / --ink / --sub / --line / --field / --stage) */
   --paper: #ffffff;
@@ -22,17 +28,17 @@
   --stage: #e3e8f0;
 
   /* 의미 색 (시안 --send / --ok / --est / --est-soft) */
-  --send: #e5484d;
-  --ok: #0f7a5c;
+  --send: #cf404f; /* 빨강의 글자용 단계 (흰 바탕 4.7:1) */
+  --ok: #328429; /* 초록의 글자용 단계 (흰 바탕 4.7:1) */
   --estimate: #b25e09;
   --estimate-soft: #fff4e5;
 
   /* 멤버 색: 참여 순서대로 돌려 쓴다 (시안 --m-mk, --m-sh, --m-jh, --m-mj, --m-new) */
-  --member-1: #3f7ad6;
-  --member-2: #e2675a;
-  --member-3: #23a07c;
-  --member-4: #d8962a;
-  --member-5: #7c6bd6;
+  --member-1: var(--blue);
+  --member-2: var(--red);
+  --member-3: var(--green);
+  --member-4: #f1c14b;
+  --member-5: #b44bf1;
 
   /* 화면 뒤 어두운 막 (확인 시트) */
   --scrim: rgb(10 20 51 / 0.45);
@@ -220,6 +226,14 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    /* Tab으로 이동한 요소가 위 상단바·아래 고정 버튼에 가려지지 않게 */
+    scroll-padding-top: 4rem;
+    scroll-padding-bottom: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom) + 0.5rem);
+  }
+  button,
+  a {
+    touch-action: manipulation; /* 두 번 탭 확대 대기 없이 바로 반응 */
+    -webkit-tap-highlight-color: transparent; /* 누름 표시는 .press 가 한다 */
   }
   body {
     @apply bg-stage text-foreground font-sans antialiased;
@@ -285,5 +299,23 @@
     .screen-enter > * {
       animation: none;
     }
+  }
+}
+
+/*
+ * 동작 줄이기: 미끄러지는 움직임은 흐려졌다 나타나기로 바꾼다.
+ * animate-* 는 utilities 층이라 층 밖에 둬야 덮어쓸 수 있다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up,
+  .animate-toast-in {
+    animation: var(--animate-scrim-in);
+  }
+  .animate-sheet-down,
+  .animate-toast-out {
+    animation: var(--animate-scrim-out);
+  }
+  .animate-pop {
+    animation: none;
   }
 }

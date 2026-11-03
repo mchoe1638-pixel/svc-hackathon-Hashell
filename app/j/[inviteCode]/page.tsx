@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useId, useRef, useState } from "react";
 
 import { AppBar } from "@/components/app-bar";
 import { BottomCTA } from "@/components/bottom-cta";
@@ -35,6 +35,9 @@ function JoinContent() {
 
   const [pickedId, setPickedId] = useState<MemberId | null>(null);
   const [newName, setNewName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameErrorId = useId();
 
   if (joinInfo.status === "pending") {
     return <JoinSkeleton />;
@@ -75,23 +78,33 @@ function JoinContent() {
   }
 
   const trimmedName = newName.trim();
-  const canSubmit =
-    !joinTrip.isPending && (pickedId !== null || trimmedName !== "");
 
   function pick(memberId: MemberId) {
     setPickedId(memberId);
     setNewName("");
+    setNameError(null);
   }
 
   function changeNewName(value: string) {
     setNewName(value);
+    setNameError(null);
     if (value !== "") setPickedId(null);
   }
 
+  // 오류는 입력칸 바로 아래에 보여주고 그 칸으로 이동한다
+  function showNameError(message: string) {
+    setNameError(message);
+    nameInputRef.current?.focus();
+  }
+
   function submit() {
-    if (!canSubmit) return;
+    if (joinTrip.isPending) return;
+    if (pickedId === null && trimmedName === "") {
+      showNameError(t("join.nameMissing"));
+      return;
+    }
     if (pickedId === null && members.some((m) => m.name === trimmedName)) {
-      toast(t("join.nameExists"));
+      showNameError(t("join.nameExists"));
       return;
     }
     const name =
@@ -110,7 +123,7 @@ function JoinContent() {
       onError: (error) => {
         if (error.status === 409) {
           setPickedId(null);
-          toast(t("join.nameTaken"));
+          showNameError(t("join.nameTaken"));
           joinInfo.refetch();
         } else if (error.status !== 423) {
           toast(t("common.error"));
@@ -175,6 +188,8 @@ function JoinContent() {
         <label className="mt-1 grid gap-1.5 text-hint font-medium text-sub">
           {t("join.newNameLabel")}
           <Input
+            ref={nameInputRef}
+            name="name"
             value={newName}
             onChange={(event) => changeNewName(event.target.value)}
             onKeyDown={(event) => {
@@ -182,14 +197,26 @@ function JoinContent() {
             }}
             placeholder={t("join.newNamePlaceholder")}
             autoComplete="name"
+            spellCheck={false}
             enterKeyHint="done"
             maxLength={20}
             disabled={joinTrip.isPending}
+            aria-invalid={nameError ? true : undefined}
+            aria-describedby={nameError ? nameErrorId : undefined}
           />
         </label>
+        {nameError ? (
+          <p id={nameErrorId} className="-mt-2.5 text-caption font-medium text-send break-keep">
+            {nameError}
+          </p>
+        ) : null}
 
-        <BottomCTA disabled={!canSubmit} onClick={submit}>
-          {t("join.submit")}
+        <BottomCTA
+          disabled={joinTrip.isPending}
+          aria-busy={joinTrip.isPending || undefined}
+          onClick={submit}
+        >
+          {joinTrip.isPending ? t("join.submitting") : t("join.submit")}
         </BottomCTA>
       </Screen>
     </>

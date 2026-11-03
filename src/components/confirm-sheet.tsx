@@ -40,6 +40,7 @@ export function ConfirmSheet({
   onCancel,
 }: ConfirmSheetProps) {
   const titleId = React.useId();
+  const sheetRef = React.useRef<HTMLDivElement>(null);
   const [closing, setClosing] = React.useState(false);
 
   const close = React.useCallback(() => {
@@ -51,10 +52,33 @@ export function ConfirmSheet({
     }, CLOSE_MS);
   }, [busy, closing, onCancel]);
 
+  // 닫히면 시트를 열었던 버튼으로 초점을 돌려준다
+  React.useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") close();
+      // Tab은 시트 안에서만 돈다
+      if (event.key === "Tab" && sheetRef.current) {
+        const items = sheetRef.current.querySelectorAll<HTMLElement>("button:not(:disabled)");
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -65,12 +89,13 @@ export function ConfirmSheet({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-end justify-center bg-scrim",
+        "fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-scrim",
         closing ? "animate-scrim-out" : "animate-scrim-in",
       )}
       onClick={close}
     >
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -95,9 +120,10 @@ export function ConfirmSheet({
           <Button
             variant={danger ? "danger" : "default"}
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {busy ? `${confirmLabel}…` : confirmLabel}
           </Button>
         </div>
       </div>

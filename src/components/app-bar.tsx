@@ -39,9 +39,9 @@ export function StatusChip({ status }: { status: TripStatus }) {
     <span
       className={cn(
         "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap",
-        status === "OPEN" && "bg-brand-soft text-brand",
+        status === "OPEN" && "bg-brand-soft text-brand-ink",
         status === "LOCKED" && "bg-field text-ink",
-        status === "SETTLED" && "bg-ink text-paper",
+        status === "SETTLED" && "bg-brand-ink text-paper",
       )}
     >
       {t(`status.${status}`)}
