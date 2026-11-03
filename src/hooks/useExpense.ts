@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { fetchExpense } from '@/lib/expenses/api';
 import { getMockExpense, mockRequest } from '@/mocks';
 import type { ApiError, ExpenseDetail, ExpenseId } from '@/types/api';
 
@@ -18,8 +18,9 @@ export function useExpense(expenseId: ExpenseId): UseQueryResult<ExpenseDetail, 
       if (USE_MOCK) {
         return mockRequest(() => getMockExpense(expenseId));
       }
-      // TODO(real-api): 지출 상세 조회. `canEdit`·사람별 부담액은 서버가 계산해 내려준다.
-      throw notImplemented('useExpense');
+      // 진짜 API: 지출 상세 조회. 사람별 부담액은 src/core가 구하고, `canEdit`은 내 권한(올린 사람·총무)과 여행 상태로 정한다.
+      // TODO(real-api): 실시간 구독은 S5에서 읽기 훅 안에 자동으로 건다 (PLAN 5장).
+      return fetchExpense(expenseId);
     },
   });
 }

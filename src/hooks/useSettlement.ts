@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { fetchSettlement } from '@/lib/expenses/api';
 import { getMockSettlement, mockRequest } from '@/mocks';
 import type { ApiError, Settlement, TripId } from '@/types/api';
 
@@ -18,8 +18,9 @@ export function useSettlement(tripId: TripId): UseQueryResult<Settlement, ApiErr
       if (USE_MOCK) {
         return mockRequest(getMockSettlement);
       }
-      // TODO(real-api): 정산 조회. 잔액·송금 계산은 서버가 src/core를 호출해 내려준다 (화면·훅은 계산하지 않는다).
-      throw notImplemented('useSettlement');
+      // 진짜 API: 지금까지의 지출로 정산 미리보기. 잔액·송금은 src/core 함수만 호출해 구한다 (화면·훅은 계산하지 않는다).
+      // TODO(real-api): 확정 송금(`transfers` 테이블)과 실시간 구독은 S5.
+      return fetchSettlement(tripId);
     },
   });
 }

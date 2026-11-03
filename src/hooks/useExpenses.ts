@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { fetchExpenses } from '@/lib/expenses/api';
 import { getMockExpenses, mockRequest } from '@/mocks';
 import type { ApiError, ExpenseSummary, TripId } from '@/types/api';
 
@@ -15,8 +15,9 @@ export function useExpenses(tripId: TripId): UseQueryResult<readonly ExpenseSumm
       if (USE_MOCK) {
         return mockRequest(getMockExpenses);
       }
-      // TODO(real-api): 여행의 지출 목록 조회 + 실시간 구독 (PLAN 5장).
-      throw notImplemented('useExpenses');
+      // 진짜 API: 여행의 지출 목록 조회 (멤버만 읽을 수 있다).
+      // TODO(real-api): 실시간 구독은 S5에서 읽기 훅 안에 자동으로 건다 (PLAN 5장).
+      return fetchExpenses(tripId);
     },
   });
 }
