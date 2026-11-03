@@ -53,7 +53,7 @@ function failure(operation: string, error: GatewayError): Error {
 }
 
 /** 오류가 있으면 던지고, 없으면 data를 돌려준다. */
-function unwrap(operation: string, result: GatewayResult): unknown {
+export function unwrap(operation: string, result: GatewayResult): unknown {
   if (result.error !== null) throw failure(operation, result.error);
   return result.data;
 }

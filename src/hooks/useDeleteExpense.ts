@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { deleteExpenseRequest } from '@/lib/expenses/api';
 import { mockDeleteExpense, mockRequest } from '@/mocks';
 import type { ApiError, DeleteExpenseInput } from '@/types/api';
 
@@ -20,8 +20,8 @@ export function useDeleteExpense(): UseMutationResult<void, ApiError, DeleteExpe
       if (USE_MOCK) {
         return mockRequest(() => mockDeleteExpense(input));
       }
-      // TODO(real-api): 지출 삭제. `version` 비교(불일치 409), 올린 사람·총무만, 정산 확정이면 423.
-      throw notImplemented('useDeleteExpense');
+      // `version` 비교(불일치 409), 올린 사람·총무만, 정산 확정이면 423은 서버가 판정한다.
+      return deleteExpenseRequest(input);
     },
     onSuccess: () => invalidateAll(queryClient, [queryKeys.allExpenses, queryKeys.allSettlement]),
   });

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { updateExpenseRequest } from '@/lib/expenses/api';
 import { mockRequest, mockUpdateExpense } from '@/mocks';
 import type { ApiError, UpdateExpenseInput, UpdateExpenseResult } from '@/types/api';
 
@@ -23,8 +23,8 @@ export function useUpdateExpense(): UseMutationResult<
       if (USE_MOCK) {
         return mockRequest(() => mockUpdateExpense(input));
       }
-      // TODO(real-api): 지출 수정. `version` 비교(불일치 409), 올린 사람·총무만, 정산 확정이면 423.
-      throw notImplemented('useUpdateExpense');
+      // `version` 비교(불일치 409), 올린 사람·총무만, 정산 확정이면 423은 서버가 판정한다.
+      return updateExpenseRequest(input);
     },
     // 입력에 여행 id가 없어 목록·정산은 접두 키로 한꺼번에 무효화한다.
     onSuccess: (_result, { expenseId }) =>

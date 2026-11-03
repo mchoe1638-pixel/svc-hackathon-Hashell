@@ -17,7 +17,7 @@ const RATE_PATTERN = /^\d+(\.\d{1,6})?$/;
 /** 제어문자와 방향 전환 문자. 이름·제목이 화면에서 다른 글자처럼 보이게 만드는 데 쓰인다. */
 const UNSAFE_TEXT_PATTERN = /[\p{Cc}‪-‮⁦-⁩]/u;
 
-function text(maxLength: number) {
+export function text(maxLength: number) {
   return z
     .string('must be a string')
     .trim()
@@ -80,7 +80,7 @@ const joinTripSchema = z
 const lockTripSchema = z.object({ tripId: tripIdSchema });
 
 /** 첫 번째 문제만 "필드: 이유" 형태로 알려준다. 값 자체는 메시지에 싣지 않는다. */
-function parseWith<T>(schema: z.ZodType<T>, raw: unknown, rootLabel: string): T {
+export function parseWith<T>(schema: z.ZodType<T>, raw: unknown, rootLabel: string): T {
   const result = schema.safeParse(raw);
   if (result.success) return result.data;
 

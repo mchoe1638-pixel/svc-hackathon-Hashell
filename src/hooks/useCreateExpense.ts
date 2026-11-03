@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { createExpenseRequest } from '@/lib/expenses/api';
 import { mockCreateExpense, mockRequest } from '@/mocks';
 import type { ApiError, CreateExpenseInput, CreateExpenseResult } from '@/types/api';
 
@@ -16,12 +16,12 @@ export function useCreateExpense(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation<CreateExpenseResult, ApiError, CreateExpenseInput>({
-    mutationFn: async () => {
+    mutationFn: async (input) => {
       if (USE_MOCK) {
         return mockRequest(mockCreateExpense);
       }
-      // TODO(real-api): 지출 저장. 서버가 환율·수수료를 스냅샷으로 저장하고 src/core로 금액을 계산한다.
-      throw notImplemented('useCreateExpense');
+      // 환율·수수료 스냅샷과 '기타' 품목은 서버가 붙인다. 정산 확정 여행이면 423.
+      return createExpenseRequest(input);
     },
     onSuccess: (_result, { tripId }) =>
       invalidateAll(queryClient, [queryKeys.expenses(tripId), queryKeys.settlement(tripId)]),

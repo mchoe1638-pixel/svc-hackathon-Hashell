@@ -132,13 +132,53 @@ function signedAmountOf(adjustment: AllocationAdjustment): number {
   }
 }
 
+/** 금액만 계산할 때 필요한 품목의 부분. 누가 먹었는지(체크)는 필요 없다. */
+export type PricedItem = Pick<AllocationItem, 'unitPrice' | 'quantity'>;
+
 /** 품목 한 줄의 금액 (단가 × 수량). */
-function lineTotalOf(item: AllocationItem): number {
+function lineTotalOf(item: PricedItem): number {
   assertNonNegativeSafeInteger(item.unitPrice, 'unit price');
   assertPositiveSafeInteger(item.quantity, 'quantity');
   const lineTotal = item.unitPrice * item.quantity;
   assertNonNegativeSafeInteger(lineTotal, 'line total');
   return lineTotal;
+}
+
+interface ReceiptTotals {
+  /** 품목마다 단가 × 수량. */
+  readonly lineTotals: readonly number[];
+  /** 세금·봉사료는 더하고 할인은 뺀 순조정액. */
+  readonly netAdjustment: number;
+  /** 합계 − 품목 합 − 순조정액. 음수면 품목과 조정이 합계를 넘은 것이다. */
+  readonly remainder: number;
+}
+
+/** 합계·품목·조정에서 한꺼번에 구하는 금액들. `computeRemainder`와 `allocateExpense`가 같은 식을 쓰도록 한곳에 둔다. */
+function receiptTotalsOf(
+  total: number,
+  items: readonly PricedItem[],
+  adjustments: readonly AllocationAdjustment[],
+): ReceiptTotals {
+  assertNonNegativeSafeInteger(total, 'total');
+  const netAdjustment = sumAmounts(adjustments.map(signedAmountOf));
+  const lineTotals = items.map(lineTotalOf);
+  const remainder = sumAmounts([total, 0 - sumAmounts(lineTotals), 0 - netAdjustment]);
+  return { lineTotals, netAdjustment, remainder };
+}
+
+/**
+ * 영수증 합계에서 품목 합과 순조정액(세금·봉사료는 더하고 할인은 뺀 값)을 뺀 금액, 곧 품목 밖 금액이다.
+ * 0이면 영수증이 딱 맞고, 양수면 품목에 잡히지 않은 금액이 남았다 (저장할 때는 '기타' 품목 하나로 담는다).
+ * 음수면 품목과 조정이 합계를 넘었다는 뜻이다. 던지지 않고 값으로 알려서, 오류로 바꿀지는 부르는 쪽이 정한다.
+ *
+ * @throws {RangeError} 합계·단가·수량·조정액이 정수 규칙을 어길 때, 알 수 없는 조정 종류일 때.
+ */
+export function computeRemainder(
+  total: number,
+  items: readonly PricedItem[],
+  adjustments: readonly AllocationAdjustment[],
+): number {
+  return receiptTotalsOf(total, items, adjustments).remainder;
 }
 
 /** 위치마다 여러 몫 목록의 같은 자리를 더한다. */
@@ -194,12 +234,8 @@ function applyNetAdjustment(base: readonly number[], netAdjustment: number): rea
  */
 export function allocateExpense(input: AllocationInput): readonly MemberAmount[] {
   const { memberIds, total, items, adjustments, remainderMemberIds } = input;
-  assertNonNegativeSafeInteger(total, 'total');
   const memberIndex = indexMembers(memberIds);
-
-  const netAdjustment = sumAmounts(adjustments.map(signedAmountOf));
-  const lineTotals = items.map(lineTotalOf);
-  const remainder = sumAmounts([total, 0 - sumAmounts(lineTotals), 0 - netAdjustment]);
+  const { lineTotals, netAdjustment, remainder } = receiptTotalsOf(total, items, adjustments);
   if (remainder < 0) {
     throw new RangeError(`items and adjustments are more than the total ${total} by ${0 - remainder}`);
   }
