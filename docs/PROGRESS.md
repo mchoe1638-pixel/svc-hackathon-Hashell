@@ -24,3 +24,74 @@
 - 완료: `docs/design-prototype.html` 기준 토큰(연한 파란 단색 #2F6FEB, Noto Sans KR, 둥글기·움직임)·공통 컴포넌트(AppBar, BottomBar/CTA, Button default·ghost·danger, MemberAvatar, MemberChip, ListRow, Banner, Toast, ConfirmSheet, Screen)·참여/동행 초대 화면, `src/lib/native.ts`(사용자 요청으로 디자인이 작성). tsc·vitest·build 통과
 - 다음: 운영 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()`로 앱/웹 구분), 홈
 - 막힌 점: 앱 공유창은 `mobile/`에 `@capacitor/share` 설치 필요(백엔드, 없으면 복사로 대체), 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
+
+## 2-3 실시간·정산 확정 (작업 중)
+
+> 기록일 2026-11-03, `/clear` 직전. 근거는 이 시점에 실행한 `git status`와 `git diff --stat` 두 개뿐이다. `git status`는 working tree clean(`backend`가 `origin/backend`와 같음), `git diff --stat`은 출력 없음. 테스트와 `tsc`는 돌리지 않았다.
+>
+> **그래서 2-3 코드는 아직 한 줄도 없다.** 이 세션은 기존 계층을 읽고 설계만 정했다. 아래 3·5·6의 코드 설명은 세션 중 파일을 읽어서 안 것이고, 실행으로 확인한 것이 아니다.
+
+**1. 변경 파일 (`git diff --stat` 기준)**
+- 없음. 수정한 파일도 새로 만든 파일도 없다 (`git status`에 untracked도 없음).
+
+**2. 동작 확인까지 끝낸 것**
+- 없음.
+
+**3. 안 끝난 것 (2-3 전부)**
+- DB: `supabase/migrations/20261103170000_transfers.sql` — 미작성. `transfers` 테이블, 함수 `settle_trip`·`unsettle_trip`·`mark_transfer_received`, Realtime 등록
+- 서버 저장소: `src/lib/trips/repository.ts`(`TripsRepository`에 `settleTrip`·`unsettleTrip`·`markTransferReceived`·`listExpenseRecords`), `src/lib/trips/supabaseRepository.ts`(`TripsGateway`에 `selectExpenseRecords` + 위 메서드 구현), `src/lib/trips/supabaseGateway.ts`(`selectExpenseRecords`)
+- 서버 파싱·검증: `src/lib/trips/rows.ts`(`parseSettleOutcome`·`parseUnsettleOutcome`·`parseReceivedOutcome`·`parseTransferRows`·`TRANSFER_COLUMNS`), `src/lib/trips/validation.ts`(`parseSettleTripInput`·`parseUnsettleTripInput`·`parseMarkReceivedInput`), `src/lib/trips/responses.ts`(`markReceivedResultSchema`)
+- 서버 핸들러·라우트: `src/lib/trips/handlers.ts`(`handleSettleTrip`·`handleUnsettleTrip`·`handleMarkReceived`), `app/api/trips/route.ts`(`PUT` 확정·`DELETE` 해제 추가), `app/api/transfers/route.ts`(새 파일, `POST` 받았어요), `src/lib/expenses/rows.ts`(`toSettlementExpense` export; 지금은 `src/lib/expenses/api.ts` 안의 private 함수)
+- 브라우저 호출: `src/lib/trips/client.ts`(`settleTrip`·`unsettleTrip`·`markReceived`), `src/lib/trips/api.ts`(`settleTripRequest`·`unsettleTripRequest`·`markReceivedRequest`·`subscribeTripChanges`)
+- 확정 송금 읽기: `src/lib/expenses/api.ts`의 `fetchSettlement` — 지금은 송금이 항상 `id: null`·`receivedAt: null`인 미리보기다. `SETTLED`면 `transfers`를 읽도록 바꾼다
+- **`src/hooks/useSettleTrip.ts`의 `useSettleTrip`, `src/hooks/useUnsettleTrip.ts`의 `useUnsettleTrip`, `src/hooks/useMarkReceived.ts`의 `useMarkReceived` — 셋 다 아직 `notImplemented`.** `if (USE_MOCK)` 뒤에 `throw notImplemented('<훅 이름>')`뿐이다 (세션 중 읽은 코드이고 `git diff`가 비어 있으므로 그대로). 각각 `settleTripRequest(tripId)` / `unsettleTripRequest(tripId)` / `markReceivedRequest(input)`을 부르게 바꾼다. 훅 이름·입출력·`onSuccess`는 건드리지 않는다
+- 실시간: `src/hooks/useTripRealtime.ts`의 `useTripRealtime` — 작성 예정. `useTrip`·`useExpenses`·`useSettlement` 맨 위에서 호출한다. 지금 이 세 훅에는 "TODO(real-api): 실시간 구독" 주석만 있다
+- core: `src/core/tripStats.ts`의 `checkProgress(items, shares) → { checkedItems, totalItems }`와 `src/core/tripStats.test.ts` — 작성 예정
+- 테스트: `src/lib/trips/fakeTripsDeps.ts`(`status` 옵션 + 새 가짜 메서드 + 호출 기록 배열), `app/api/trips/route.test.ts`(`PUT` 성공·403·423, `DELETE` 성공·403, export 목록에 `PUT`·`DELETE`), `app/api/transfers/route.test.ts`(새 파일: 받는 사람 200, 아닌 사람 403, export `['POST']`)
+- 메서드를 더하면 tsc가 깨지는 기존 가짜: `src/lib/trips/handlers.test.ts`의 `fakeRepository`, `src/lib/trips/supabaseRepository.test.ts`의 `makeGateway`, `src/lib/trips/sqlContract.test.ts`의 `gatewayWith`. `src/hooks/tripHooks.test.ts`는 훅을 React 밖에서 직접 부르므로 `./useTripRealtime` 모킹이 필요하다
+- 마무리: `npx tsc --noEmit`, 이 섹션 정리와 백엔드 칸 5줄 갱신, 보고 후 멈춤
+
+**4. transfers 마이그레이션**
+- 파일을 만들지 않았다 (`git status` clean). 그래서 붙일 SQL이 없다.
+- 만들 파일: `supabase/migrations/20261103170000_transfers.sql` (세션 중 본 가장 최근 마이그레이션은 `20261103150000_receipt_parsing.sql`)
+- **DB 미적용.**
+- 2-1의 `20261103150000_receipt_parsing.sql`을 DB에 적용했는지는 이 세션에서 확인하지 못했다 (사용자에게 물을 것).
+
+**5. 설계 결정 (모두 코드에 아직 없음)**
+- `transfers` 컬럼: `id`, `trip_id`, `sort_order`(확정 때 core가 준 순서 보존), `from_member_id`, `to_member_id`, `krw_amount`(bigint, 1 이상), `received_at`(null 가능), `created_at`.
+- 접근 권한: 멤버는 읽기만(RLS `my_trip_ids()`), 쓰기는 service_role의 DB 함수만 — 기존 테이블과 같은 방식.
+- 정산 확정: OPEN·LOCKED 어느 쪽에서든 가능하고, 이미 SETTLED면 423 `TRIP_SETTLED` (버튼을 두 번 누르면 두 번째가 423).
+- 확정 해제: 총무만, SETTLED → LOCKED, `transfers` 전부 삭제, SETTLED가 아니면 409 `NOT_SETTLED`.
+- 받았어요: 받는 멤버 본인만(총무도 예외 없음), 아니면 403 `NOT_RECEIVER`, 송금이 없으면 404 `TRANSFER_NOT_FOUND`, 이미 눌렀으면 그대로 성공(멱등).
+- 그 밖의 오류 코드: 비멤버·없는 여행 404 `TRIP_NOT_FOUND`, 총무 아님 403 `NOT_ORGANIZER`.
+- 송금 계산 위치: 핸들러가 `listMembers`(joinOrder 순)와 지출 레코드로 `computeBalances` → `minimizeTransfers`(미리보기와 같은 core)를 부르고, 결과를 DB 함수 `settle_trip`에 넘겨 고정한다.
+- 수용하는 경합: 핸들러가 읽은 뒤 DB가 잠그기 전에 체크가 바뀌면 그 변경은 고정된 송금에 안 들어간다 (지문 검사 같은 새 추상화는 안 만든다).
+- DB 함수 3개: 여행 행을 `for update`로 먼저 잠그고 권한·상태를 다시 확인한다 (기존 `toggle_share`와 같은 순서, 여행 → 하위 테이블).
+- 서버와 브라우저가 같은 변환을 쓰도록 `expenses/api.ts`의 private `toSettlementExpense`를 `src/lib/expenses/rows.ts`로 옮겨 export한다.
+- `fetchSettlement`: 여행 상태를 먼저 읽고 SETTLED일 때만 `transfers`를 읽는다 (마이그레이션 적용 전에도 미리보기가 안 깨지게).
+- Realtime 등록: 같은 마이그레이션에서 `expenses`·`items`·`item_shares`·`trips`·`transfers`를 `supabase_realtime` publication에 없을 때만 추가한다 (publication이 없거나 ALL TABLES면 건너뜀).
+- `replica identity full`: `expenses`·`items`·`item_shares`·`transfers`에 건다 (필터 걸린 DELETE를 받으려고). `trips`는 기본 키 `id`로 필터하므로 불필요.
+- 구독 필터: `trip_id=eq.<id>`, `trips`만 `id=eq.<id>` (`expenses`·`items`·`item_shares`에 `trip_id` 컬럼이 있음을 세션 중 확인).
+- `useTripRealtime(tripId)`: 읽기 훅(`useTrip`·`useExpenses`·`useSettlement`) 안에서만 부르고 `src/hooks/index.ts`에서 export하지 않는다 (PLAN 5장).
+- 채널 이름은 구독마다 고유하게(카운터) 만든다 — StrictMode 재마운트에서 같은 이름 채널을 재사용하면 `.on()`이 던진다.
+- 변경이 몰리면 ~300ms 모아 한 번만 `trip`·`expenses`·`expense`·`settlement` 쿼리를 무효화한다.
+- mock 모드(`USE_MOCK`)에서는 구독하지 않는다. `useExpense`는 trip id가 없어 이번에는 제외 (화면도 아직 안 씀).
+- `subscribeTripChanges`는 `src/lib/trips/api.ts`에 둔다 (훅·화면이 supabase를 직접 부르지 않는 규칙).
+- `checkProgress`: 체크(share)가 하나라도 있는 품목 수 / 전체 품목 수. 같은 품목의 중복 share는 한 번, 모르는 품목의 share는 무시.
+- 위치 차이: CLAUDE.md는 통계를 `lib/tripStats.ts`에 두라고 쓰지만 이번 지시는 `src/core/tripStats.ts` → 지시를 따르고 보고에 적는다.
+- 새 추상화 없이 기존 handlers → repository → gateway 계층에 메서드만 더한다.
+- 테스트는 지시대로 core(`checkProgress`)와 라우트 성공·403·423만. SQL 계약 테스트는 안 쓴다.
+
+**6. 다음 세션이 먼저 볼 것**
+- `git status`가 clean인지 → 이 섹션 → `docs/PLAN.md` 8장(상태 기계·실시간)만 읽는다 (통째로 읽지 않는다).
+- 직접 확인하지 못해 다음 세션에서 다시 볼 것: `app/api/transfers/`·`src/hooks/useTripRealtime.ts`·`src/core/tripStats.ts`가 없는지, 위 세 훅이 아직 `notImplemented`인지, 2-1 마이그레이션 적용 여부(사용자에게 질문).
+- 세션 정의 파일: 최근 커밋 `a447876 add: session.md 추가`로 들어온 파일에 세션 2-3 항목이 있을 수 있다 (이 세션에서 `SESSIONS.md`는 못 찾았고 `session.md`는 열어 보지 않았다).
+- 구현 순서: 마이그레이션 → `src/core/tripStats.ts`+테스트 → 서버(`expenses/rows.ts`, `trips/` 아래 rows·validation·repository·supabaseRepository·supabaseGateway·handlers·responses, `app/api/trips/route.ts`, 새 `app/api/transfers/route.ts`) → 브라우저(`trips/client.ts`·`trips/api.ts`·세 훅·`useTripRealtime`·읽기 훅 3곳·`fetchSettlement`) → 테스트와 가짜 보정 → `npx tsc --noEmit`.
+- 본보기: `handleLockTrip`(`src/lib/trips/handlers.ts`), `useLockTrip.ts`(훅을 진짜 API에 연결한 예), `toggle_share`(`supabase/migrations/20261103100000_expenses_items_shares.sql`, DB 함수의 잠금·outcome 스타일).
+- 원 지시의 제약: 새 추상화 금지(기존 계층 재사용) / 테스트는 core와 라우트 성공·403·423만 / 서브에이전트 금지 / 화면 파일 금지 / 끝나면 `tsc` 결과·마이그레이션 파일명·사용자 할 일을 적고 멈춤. SQL 적용과 `vitest`는 사용자가 하고, 커밋·푸시·병합은 AI가 하지 않는다.
+- 기존 가짜 중 `handlers.test.ts`의 `failing`은 `...repository` 스프레드라 영향이 없다. `fakeRepository`의 리터럴만 새 메서드가 필요하다.
+- 공동 계약(`src/types/api.ts`, 훅 이름·입출력)은 바꿀 필요가 없어 보인다 (`TripActionInput`·`TripStatusResult`·`MarkReceivedInput`·`MarkReceivedResult`가 이미 있음). 바꿔야 하면 직접 고치지 말고 변경안과 이유를 보여주고 멈춘다.
+- `useToggleShare`는 낙관적 업데이트와 실패 시 되돌리기가 이미 구현돼 있다 (코드를 읽어 확인, 실행 확인은 아님). 고치지 말고 보고만 한다.
+- 보고에 넣을 주의점: `vitest`와 보안 리뷰는 속도 모드라 안 돌렸다 / 읽기 훅 여러 개가 실시간 채널을 여러 개 연다 / Realtime DELETE 이벤트는 RLS를 거치지 않고 `replica identity full`이라 옛 행 전체가 여행 UUID를 아는 사람에게 갈 수 있다 (해커톤 범위에서 수용) / 확정 송금을 읽는 쿼리의 오류 코드·메시지에 "expense"라는 말이 섞여 있다.
+- 이 PROGRESS.md의 2-1 기록에 이미지 리사이즈 헬퍼가 "PLAN 6장"으로 적혀 있으면 PLAN.md의 "업로드 전 이미지 리사이즈" 절로 고친다 (이번에는 안 고쳤다).
+- 세션이 끝나면 이 섹션을 정리하고 백엔드 칸을 5줄 이내(완료, 다음 할 일, 막힌 점)로 갱신한다.
