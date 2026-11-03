@@ -19,7 +19,7 @@
 
 
 ## 디자인·화면 (이승화)
-- 날짜/시간: 2026-11-02 (S1 시안 반영)
-- 완료: `docs/design-prototype.html` 기준 토큰(연한 파란 단색 #2F6FEB, Noto Sans KR, 둥글기·움직임)·공통 컴포넌트(AppBar, BottomBar/CTA, Button default·ghost·danger, MemberAvatar, MemberChip, ListRow, Banner, Toast, ConfirmSheet, Screen)·참여/동행 초대 화면, `src/lib/native.ts`(사용자 요청으로 디자인이 작성). tsc·vitest·build 통과
-- 다음: 운영 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()`로 앱/웹 구분), 홈
-- 막힌 점: 앱 공유창은 `mobile/`에 `@capacitor/share` 설치 필요(백엔드, 없으면 복사로 대체), 참여 화면에서 "이 기기가 이미 참여했는지" 알 방법 없음(api.ts)
+- 날짜/시간: 2026-11-03 (전체 화면 시안 반영)
+- 완료: 시안 토큰 전부(그라데이션·여행지 색·그림자) + 새 컴포넌트(추정 배지·영수증·Segmented·TripArt·돌아보기) + 화면 홈·품목 체크·지출 추가(4단계)·정산/확정·방 만들기·돌아보기(+스토리 이미지), 참여 alreadyJoined 이동·`/` 앱 확인 useEffect로. `src/core/tripStats.ts` `buildWrapped` + 테스트(사용자 허용). tsc·vitest 430 통과, 미커밋
+- 다음: 폰으로 미리보기 확인, 지출 수정 화면(시안 없음), 백엔드 훅 생기면 홈 "먹은 몫/낸 돈" 줄
+- 막힌 점(백엔드 요청): `JoinInfo.alreadyJoined`, `MemberBalance.paidKrw/eatenKrw`, `ExpenseSummary.myShareKrw`·날짜, 품목 `tag`(맥주 잔 수), `useWrapped`+AI `wrapped_title`, `money.ts` `parseMoney`

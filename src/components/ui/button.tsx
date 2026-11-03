@@ -16,7 +16,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground",
+        default: "bg-grad text-primary-foreground",
         ghost: "bg-field text-ink",
         danger: "bg-paper text-send inset-ring-2 inset-ring-send",
         outline: "bg-paper text-ink inset-ring-2 inset-ring-line",
