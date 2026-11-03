@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { Adjustment, ExpenseItem, ExpenseSummary, TripId } from '../../types/api';
 import type {
   CreateExpenseOutcome,
   DeleteExpenseOutcome,
@@ -101,4 +102,148 @@ export function parseDeleteExpenseOutcome(raw: unknown): DeleteExpenseOutcome {
 
 export function parseToggleShareOutcome(raw: unknown): ToggleShareOutcome {
   return { kind: toggleOutcomeSchema.parse(raw).outcome };
+}
+
+// ── 읽기: 브라우저가 RLS로 읽는 지출 행 ─────────────────────────────────────
+// 아래 열 이름과 값 목록은 마이그레이션(`20261103100000_expenses_items_shares.sql`)의 열·체크 제약과 같다.
+// bigint 열도 PostgREST가 JSON 숫자로 주므로 `z.int()`로 읽는다.
+
+const PAYMENT_METHODS = ['CASH', 'CARD'] as const;
+const SPLIT_TYPES = ['EACH', 'SHARED'] as const;
+const ADJUSTMENT_KINDS = ['TAX', 'SERVICE', 'DISCOUNT'] as const;
+const ITEM_CATEGORIES = [
+  'alcohol',
+  'drink',
+  'meal',
+  'snack',
+  'transport',
+  'shopping',
+  'lodging',
+  'other',
+] as const;
+
+/** 지출 목록의 한 줄. */
+const expenseSummaryRowSchema = z.object({
+  id: z.guid(),
+  title: z.string(),
+  payer_id: z.guid(),
+  created_by: z.guid(),
+  amount: z.int(),
+  currency: z.string(),
+  payment_method: z.enum(PAYMENT_METHODS),
+  krw_amount: z.int(),
+  is_estimated: z.boolean(),
+});
+
+/** 상세·정산에는 소속 여행, 환율·수수료율 스냅샷, `version`이 더 필요하다. */
+const expenseSnapshotRowSchema = expenseSummaryRowSchema.extend({
+  trip_id: z.guid(),
+  applied_rate: z.number(),
+  applied_fee_rate: z.number(),
+  version: z.int(),
+});
+
+const itemRowSchema = z.object({
+  id: z.guid(),
+  sort_order: z.int(),
+  original_name: z.string(),
+  korean_name: z.string(),
+  unit_price: z.int(),
+  quantity: z.int(),
+  split_type: z.enum(SPLIT_TYPES),
+  category: z.enum(ITEM_CATEGORIES),
+});
+
+/** 체크한 칸만 행이 있다. */
+const itemShareRowSchema = z.object({ member_id: z.guid() });
+
+const adjustmentRowSchema = z.object({
+  sort_order: z.int(),
+  kind: z.enum(ADJUSTMENT_KINDS),
+  amount: z.int(),
+});
+
+const expenseRecordRowSchema = expenseSnapshotRowSchema.extend({
+  items: z.array(itemRowSchema.extend({ item_shares: z.array(itemShareRowSchema) })),
+  adjustments: z.array(adjustmentRowSchema),
+});
+
+type ExpenseSummaryRow = z.infer<typeof expenseSummaryRowSchema>;
+type ExpenseRecordRow = z.infer<typeof expenseRecordRowSchema>;
+
+/** 지출 목록 조회의 컬럼 목록. 파서 스키마에서 뽑아서 둘이 어긋날 수 없다. */
+export const EXPENSE_SUMMARY_COLUMNS: string = Object.keys(expenseSummaryRowSchema.shape).join(',');
+
+/** 지출 한 건과 그 품목(체크한 멤버 포함)·조정을 한 번에 가져오는 임베디드 select. */
+export const EXPENSE_RECORD_COLUMNS = [
+  Object.keys(expenseSnapshotRowSchema.shape).join(','),
+  `items(${Object.keys(itemRowSchema.shape).join(',')},item_shares(${Object.keys(itemShareRowSchema.shape).join(',')}))`,
+  `adjustments(${Object.keys(adjustmentRowSchema.shape).join(',')})`,
+].join(',');
+
+/**
+ * 읽어 온 지출 한 건: 목록 줄 + 환율 스냅샷 + 품목·조정. 사람별 몫과 `canEdit`은 없다 (부르는 쪽이 core로 계산한다).
+ * 품목·조정은 `sort_order` 순서다. '기타' 줄은 서버가 일반 SHARED 품목으로 저장하므로 `items`에 그대로 들어 있다.
+ */
+export interface ExpenseRecord {
+  readonly summary: ExpenseSummary;
+  readonly tripId: TripId;
+  readonly appliedRate: number;
+  readonly appliedFeeRate: number;
+  readonly version: number;
+  readonly items: readonly ExpenseItem[];
+  readonly adjustments: readonly Adjustment[];
+}
+
+function toSummary(row: ExpenseSummaryRow): ExpenseSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    payerId: row.payer_id,
+    createdBy: row.created_by,
+    amount: row.amount,
+    currency: row.currency,
+    paymentMethod: row.payment_method,
+    krwAmount: row.krw_amount,
+    isEstimated: row.is_estimated,
+  };
+}
+
+function bySortOrder<T extends { readonly sort_order: number }>(rows: readonly T[]): readonly T[] {
+  return [...rows].sort((a, b) => a.sort_order - b.sort_order);
+}
+
+function toRecord(row: ExpenseRecordRow): ExpenseRecord {
+  return {
+    summary: toSummary(row),
+    tripId: row.trip_id,
+    appliedRate: row.applied_rate,
+    appliedFeeRate: row.applied_fee_rate,
+    version: row.version,
+    items: bySortOrder(row.items).map(
+      (item): ExpenseItem => ({
+        id: item.id,
+        originalName: item.original_name,
+        koreanName: item.korean_name,
+        unitPrice: item.unit_price,
+        quantity: item.quantity,
+        splitType: item.split_type,
+        checkedMemberIds: item.item_shares.map((share) => share.member_id),
+        category: item.category,
+      }),
+    ),
+    adjustments: bySortOrder(row.adjustments).map(({ kind, amount }): Adjustment => ({ kind, amount })),
+  };
+}
+
+export function parseExpenseSummaries(raw: unknown): readonly ExpenseSummary[] {
+  return z.array(expenseSummaryRowSchema).parse(raw).map(toSummary);
+}
+
+export function parseExpenseRecord(raw: unknown): ExpenseRecord {
+  return toRecord(expenseRecordRowSchema.parse(raw));
+}
+
+export function parseExpenseRecords(raw: unknown): readonly ExpenseRecord[] {
+  return z.array(expenseRecordRowSchema).parse(raw).map(toRecord);
 }

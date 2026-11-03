@@ -1,24 +1,46 @@
 import { z } from 'zod';
 
+import { minimizeTransfers } from '../../core/minimizeTransfers';
+import { computeBalances, computeExpenseShares } from '../../core/settlement';
+import type { SettlementExpense } from '../../core/settlement';
 import type {
   CreateExpenseInput,
   CreateExpenseResult,
   DeleteExpenseInput,
+  ExpenseDetail,
+  ExpenseId,
+  ExpenseSummary,
+  Settlement,
   ToggleShareInput,
+  Transfer,
+  TripDetail,
+  TripId,
   UpdateExpenseInput,
   UpdateExpenseResult,
 } from '../../types/api';
-import { apiFetch } from '../api/apiFetch';
+import { apiFetch, invalidResponse } from '../api/apiFetch';
 import type { ApiFetchOptions } from '../api/apiFetch';
+import { ApiRequestError, NETWORK_ERROR_STATUS } from '../apiError';
 import { createSessionProvider } from '../supabase/anonymousSession';
 import type { AnonymousSession } from '../supabase/anonymousSession';
 import { getBrowserClient } from '../supabase/client';
+import { fetchTrip } from '../trips/api';
 import { parseApiResponse } from '../trips/responses';
+import {
+  EXPENSE_RECORD_COLUMNS,
+  EXPENSE_SUMMARY_COLUMNS,
+  parseExpenseRecord,
+  parseExpenseRecords,
+  parseExpenseSummaries,
+} from './rows';
+import type { ExpenseRecord } from './rows';
 
 /**
- * 훅(`src/hooks/`)의 진짜 API 쪽이 부르는 브라우저용 함수 네 개. `app/api/expenses` 하나에 메서드로 나뉜다.
- * 익명 로그인 → 우리 API 호출 순서만 맡고, 훅은 이 파일만 알면 되고 `fetch`나 Supabase를 직접 부르지 않는다.
- * 권한·정산 확정(423)·`version`(409) 판정은 서버가 하고, 여기서는 서버가 준 오류를 `ApiRequestError`로 그대로 던진다.
+ * 훅(`src/hooks/`)의 진짜 API 쪽이 부르는 브라우저용 함수들.
+ * 쓰기 네 개는 `app/api/expenses` 하나에 메서드로 나뉘고, 읽기 세 개는 로그인한 사용자 권한(RLS)으로 Supabase에서 직접 읽는다.
+ * 익명 로그인 → 호출 순서만 맡고, 훅은 이 파일만 알면 되고 `fetch`나 Supabase를 직접 부르지 않는다.
+ * 쓰기의 권한·정산 확정(423)·`version`(409) 판정은 서버가 하고, 여기서는 서버가 준 오류를 `ApiRequestError`로 그대로 던진다.
+ * 읽기의 사람별 몫과 정산은 `src/core`를 부르기만 하고 여기서 계산하지 않는다.
  */
 
 const EXPENSES_PATH = '/api/expenses';
@@ -65,4 +87,137 @@ export async function deleteExpenseRequest(input: DeleteExpenseInput): Promise<v
 /** `useToggleShare` — 품목 체크 하나 바꾸기. 성공하면 돌려줄 값이 없다. */
 export async function toggleShareRequest(input: ToggleShareInput): Promise<void> {
   await call('PATCH', input);
+}
+
+// ── 읽기 ───────────────────────────────────────────────────────────────────
+// 멤버가 아닌 여행의 행은 RLS가 보여주지 않는다. supabase-js의 자동 재시도(1·2·4초)는 끄고(`retry(false)`),
+// 실패를 바로 알려서 react-query가 다시 시도하게 한다.
+
+const expenseIdSchema = z.guid();
+
+function expenseNotFound(): ApiRequestError {
+  return new ApiRequestError(404, 'EXPENSE_NOT_FOUND', 'No expense matches the request.');
+}
+
+function queryError(status: number, message: string): ApiRequestError {
+  if (status === NETWORK_ERROR_STATUS) {
+    return new ApiRequestError(NETWORK_ERROR_STATUS, 'NETWORK_ERROR', `Could not reach the database: ${message}`);
+  }
+  // 404는 "그 지출이 없다"로만 쓴다. 테이블을 못 찾았을 때(마이그레이션 미적용) PostgREST가 주는 404는 서버 오류로 바꾼다.
+  return new ApiRequestError(status === 404 ? 500 : status, 'EXPENSE_QUERY_FAILED', message);
+}
+
+function parseRows<T>(parse: (raw: unknown) => T, raw: unknown): T {
+  try {
+    return parse(raw);
+  } catch (error) {
+    if (error instanceof z.ZodError) throw invalidResponse('Unexpected expense row shape.');
+    throw error;
+  }
+}
+
+/** core는 앞뒤가 안 맞는 데이터를 RangeError로 알린다. 화면이 받는 오류는 언제나 `ApiError`여야 해서 500으로 바꾼다. */
+function computeOrFail<T>(compute: () => T): T {
+  try {
+    return compute();
+  } catch (error) {
+    if (error instanceof RangeError) throw new ApiRequestError(500, 'INCONSISTENT_DATA', error.message);
+    throw error;
+  }
+}
+
+function memberIdsOf(trip: TripDetail): readonly string[] {
+  return trip.members.map((member) => member.id);
+}
+
+/** 저장된 스냅샷을 core 입력으로 옮긴다. '기타' 줄은 일반 SHARED 품목이라 품목 밖 금액이 남지 않는다. */
+function toSettlementExpense(record: ExpenseRecord): SettlementExpense {
+  return {
+    payerId: record.summary.payerId,
+    total: record.summary.amount,
+    currency: record.summary.currency,
+    rate: record.appliedRate,
+    feeRate: record.appliedFeeRate,
+    items: record.items,
+    adjustments: record.adjustments,
+    remainderMemberIds: [],
+  };
+}
+
+/** 사람별 몫은 core가 구한다. `canEdit`은 올린 사람이거나 총무이면서 정산 확정 전일 때만 참이다 (가정 8). */
+function toExpenseDetail(record: ExpenseRecord, trip: TripDetail): ExpenseDetail {
+  const shares = computeOrFail(() => computeExpenseShares(memberIdsOf(trip), toSettlementExpense(record)));
+  const isOwnerOrOrganizer = record.summary.createdBy === trip.me.id || trip.me.isOrganizer;
+  return {
+    ...record.summary,
+    appliedRate: record.appliedRate,
+    appliedFeeRate: record.appliedFeeRate,
+    items: record.items,
+    adjustments: record.adjustments,
+    shares,
+    canEdit: isOwnerOrOrganizer && trip.status !== 'SETTLED',
+    version: record.version,
+  };
+}
+
+async function selectExpenseRecords(tripId: TripId): Promise<readonly ExpenseRecord[]> {
+  const { data, error, status } = await getBrowserClient()
+    .from('expenses')
+    .select(EXPENSE_RECORD_COLUMNS)
+    .eq('trip_id', tripId)
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  return parseRows(parseExpenseRecords, data);
+}
+
+/** `useExpenses` — 여행의 지출 목록, 최신순. 멤버가 아닌 여행은 RLS가 행을 숨겨서 빈 목록이다. */
+export async function fetchExpenses(tripId: TripId): Promise<readonly ExpenseSummary[]> {
+  await getSession();
+  const { data, error, status } = await getBrowserClient()
+    .from('expenses')
+    .select(EXPENSE_SUMMARY_COLUMNS)
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: false })
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  return parseRows(parseExpenseSummaries, data);
+}
+
+/** `useExpense` — 지출 한 건과 사람별 몫. 없거나 멤버가 아니면 404 (RLS가 보여주지 않는다). */
+export async function fetchExpense(expenseId: ExpenseId): Promise<ExpenseDetail> {
+  if (!expenseIdSchema.safeParse(expenseId).success) throw expenseNotFound();
+  await getSession();
+  const { data, error, status } = await getBrowserClient()
+    .from('expenses')
+    .select(EXPENSE_RECORD_COLUMNS)
+    .eq('id', expenseId)
+    .maybeSingle()
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  if (data === null || data === undefined) throw expenseNotFound();
+
+  const record = parseRows(parseExpenseRecord, data);
+  return toExpenseDetail(record, await fetchTrip(record.tripId));
+}
+
+/**
+ * `useSettlement` — 지금까지의 지출로 만든 정산 미리보기.
+ * 확정 송금 테이블(S5)이 아직 없어서 송금은 항상 `id: null`, `receivedAt: null`이다.
+ */
+export async function fetchSettlement(tripId: TripId): Promise<Settlement> {
+  await getSession();
+  const [trip, records] = await Promise.all([fetchTrip(tripId), selectExpenseRecords(tripId)]);
+  const balances = computeOrFail(() => computeBalances(memberIdsOf(trip), records.map(toSettlementExpense)));
+  const plans = computeOrFail(() => minimizeTransfers(balances));
+  const transfers = plans.map(
+    (plan): Transfer => ({
+      id: null,
+      fromMemberId: plan.fromMemberId,
+      toMemberId: plan.toMemberId,
+      krwAmount: plan.krwAmount,
+      isMeReceiver: plan.toMemberId === trip.me.id,
+      receivedAt: null,
+    }),
+  );
+  return { balances, transfers };
 }
