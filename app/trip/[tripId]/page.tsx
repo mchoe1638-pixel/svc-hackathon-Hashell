@@ -18,7 +18,7 @@ import { MenuSheet, type MenuItem } from "@/components/menu-sheet";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { useToast } from "@/components/toast";
-import { TripArt, TripHeader } from "@/components/trip-art";
+import { TripHeader } from "@/components/trip-art";
 import { groupBySpentOn } from "@/components/trip-dates";
 import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
@@ -85,14 +85,11 @@ function TripHome() {
 
         {settled ? (
           <Banner href={`${base}/wrapped`} tone="night">
-            <span className="flex items-center gap-3">
-              <TripArt className="size-14" />
-              <span className="min-w-0 text-caption leading-snug">
-                <strong className="mb-0.5 block truncate text-lg leading-tight font-black tracking-tight text-glow">
-                  {t("home.wrappedBannerTitle")}
-                </strong>
-                {t("home.wrappedBannerHint")}
-              </span>
+            <span className="block text-caption leading-snug">
+              <strong className="mb-0.5 block truncate text-lg leading-tight font-black tracking-tight text-glow">
+                {t("home.wrappedBannerTitle")}
+              </strong>
+              {t("home.wrappedBannerHint")}
             </span>
           </Banner>
         ) : waiting.length > 0 && status === "OPEN" ? (
