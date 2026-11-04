@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/utils";
@@ -86,9 +87,11 @@ export function ConfirmSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // body에 직접 그린다: 부모 중에 transform 애니메이션이 남아 있는 요소(Screen의 `.screen-enter > *`)가 있으면
+  // fixed의 기준이 화면이 아니라 그 요소가 되어, 시트가 카드 안에 갇혀 삐져나온다.
+  return createPortal(
     <div
       className={cn(
         "fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-scrim",
@@ -96,13 +99,14 @@ export function ConfirmSheet({
       )}
       onClick={close}
     >
+      {/* max-h-full + overflow-y-auto: 키보드가 올라와 화면이 줄어도 버튼이 잘려 나가지 않고 시트 안에서 스크롤된다 */}
       <div
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "grid w-full max-w-app gap-3 rounded-t-2xl bg-paper px-gutter pt-6 pb-safe",
+          "grid max-h-full w-full max-w-app gap-3 overflow-y-auto rounded-t-2xl bg-paper px-gutter pt-6 pb-safe",
           closing ? "animate-sheet-down" : "animate-sheet-up",
         )}
         onClick={(event) => event.stopPropagation()}
@@ -129,6 +133,7 @@ export function ConfirmSheet({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

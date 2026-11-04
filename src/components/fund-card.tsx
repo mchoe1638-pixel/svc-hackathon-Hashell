@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
-import { computeFundBalance } from "@/core/fund";
+import { computeFundBalance, fundCollectTotal } from "@/core/fund";
 import { formatMoney } from "@/core/money";
 import { useCreateExpense } from "@/hooks";
 import { t } from "@/i18n/ko";
@@ -101,7 +101,21 @@ function depositInput(
   };
 }
 
-/** "공금 걷기" 버튼 + 1인당 금액 시트. 저장하면 참여한 멤버 전원(총무 포함)의 입금 지출을 차례로 만든다. */
+/** 시트의 "n명 × 금액 = 총 금액" 줄. 금액이 아직 올바르지 않거나 총액이 너무 크면 null. */
+function collectSummary(trip: TripDetail, amountText: string): string | null {
+  const perPerson = parseAmountInput(amountText, trip.localCurrency);
+  if (perPerson === null || perPerson <= 0) return null;
+  const count = trip.members.length;
+  const total = fundCollectTotal(perPerson, count);
+  if (total === null) return null;
+  return t("home.fundCollectSummary", {
+    count,
+    each: formatMoney(perPerson, trip.localCurrency),
+    total: formatMoney(total, trip.localCurrency),
+  });
+}
+
+/** "공금 걷기" 버튼 + 1인당 금액 시트. 저장하면 명단 전원(총무 포함)의 입금 지출을 차례로 만든다. */
 function FundCollect({ trip, organizerId }: { trip: TripDetail; organizerId: MemberId }) {
   const toast = useToast();
   const create = useCreateExpense();
@@ -111,7 +125,9 @@ function FundCollect({ trip, organizerId }: { trip: TripDetail; organizerId: Mem
   const [busy, setBusy] = useState(false);
   const [amountText, setAmountText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const depositors = trip.members.filter((member) => member.isBound);
+  // 링크로 참여했는지와 상관없이 명단 전원에게서 걷는다 (낸 사람은 여행 멤버이기만 하면 서버가 받는다).
+  const depositors = trip.members;
+  const summary = collectSummary(trip, amountText);
 
   function openSheet() {
     setAmountText("");
@@ -186,6 +202,9 @@ function FundCollect({ trip, organizerId }: { trip: TripDetail; organizerId: Mem
                 aria-describedby={error ? errorId : undefined}
               />
             </label>
+            {summary ? (
+              <p className="text-hint font-medium break-keep text-ink tabular-nums">{summary}</p>
+            ) : null}
             {error ? (
               <p id={errorId} role="alert" className="text-caption font-medium text-send">
                 {error}
