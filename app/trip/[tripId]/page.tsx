@@ -13,7 +13,7 @@ import { EstimateBadge } from "@/components/estimate-badge";
 import { currencyLabel, payLabel } from "@/components/format";
 import { ListRow } from "@/components/list-row";
 import { MemberAvatar } from "@/components/member-avatar";
-import { MenuSheet } from "@/components/menu-sheet";
+import { MenuSheet, type MenuItem } from "@/components/menu-sheet";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { useToast } from "@/components/toast";
@@ -24,7 +24,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
 import { formatMoney } from "@/core/money";
-import { useDeleteTrip, useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
+import {
+  useDeleteTrip,
+  useExpense,
+  useExpenses,
+  useLockTrip,
+  useSettlement,
+  useTrip,
+  useUnlockTrip,
+} from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { ExpenseSummary, Member, MemberId, TripDetail } from "@/types/api";
 
@@ -125,16 +133,24 @@ function TripHome() {
   );
 }
 
+/** ⋯ 메뉴에서 고른 링크 동작: 참여 마감(잠그기) 또는 마감 풀기(다시 열기). */
+type LinkAction = "lock" | "unlock";
+
 /**
- * 상단바. 총무에게만 ← 목록으로(`/`)와 ⋯ → 여행 삭제를 보여준다 (시안 노트).
- * 지울 수 있는지는 서버가 정한다 — 403(총무 아님)이면 안내만 하고, 버튼 숨김은 편의일 뿐이다. 정산을 확정한 여행도 지울 수 있다.
+ * 상단바. 총무에게만 ← 목록으로(`/`)와 ⋯ → 링크 잠그기·다시 열기, 여행 삭제를 보여준다 (시안 노트).
+ * 링크 항목은 참여를 받는 중(OPEN)이면 잠그기, 잠겨 있으면(LOCKED) 다시 열기이고, 정산을 확정한 여행에는 없다.
+ * 지울 수 있는지·잠글 수 있는지는 서버가 정한다 — 403(총무 아님)·423(정산 확정)이면 안내만 하고, 버튼 숨김은 편의일 뿐이다.
+ * 정산을 확정한 여행도 지울 수 있다.
  */
 function TripBar({ trip }: { trip: TripDetail }) {
   const router = useRouter();
   const toast = useToast();
   const deleteTrip = useDeleteTrip();
+  const lockTrip = useLockTrip();
+  const unlockTrip = useUnlockTrip();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [linkAction, setLinkAction] = useState<LinkAction | null>(null);
   const isOrganizer = trip.me.isOrganizer;
 
   function remove() {
@@ -157,6 +173,55 @@ function TripBar({ trip }: { trip: TripDetail }) {
     );
   }
 
+  function changeLink(action: LinkAction) {
+    const mutation = action === "lock" ? lockTrip : unlockTrip;
+    mutation.mutate(
+      { tripId: trip.id },
+      {
+        onSuccess: () => {
+          setLinkAction(null);
+          toast(action === "lock" ? t("invite.lockDone") : t("home.unlockDone"));
+        },
+        onError: (error) => {
+          setLinkAction(null);
+          if (error.status === 423) {
+            toast(action === "lock" ? t("invite.lockSettled") : t("home.unlockSettled"));
+          } else toast(t("common.error"));
+        },
+      },
+    );
+  }
+
+  const linkItem: MenuItem | undefined =
+    trip.status === "OPEN"
+      ? { key: "lock", label: t("home.lockLink"), onSelect: () => setLinkAction("lock") }
+      : trip.status === "LOCKED"
+        ? { key: "unlock", label: t("home.unlockLink"), onSelect: () => setLinkAction("unlock") }
+        : undefined;
+  const menuItems: MenuItem[] = [
+    ...(linkItem ? [linkItem] : []),
+    { key: "delete", label: t("home.deleteTrip"), danger: true, onSelect: () => setConfirming(true) },
+  ];
+
+  const waitingNames = trip.members
+    .filter((member) => !member.isBound)
+    .map((member) => member.name)
+    .join(", ");
+  const linkCopy =
+    linkAction === "unlock"
+      ? {
+          title: t("home.unlockConfirmTitle"),
+          hint: t("home.unlockConfirmHint"),
+          confirm: t("home.unlockConfirm"),
+        }
+      : {
+          title: t("invite.lockConfirmTitle"),
+          hint: waitingNames
+            ? t("invite.lockConfirmHint", { names: waitingNames })
+            : t("invite.lockConfirmHintNoOne"),
+          confirm: t("invite.lockConfirm"),
+        };
+
   return (
     <>
       <AppBar
@@ -168,9 +233,7 @@ function TripBar({ trip }: { trip: TripDetail }) {
       <MenuSheet
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        items={[
-          { key: "delete", label: t("home.deleteTrip"), danger: true, onSelect: () => setConfirming(true) },
-        ]}
+        items={menuItems}
       />
       <ConfirmSheet
         open={confirming}
@@ -181,6 +244,17 @@ function TripBar({ trip }: { trip: TripDetail }) {
         busy={deleteTrip.isPending}
         onConfirm={remove}
         onCancel={() => setConfirming(false)}
+      />
+      <ConfirmSheet
+        open={linkAction !== null}
+        title={linkCopy.title}
+        hint={linkCopy.hint}
+        confirmLabel={linkCopy.confirm}
+        busy={lockTrip.isPending || unlockTrip.isPending}
+        onConfirm={() => {
+          if (linkAction) changeLink(linkAction);
+        }}
+        onCancel={() => setLinkAction(null)}
       />
     </>
   );

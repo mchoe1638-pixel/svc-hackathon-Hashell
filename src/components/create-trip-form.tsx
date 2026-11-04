@@ -30,10 +30,12 @@ const DEFAULT_OVERSEAS_CURRENCY: CurrencyCode = "JPY";
 /** 원화 여행의 환율과 카드 수수료. 원화끼리라 바뀔 게 없다. */
 const KRW_RATE = 1;
 const KRW_FEE_RATE = 0;
+/** 해외 여행의 카드 수수료 기본값 2.2%. 입력칸 없이 이 값으로 저장한다 (비율이라 0.022). */
+const DEFAULT_CARD_FEE_RATE = 0.022;
 
-type FieldKey = "title" | "dates" | "myName" | "cashRate" | "fee" | "member";
+type FieldKey = "title" | "dates" | "myName" | "cashRate" | "member";
 
-/** 여행 만들기 폼. 국내면 환율 칸을 숨기고 원화·환율 1·수수료 0으로, 해외면 환율과 카드 수수료를 받는다. */
+/** 여행 만들기 폼. 국내면 환율 칸을 숨기고 원화·환율 1·수수료 0으로, 해외면 환율만 받고 카드 수수료는 기본값(2.2%)으로 저장한다. */
 export function CreateTripForm({ scope }: { scope: TripScope }) {
   const router = useRouter();
   const toast = useToast();
@@ -44,7 +46,6 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
   const [myName, setMyName] = useState("");
   const [overseasCurrency, setOverseasCurrency] = useState<CurrencyCode>(DEFAULT_OVERSEAS_CURRENCY);
   const [cashRate, setCashRate] = useState("");
-  const [fee, setFee] = useState("2.5");
   const [others, setOthers] = useState<string[]>([]);
   const [memberDraft, setMemberDraft] = useState("");
   const [error, setError] = useState<{ field: FieldKey; message: string } | null>(null);
@@ -53,7 +54,6 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
   const datesRef = useRef<HTMLDivElement>(null);
   const myNameRef = useRef<HTMLInputElement>(null);
   const cashRateRef = useRef<HTMLInputElement>(null);
-  const feeRef = useRef<HTMLInputElement>(null);
   const memberRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
   const busy = createTrip.isPending;
@@ -67,7 +67,6 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
       dates: datesRef,
       myName: myNameRef,
       cashRate: cashRateRef,
-      fee: feeRef,
       member: memberRef,
     };
     refs[field].current?.focus();
@@ -101,9 +100,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
       if (!cashRate.trim() || !Number.isFinite(rate) || rate <= 0) {
         return fail("cashRate", t("create.rateMissing"));
       }
-      const percent = Number(fee || "0");
-      if (!Number.isFinite(percent) || percent < 0) return fail("fee", t("create.feeInvalid"));
-      feeRate = Number((percent / 100).toFixed(6));
+      feeRate = DEFAULT_CARD_FEE_RATE;
     }
 
     createTrip.mutate(
@@ -202,39 +199,22 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
                 ))}
               </select>
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <label className="grid gap-1.5 text-hint font-medium text-sub">
-                {t("create.cashRateLabel", { currency })}
-                <Input
-                  ref={cashRateRef}
-                  value={cashRate}
-                  inputMode="decimal"
-                  placeholder={t("create.cashRatePlaceholder")}
-                  disabled={busy}
-                  onChange={(event) => {
-                    setCashRate(event.target.value);
-                    clear();
-                  }}
-                  {...invalid("cashRate")}
-                />
-              </label>
-              <label className="grid gap-1.5 text-hint font-medium text-sub">
-                {t("create.feeLabel")}
-                <Input
-                  ref={feeRef}
-                  value={fee}
-                  inputMode="decimal"
-                  disabled={busy}
-                  onChange={(event) => {
-                    setFee(event.target.value);
-                    clear();
-                  }}
-                  {...invalid("fee")}
-                />
-              </label>
-            </div>
+            <label className="grid gap-1.5 text-hint font-medium text-sub">
+              {t("create.cashRateLabel", { currency })}
+              <Input
+                ref={cashRateRef}
+                value={cashRate}
+                inputMode="decimal"
+                placeholder={t("create.cashRatePlaceholder")}
+                disabled={busy}
+                onChange={(event) => {
+                  setCashRate(event.target.value);
+                  clear();
+                }}
+                {...invalid("cashRate")}
+              />
+            </label>
             {errorFor("cashRate")}
-            {errorFor("fee")}
           </>
         )}
 

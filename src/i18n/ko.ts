@@ -193,6 +193,13 @@ export const ko = {
     tripDeleted: "여행을 지웠어요",
     deleteTripForbidden: "총무만 여행을 지울 수 있어요",
     deleteTripGone: "이미 지워진 여행이에요",
+    lockLink: "링크 잠그기",
+    unlockLink: "링크 다시 열기",
+    unlockConfirmTitle: "링크를 다시 열까요?",
+    unlockConfirmHint: "링크를 가진 사람은 다시 참여할 수 있어요.",
+    unlockConfirm: "다시 열기",
+    unlockDone: "링크를 다시 열었어요",
+    unlockSettled: "정산이 확정된 여행이라 열 수 없어요.",
   },
   expense: {
     addTitle: "지출 추가",
