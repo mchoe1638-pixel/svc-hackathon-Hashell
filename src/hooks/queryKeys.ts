@@ -1,4 +1,4 @@
-import type { ExpenseId, InviteCode, TripId } from '@/types/api';
+import type { CurrencyCode, ExpenseId, InviteCode, TripId } from '@/types/api';
 
 type KeyOf<Name extends string> = readonly [Name, string];
 
@@ -9,6 +9,8 @@ type KeyOf<Name extends string> = readonly [Name, string];
  * 주의: 'expense'(상세)와 'expenses'(목록)는 서로 다른 키라 접두로 겹치지 않는다.
  */
 export const queryKeys = {
+  /** 여행 만들기가 현금 환율 칸을 채우려고 부르는 그 통화의 최근 고시 환율. */
+  cashRate: (currency: CurrencyCode): KeyOf<'cashRate'> => ['cashRate', currency],
   joinInfo: (inviteCode: InviteCode): KeyOf<'joinInfo'> => ['joinInfo', inviteCode],
   trip: (tripId: TripId): KeyOf<'trip'> => ['trip', tripId],
   /** 내 여행 목록. 'trip'(한 건)과는 다른 키라 접두로 겹치지 않는다. */
