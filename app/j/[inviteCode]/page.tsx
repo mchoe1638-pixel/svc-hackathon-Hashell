@@ -169,9 +169,9 @@ function JoinContent() {
           <p className="text-hint text-sub">{t("join.hint")}</p>
         </div>
 
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {members.map((member, order) => (
-            <li key={member.id}>
+            <li key={member.id} className="min-w-0">
               <button
                 type="button"
                 disabled={member.isBound || joinTrip.isPending}

@@ -320,17 +320,17 @@ function ItemBlock({
 
   return (
     <div
-      className={cn("grid gap-2.5 border-b border-dashed border-line py-3.5", stagger && "stagger-item")}
+      className={cn("grid grid-cols-1 gap-2.5 border-b border-dashed border-line py-3.5", stagger && "stagger-item")}
       style={stagger ? ({ "--n": index } as CSSProperties) : undefined}
     >
       <div className="flex items-start gap-2.5">
-        <div className="min-w-0 flex-1 font-bold break-keep">
+        <div className="min-w-0 flex-1 font-bold break-keep wrap-break-word">
           {item.koreanName} ×{item.quantity}
           {item.originalName !== item.koreanName ? (
             <small className="block text-caption font-normal text-sub">{item.originalName}</small>
           ) : null}
         </div>
-        <div className="max-w-[48%] overflow-hidden text-right whitespace-nowrap tabular-nums">
+        <div className="shrink-0 text-right whitespace-nowrap tabular-nums">
           {formatMoney(line, currency)}
           {range ? (
             <small className="block text-xs text-sub">

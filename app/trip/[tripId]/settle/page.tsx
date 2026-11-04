@@ -156,14 +156,14 @@ function Preview({ trip, settlement, onConflict }: ScreenProps) {
             : t("settle.none")}
         </h2>
 
-        <ul className="grid">
+        <ul className="grid grid-cols-1">
           {transfers.map((transfer, index) => (
             <li
               key={index}
-              className="flex min-h-16 items-center gap-2 border-b border-line py-2.5 last:border-b-0"
+              className="flex min-h-16 min-w-0 items-center gap-2 border-b border-line py-2.5 last:border-b-0"
             >
               <TransferWho members={trip.members} transfer={transfer} />
-              <span className="text-bar font-bold tabular-nums">
+              <span className="shrink-0 text-bar font-bold whitespace-nowrap tabular-nums">
                 {formatMoney(transfer.krwAmount, "KRW")}
               </span>
             </li>
@@ -171,7 +171,7 @@ function Preview({ trip, settlement, onConflict }: ScreenProps) {
         </ul>
 
         <p className="mt-2 text-hint text-sub">{t("settle.balancesTitle")}</p>
-        <ul className="-mt-2 grid">
+        <ul className="-mt-2 grid grid-cols-1">
           {trip.members.map((member, order) => {
             const balance = balances.find((b) => b.memberId === member.id)?.krwBalance ?? 0;
             return (
@@ -283,14 +283,14 @@ function Settled({ trip, settlement, onConflict }: ScreenProps) {
         </h2>
         <p className="-mt-3 text-hint text-sub">{t("settle.settledHint")}</p>
 
-        <ul className="grid">
+        <ul className="grid grid-cols-1">
           {transfers.map((transfer, index) => {
             const done = transfer.receivedAt !== null;
             const fromMe = transfer.fromMemberId === trip.me.id;
             return (
               <li
                 key={transfer.id ?? index}
-                className="flex min-h-16 items-center gap-2 border-b border-line py-2.5 last:border-b-0"
+                className="flex min-h-16 min-w-0 items-center gap-2 border-b border-line py-2.5 last:border-b-0"
               >
                 <TransferWho members={trip.members} transfer={transfer} />
                 <div className="grid shrink-0 justify-items-end gap-1 text-right">
