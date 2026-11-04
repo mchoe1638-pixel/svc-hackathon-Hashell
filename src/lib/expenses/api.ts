@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { minimizeTransfers } from '../../core/minimizeTransfers';
 import { computeBalances, computeExpenseShares } from '../../core/settlement';
-import type { SettlementExpense } from '../../core/settlement';
 import type {
   CreateExpenseInput,
   CreateExpenseResult,
@@ -15,6 +14,7 @@ import type {
   Transfer,
   TripDetail,
   TripId,
+  TripSummary,
   UpdateExpenseInput,
   UpdateExpenseResult,
 } from '../../types/api';
@@ -26,18 +26,21 @@ import type { AnonymousSession } from '../supabase/anonymousSession';
 import { getBrowserClient } from '../supabase/client';
 import { fetchTrip } from '../trips/api';
 import { parseApiResponse } from '../trips/responses';
+import { TRANSFER_COLUMNS, TRIP_WITH_MEMBERS_COLUMNS, parseTransferRows, parseTripsWithMembers } from '../trips/rows';
+import { toTripDetail } from '../trips/tripDetail';
 import {
   EXPENSE_RECORD_COLUMNS,
   EXPENSE_SUMMARY_COLUMNS,
   parseExpenseRecord,
   parseExpenseRecords,
   parseExpenseSummaries,
+  toSettlementExpense,
 } from './rows';
 import type { ExpenseRecord } from './rows';
 
 /**
  * 훅(`src/hooks/`)의 진짜 API 쪽이 부르는 브라우저용 함수들.
- * 쓰기 네 개는 `app/api/expenses` 하나에 메서드로 나뉘고, 읽기 세 개는 로그인한 사용자 권한(RLS)으로 Supabase에서 직접 읽는다.
+ * 쓰기 네 개는 `app/api/expenses` 하나에 메서드로 나뉘고, 읽기 네 개는 로그인한 사용자 권한(RLS)으로 Supabase에서 직접 읽는다.
  * 익명 로그인 → 호출 순서만 맡고, 훅은 이 파일만 알면 되고 `fetch`나 Supabase를 직접 부르지 않는다.
  * 쓰기의 권한·정산 확정(423)·`version`(409) 판정은 서버가 하고, 여기서는 서버가 준 오류를 `ApiRequestError`로 그대로 던진다.
  * 읽기의 사람별 몫과 정산은 `src/core`를 부르기만 하고 여기서 계산하지 않는다.
@@ -54,7 +57,7 @@ let sharedSession: (() => Promise<AnonymousSession>) | null = null;
  * 이 파일 안에서 세션 제공자를 하나만 쓴다. 지출은 여행에 들어온 뒤에만 쓰므로 이미 익명 계정이 있다.
  * 설정이 빠져서 던졌을 때는 보관하지 않아서, 다음 호출이 다시 시도한다.
  */
-function getSession(): Promise<AnonymousSession> {
+export function getSession(): Promise<AnonymousSession> {
   if (sharedSession === null) {
     sharedSession = createSessionProvider(getBrowserClient().auth);
   }
@@ -130,20 +133,6 @@ function memberIdsOf(trip: TripDetail): readonly string[] {
   return trip.members.map((member) => member.id);
 }
 
-/** 저장된 스냅샷을 core 입력으로 옮긴다. '기타' 줄은 일반 SHARED 품목이라 품목 밖 금액이 남지 않는다. */
-function toSettlementExpense(record: ExpenseRecord): SettlementExpense {
-  return {
-    payerId: record.summary.payerId,
-    total: record.summary.amount,
-    currency: record.summary.currency,
-    rate: record.appliedRate,
-    feeRate: record.appliedFeeRate,
-    items: record.items,
-    adjustments: record.adjustments,
-    remainderMemberIds: [],
-  };
-}
-
 /** 사람별 몫은 core가 구한다. `canEdit`은 올린 사람이거나 총무이면서 정산 확정 전일 때만 참이다 (가정 8). */
 function toExpenseDetail(record: ExpenseRecord, trip: TripDetail): ExpenseDetail {
   const shares = computeOrFail(() => computeExpenseShares(memberIdsOf(trip), toSettlementExpense(record)));
@@ -201,13 +190,39 @@ export async function fetchExpense(expenseId: ExpenseId): Promise<ExpenseDetail>
 }
 
 /**
- * `useSettlement` — 지금까지의 지출로 만든 정산 미리보기.
- * 확정 송금 테이블(S5)이 아직 없어서 송금은 항상 `id: null`, `receivedAt: null`이다.
+ * 확정(SETTLED) 뒤의 송금. `settle_trip`이 고정해 둔 `transfers`를 RLS로 읽고, 순서는 `parseTransferRows`가 `sort_order`로 맞춘다.
+ * 오류 이름과 문구는 지출 읽기와 같은 `queryError`·`parseRows`를 그대로 써서 `EXPENSE_…`로 나온다.
+ */
+async function selectFixedTransfers(tripId: TripId, myMemberId: string): Promise<readonly Transfer[]> {
+  const { data, error, status } = await getBrowserClient()
+    .from('transfers')
+    .select(TRANSFER_COLUMNS)
+    .eq('trip_id', tripId)
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  return parseRows(parseTransferRows, data).map(
+    (row): Transfer => ({
+      id: row.id,
+      fromMemberId: row.fromMemberId,
+      toMemberId: row.toMemberId,
+      krwAmount: row.krwAmount,
+      isMeReceiver: row.toMemberId === myMemberId,
+      receivedAt: row.receivedAt,
+    }),
+  );
+}
+
+/**
+ * `useSettlement` — 정산 결과. 확정 전(OPEN·LOCKED)에는 지금까지의 지출로 만든 미리보기라 송금의 `id`·`receivedAt`이 null이고,
+ * 확정 뒤에는 고정된 송금(`transfers`)을 그대로 돌려준다. 잔액은 어느 쪽이든 core가 구한다 (확정 뒤에는 지출이 바뀌지 않는다).
  */
 export async function fetchSettlement(tripId: TripId): Promise<Settlement> {
   await getSession();
   const [trip, records] = await Promise.all([fetchTrip(tripId), selectExpenseRecords(tripId)]);
   const balances = computeOrFail(() => computeBalances(memberIdsOf(trip), records.map(toSettlementExpense)));
+  if (trip.status === 'SETTLED') {
+    return { balances, transfers: await selectFixedTransfers(tripId, trip.me.id) };
+  }
   const plans = computeOrFail(() => minimizeTransfers(balances));
   const transfers = plans.map(
     (plan): Transfer => ({
@@ -220,4 +235,56 @@ export async function fetchSettlement(tripId: TripId): Promise<Settlement> {
     }),
   );
   return { balances, transfers };
+}
+
+// ── 여행 목록 ──────────────────────────────────────────────────────────────
+// 내 잔액이 지출에서 나와서 여행 읽기(`trips/api.ts`)가 아니라 여기에 둔다.
+// 오류 이름과 문구는 지출 읽기와 같은 `queryError`·`parseRows`를 그대로 써서 `EXPENSE_…`로 나온다.
+
+/** 여러 여행의 지출을 한 번에 읽는다 (여행마다 따로 읽지 않는다). */
+async function selectExpenseRecordsOf(tripIds: readonly TripId[]): Promise<readonly ExpenseRecord[]> {
+  const { data, error, status } = await getBrowserClient()
+    .from('expenses')
+    .select(EXPENSE_RECORD_COLUMNS)
+    .in('trip_id', tripIds)
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  return parseRows(parseExpenseRecords, data);
+}
+
+/** 내 잔액은 정산 화면과 같은 core(`computeBalances`)로 구한다. 멤버 수는 아직 참여하지 않은 이름도 센다. */
+function toTripSummary(trip: TripDetail, records: readonly ExpenseRecord[]): TripSummary {
+  const balances = computeOrFail(() => computeBalances(memberIdsOf(trip), records.map(toSettlementExpense)));
+  return {
+    id: trip.id,
+    title: trip.title,
+    status: trip.status,
+    localCurrency: trip.localCurrency,
+    startDate: trip.startDate ?? null,
+    endDate: trip.endDate ?? null,
+    memberCount: trip.members.length,
+    myBalance: balances.find((balance) => balance.memberId === trip.me.id)?.krwBalance ?? 0,
+  };
+}
+
+/**
+ * `useTrips` — 내가 멤버인 여행 전부와 각 여행의 멤버 수·내 원화 잔액. 만든 지 가장 최근인 여행이 앞이다.
+ * 정산 확정을 뒤로 보내는 정렬은 화면이 한다 (안정 정렬이라 이 순서가 그대로 남는다).
+ * 멤버가 아닌 여행은 RLS가 행을 숨긴다. 여행이 하나도 없으면 지출은 읽지 않는다.
+ */
+export async function fetchTrips(): Promise<readonly TripSummary[]> {
+  const session = await getSession();
+  const { data, error, status } = await getBrowserClient()
+    .from('trips')
+    .select(TRIP_WITH_MEMBERS_COLUMNS)
+    .order('created_at', { ascending: false })
+    .retry(false);
+  if (error !== null) throw queryError(status, error.message);
+  const trips = parseRows(parseTripsWithMembers, data)
+    .map(({ trip, members }) => toTripDetail(trip, members, session.userId))
+    .filter((trip): trip is TripDetail => trip !== null);
+  if (trips.length === 0) return [];
+
+  const records = await selectExpenseRecordsOf(trips.map((trip) => trip.id));
+  return trips.map((trip) => toTripSummary(trip, records.filter((record) => record.tripId === trip.id)));
 }

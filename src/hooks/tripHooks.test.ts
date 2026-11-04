@@ -24,6 +24,8 @@ vi.mock('@/lib/trips/api', () => ({
   fetchTrip: vi.fn(),
   lockTripRequest: vi.fn(),
 }));
+// `useTrip`이 안에서 부르는 실시간 구독은 `useEffect`를 써서 화면 밖에서는 부를 수 없다. 이 테스트의 관심사도 아니다.
+vi.mock('./useTripRealtime', () => ({ useTripRealtime: vi.fn() }));
 
 type ApiFunctionName =
   | 'createTripRequest'

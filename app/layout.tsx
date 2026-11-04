@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ToastProvider } from "@/components/toast";
 import { t } from "@/i18n/ko";
+import { BackButtonHandler } from "@/lib/native/BackButtonHandler";
 import { Providers } from "@/lib/providers";
 
 // 시안 글꼴. 빌드 때 받아 함께 배포한다 (사용자 기기에서 Google에 요청하지 않음).
@@ -23,9 +24,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover", // env(safe-area-inset-bottom) 사용에 필요
   themeColor: "#ffffff",
   colorScheme: "light",
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({
@@ -38,6 +42,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <Providers>
           <ToastProvider>
+            <BackButtonHandler />
             <div className="relative mx-auto flex min-h-dvh w-full max-w-app flex-col bg-background">
               {children}
             </div>

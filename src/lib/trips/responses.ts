@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { invalidResponse } from '../api/apiFetch';
 
 /**
- * 우리 API(`app/api/trips`, `app/api/join`)의 응답 모양. 서버가 보낸 값도 외부 데이터라서
+ * 우리 API(`app/api/trips`, `app/api/join`, `app/api/transfers`)의 응답 모양. 서버가 보낸 값도 외부 데이터라서
  * 클라이언트가 한 번 확인하고, 어긋나면 `INVALID_RESPONSE`로 실패시킨다.
  */
 
@@ -29,6 +29,8 @@ export const joinInfoSchema = z.object({
 });
 
 export const tripStatusResultSchema = z.object({ status: z.enum(TRIP_STATUSES) });
+
+export const markReceivedResultSchema = z.object({ receivedAt: z.string() });
 
 /** 모양이 맞으면 타입이 붙은 값을, 아니면 `INVALID_RESPONSE`를 던진다. 어긋난 값 자체는 메시지에 싣지 않는다. */
 export function parseApiResponse<S extends z.ZodType>(schema: S, raw: unknown): z.infer<S> {

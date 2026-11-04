@@ -83,6 +83,7 @@
   /* 레이아웃: 360px 폰 기준, 넓은 화면은 가운데 정렬 */
   --app-max-width: 480px;
   --bottom-cta-height: 4.875rem; /* 하단 버튼 영역: 위 12 + 버튼 52 + 아래 14 (safe-area 제외) */
+  --bar-height: 3.375rem; /* 상단바 최소 높이 (상태바 여백 제외) */
 }
 
 /* 아이폰·안드로이드 홈 바 여백. viewport-fit=cover 필요 (layout.tsx) */
@@ -93,6 +94,22 @@
 /* 하단 고정 버튼에 내용이 가려지지 않게 하는 빈 공간 */
 @utility h-bottom-cta-safe {
   height: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom));
+}
+
+/*
+ * 상단바. 안드로이드 edge-to-edge·노치에서 상태바 밑으로 들어가지 않게 상태바 높이만큼 위를 더 띄운다.
+ * viewport-fit=cover 필요 (layout.tsx). 안전 영역이 없는 곳(아이폰 사파리·PC)은 env()가 0이라 그대로다.
+ */
+@utility pt-bar-safe {
+  padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
+}
+@utility min-h-bar-safe {
+  min-height: calc(var(--bar-height) + env(safe-area-inset-top, 0px));
+}
+
+/* 상단바 바로 아래에 붙는 sticky 요소의 top */
+@utility top-bar-safe {
+  top: calc(var(--bar-height) + env(safe-area-inset-top, 0px));
 }
 
 /* 브랜드 그라데이션 면 */
@@ -253,7 +270,7 @@
   html {
     -webkit-text-size-adjust: 100%;
     /* Tab으로 이동한 요소가 위 상단바·아래 고정 버튼에 가려지지 않게 */
-    scroll-padding-top: 4rem;
+    scroll-padding-top: calc(4rem + env(safe-area-inset-top, 0px));
     scroll-padding-bottom: calc(var(--bottom-cta-height) + env(safe-area-inset-bottom) + 0.5rem);
   }
   button,

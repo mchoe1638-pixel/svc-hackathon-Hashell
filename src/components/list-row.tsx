@@ -18,7 +18,7 @@ type ListRowProps = {
 
 /**
  * 목록 행 (시안 .row): 최소 높이 60px, 아래 구분선(마지막 행 제외).
- * 목록은 <ul className="grid"> 안에 <li>로 감싸 쓴다.
+ * 목록은 <ul className="grid grid-cols-1"> 안에 <li>로 감싸 쓴다. grid-cols-1이 없으면 긴 제목이 열을 넓혀 금액이 화면 밖으로 밀린다.
  */
 export function ListRow({
   leading,
@@ -45,7 +45,7 @@ export function ListRow({
   );
 
   return (
-    <li className="[&:last-child>*]:border-b-0">
+    <li className="min-w-0 [&:last-child>*]:border-b-0">
       {onClick ? (
         <button type="button" onClick={onClick} className={cn(rowClass, "press-row")}>
           {body}

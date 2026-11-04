@@ -140,7 +140,7 @@ function InviteContent() {
           {t("invite.joinedCountRest", { total: members.length })}
         </p>
 
-        <ul className="-mt-2 grid">
+        <ul className="-mt-2 grid grid-cols-1">
           {members.map((member, order) => (
             <ListRow
               key={member.id}

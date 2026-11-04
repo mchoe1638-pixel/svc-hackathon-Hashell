@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { SettlementExpense } from '../../core/settlement';
 import type { Adjustment, ExpenseItem, ExpenseSummary, TripId } from '../../types/api';
 import type {
   CreateExpenseOutcome,
@@ -133,6 +134,8 @@ const expenseSummaryRowSchema = z.object({
   payment_method: z.enum(PAYMENT_METHODS),
   krw_amount: z.int(),
   is_estimated: z.boolean(),
+  // DB는 항상 날짜나 null을 준다. 날짜 컬럼 이전에 만든 테스트 데이터에는 없어서 생략도 받는다.
+  spent_on: z.string().nullable().optional(),
 });
 
 /** 상세·정산에는 소속 여행, 환율·수수료율 스냅샷, `version`이 더 필요하다. */
@@ -206,6 +209,7 @@ function toSummary(row: ExpenseSummaryRow): ExpenseSummary {
     paymentMethod: row.payment_method,
     krwAmount: row.krw_amount,
     isEstimated: row.is_estimated,
+    spentOn: row.spent_on,
   };
 }
 
@@ -246,4 +250,21 @@ export function parseExpenseRecord(raw: unknown): ExpenseRecord {
 
 export function parseExpenseRecords(raw: unknown): readonly ExpenseRecord[] {
   return z.array(expenseRecordRowSchema).parse(raw).map(toRecord);
+}
+
+/**
+ * 저장된 스냅샷을 core 입력으로 옮긴다. '기타' 줄은 일반 SHARED 품목이라 품목 밖 금액이 남지 않는다.
+ * 읽기 훅의 정산 미리보기(브라우저)와 정산 확정(서버)이 같은 변환을 쓰므로 결과가 어긋나지 않는다.
+ */
+export function toSettlementExpense(record: ExpenseRecord): SettlementExpense {
+  return {
+    payerId: record.summary.payerId,
+    total: record.summary.amount,
+    currency: record.summary.currency,
+    rate: record.appliedRate,
+    feeRate: record.appliedFeeRate,
+    items: record.items,
+    adjustments: record.adjustments,
+    remainderMemberIds: [],
+  };
 }

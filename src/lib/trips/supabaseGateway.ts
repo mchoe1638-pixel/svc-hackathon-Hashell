@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { EXPENSE_RECORD_COLUMNS } from '../expenses/rows';
 import { MEMBER_COLUMNS, TRIP_COLUMNS } from './rows';
 import type { GatewayResult, TripsGateway } from './supabaseRepository';
 
@@ -50,8 +51,29 @@ export function createSupabaseGateway(client: SupabaseClient): TripsGateway {
       );
     },
 
+    async unlockTripIfLocked(tripId) {
+      // `status = 'LOCKED'` 조건이 이 쿼리의 핵심이다. 빠지면 정산 완료(SETTLED) 여행이 열려 버린다.
+      return toResult(
+        await client
+          .from('trips')
+          .update({ status: 'OPEN' })
+          .eq('id', tripId)
+          .eq('status', 'LOCKED')
+          .select('id'),
+      );
+    },
+
+    async deleteTrip(tripId) {
+      // 정산 확정(SETTLED) 여행도 지운다. 멤버·지출·품목·체크·조정·송금·AI 사용량은 FK `on delete cascade`가 같은 문장 안에서 지운다.
+      return toResult(await client.from('trips').delete().eq('id', tripId).select('id'));
+    },
+
     async selectTripStatus(tripId) {
       return toResult(await client.from('trips').select('status').eq('id', tripId).maybeSingle());
+    },
+
+    async selectExpenseRecords(tripId) {
+      return toResult(await client.from('expenses').select(EXPENSE_RECORD_COLUMNS).eq('trip_id', tripId));
     },
   };
 }

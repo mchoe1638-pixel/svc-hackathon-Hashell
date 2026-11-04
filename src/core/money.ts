@@ -24,6 +24,9 @@ const CURRENCY_FORMATS: ReadonlyMap<string, CurrencyFormat> = new Map([
   ['CNY', { symbol: 'CN¥', exponent: 2 }],
   ['THB', { symbol: '฿', exponent: 2 }],
   ['TWD', { symbol: 'NT$', exponent: 2 }],
+  // 소수 3자리 통화. 표에 없으면 2자리로 읽혀 금액이 10배 틀어진다. 기호는 표에 없는 통화와 같은 모양(코드 + 공백).
+  ['KWD', { symbol: 'KWD ', exponent: 3 }],
+  ['BHD', { symbol: 'BHD ', exponent: 3 }],
 ]);
 
 /** 표에 없는 통화의 소수 자릿수. 기호 자리에 통화 코드를 쓰므로 코드 뒤에 공백을 둔다. */

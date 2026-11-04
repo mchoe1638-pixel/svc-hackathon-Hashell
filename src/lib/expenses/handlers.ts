@@ -46,7 +46,7 @@ export interface ExpensesDeps {
 /** 지출 만들기·고치기 본문 한도. 품목 100개(이름 100자, 체크 30명)를 다 채우면 기본 한도(16KB)를 훌쩍 넘는다. */
 export const EXPENSE_MAX_BODY_BYTES = 256 * 1024;
 
-function tripNotFound(): HttpError {
+export function tripNotFound(): HttpError {
   return new HttpError(404, 'TRIP_NOT_FOUND', 'No trip matches the request.');
 }
 
@@ -78,8 +78,8 @@ function versionMismatch(): HttpError {
  * 호출한 계정이 멤버로 있고 정산이 끝나지 않은 여행. 없는 여행과 멤버가 아닌 경우는 같은 `notFound()`로 합쳐서
  * 여행이 있는지 알려 주지 않는다. 이 확인이 내용 검사(통화·'기타')보다 먼저다. 잠긴(LOCKED) 여행은 초대만 닫혔으니 쓸 수 있다.
  */
-async function loadWritableTrip(
-  repository: ExpensesRepository,
+export async function loadWritableTrip(
+  repository: Pick<ExpensesRepository, 'findTripWithMembers'>,
   tripId: TripId,
   userId: string,
   notFound: () => HttpError,

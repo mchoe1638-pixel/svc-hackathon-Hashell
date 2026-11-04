@@ -59,16 +59,21 @@ function JoinContent() {
     return <JoinSkeleton />;
   }
 
+  // 정보를 받을 때 404이거나, 이름을 고르는 사이 여행이 지워져 참여 요청이 TRIP_NOT_FOUND를 받은 경우: 같은 안내.
+  if (
+    (joinInfo.status === "error" && joinInfo.error.status === 404) ||
+    joinTrip.error?.code === "TRIP_NOT_FOUND"
+  ) {
+    return (
+      <CenterMessage
+        barTitle={t("app.name")}
+        title={t("join.notFoundTitle")}
+        hint={t("join.notFoundHint")}
+      />
+    );
+  }
+
   if (joinInfo.status === "error") {
-    if (joinInfo.error.status === 404) {
-      return (
-        <CenterMessage
-          barTitle={t("app.name")}
-          title={t("join.notFoundTitle")}
-          hint={t("join.notFoundHint")}
-        />
-      );
-    }
     return (
       <>
         <AppBar title={t("app.name")} />
@@ -88,7 +93,7 @@ function JoinContent() {
       <CenterMessage
         barTitle={title}
         title={t("join.lockedTitle")}
-        hint={t("join.lockedHint", { name: organizer?.name ?? "" })}
+        hint={t("join.lockedHint")}
       />
     );
   }
@@ -141,7 +146,7 @@ function JoinContent() {
           setPickedId(null);
           showNameError(t("join.nameTaken"));
           joinInfo.refetch();
-        } else if (error.status !== 423) {
+        } else if (error.status !== 423 && error.code !== "TRIP_NOT_FOUND") {
           toast(t("common.error"));
         }
       },
@@ -164,9 +169,9 @@ function JoinContent() {
           <p className="text-hint text-sub">{t("join.hint")}</p>
         </div>
 
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {members.map((member, order) => (
-            <li key={member.id}>
+            <li key={member.id} className="min-w-0">
               <button
                 type="button"
                 disabled={member.isBound || joinTrip.isPending}

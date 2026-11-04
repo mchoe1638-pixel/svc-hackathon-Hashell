@@ -11,6 +11,8 @@ type KeyOf<Name extends string> = readonly [Name, string];
 export const queryKeys = {
   joinInfo: (inviteCode: InviteCode): KeyOf<'joinInfo'> => ['joinInfo', inviteCode],
   trip: (tripId: TripId): KeyOf<'trip'> => ['trip', tripId],
+  /** 내 여행 목록. 'trip'(한 건)과는 다른 키라 접두로 겹치지 않는다. */
+  trips: ['trips'] as const,
   expenses: (tripId: TripId): KeyOf<'expenses'> => ['expenses', tripId],
   expense: (expenseId: ExpenseId): KeyOf<'expense'> => ['expense', expenseId],
   settlement: (tripId: TripId): KeyOf<'settlement'> => ['settlement', tripId],

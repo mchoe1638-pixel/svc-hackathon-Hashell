@@ -1,19 +1,30 @@
-import type { InviteCode, TripId } from '../../types/api';
+import type { SettlementExpense } from '../../core/settlement';
+import type { InviteCode, TransferId, TripId } from '../../types/api';
+import { parseExpenseRecords, toSettlementExpense } from '../expenses/rows';
 import type {
+  DeleteTripResult,
   JoinOutcome,
   JoinRequest,
   LockResult,
   MemberRow,
   NewTrip,
+  ReceivedOutcome,
+  SettleOutcome,
+  SettleRequest,
   TripRow,
   TripsRepository,
+  UnlockResult,
+  UnsettleOutcome,
 } from './repository';
 import {
   parseJoinOutcome,
   parseMemberRows,
+  parseReceivedOutcome,
+  parseSettleOutcome,
   parseTripId,
   parseTripRow,
   parseTripStatus,
+  parseUnsettleOutcome,
   parseUpdatedIds,
 } from './rows';
 
@@ -43,8 +54,14 @@ export interface TripsGateway {
   selectMembers(tripId: string): Promise<GatewayResult>;
   /** `status = 'OPEN'`인 여행만 LOCKED로 바꾸고, 바뀐 행의 id 목록을 돌려준다. */
   lockTripIfOpen(tripId: string): Promise<GatewayResult>;
+  /** `status = 'LOCKED'`인 여행만 OPEN으로 바꾸고, 바뀐 행의 id 목록을 돌려준다. */
+  unlockTripIfLocked(tripId: string): Promise<GatewayResult>;
+  /** 여행을 지우고 (정산 확정이어도), 지운 행의 id 목록을 돌려준다. 딸린 행은 FK cascade가 지운다. */
+  deleteTrip(tripId: string): Promise<GatewayResult>;
   /** 여행의 `{ status }` 한 행 (없으면 data가 null). */
   selectTripStatus(tripId: string): Promise<GatewayResult>;
+  /** 여행의 지출 전부와 품목·체크·조정. 정산 계산의 입력이다. 순서는 정하지 않는다. */
+  selectExpenseRecords(tripId: string): Promise<GatewayResult>;
 }
 
 function failure(operation: string, error: GatewayError): Error {
@@ -65,8 +82,21 @@ async function readLockedStatus(gateway: TripsGateway, tripId: TripId): Promise<
 
   const status = parseTripStatus(row);
   if (status === 'OPEN') {
-    // OPEN이었다면 위 갱신이 바꿨어야 한다. 상태는 되돌아가지 않으므로 여기 오면 가정이 깨진 것이다.
+    // OPEN이었다면 위 갱신이 바꿨어야 한다. 그 사이 총무가 다른 기기에서 잠금을 푼 아주 드문 경우가 아니면 가정이 깨진 것이다.
     throw new Error('lock update changed no row but the trip still reads OPEN');
+  }
+  return status;
+}
+
+/** `unlockTrip`이 "바뀐 행이 없다"는 답을 받은 뒤 상태를 읽어 이유를 가린다. */
+async function readUnlockedStatus(gateway: TripsGateway, tripId: TripId): Promise<UnlockResult> {
+  const row = unwrap('select trip status', await gateway.selectTripStatus(tripId));
+  if (row === null) return null;
+
+  const status = parseTripStatus(row);
+  if (status === 'LOCKED') {
+    // LOCKED였다면 위 갱신이 바꿨어야 한다. 그 사이 총무가 다른 기기에서 다시 잠근 아주 드문 경우가 아니면 가정이 깨진 것이다.
+    throw new Error('unlock update changed no row but the trip still reads LOCKED');
   }
   return status;
 }
@@ -85,6 +115,8 @@ export function createSupabaseTripsRepository(gateway: TripsGateway): TripsRepos
           p_card_fee_rate: trip.cardFeeRate,
           p_invite_code: trip.inviteCode,
           p_member_names: [...trip.memberNames],
+          p_start_date: trip.startDate ?? null,
+          p_end_date: trip.endDate ?? null,
         }),
       );
       return parseTripId(data);
@@ -107,6 +139,17 @@ export function createSupabaseTripsRepository(gateway: TripsGateway): TripsRepos
       return readLockedStatus(gateway, tripId);
     },
 
+    async unlockTrip(tripId: TripId): Promise<UnlockResult> {
+      const updated = parseUpdatedIds(unwrap('unlock trip', await gateway.unlockTripIfLocked(tripId)));
+      if (updated.length > 0) return 'OPEN';
+      return readUnlockedStatus(gateway, tripId);
+    },
+
+    async deleteTrip(tripId: TripId): Promise<DeleteTripResult> {
+      const deleted = parseUpdatedIds(unwrap('delete trip', await gateway.deleteTrip(tripId)));
+      return deleted.length > 0 ? 'DELETED' : null;
+    },
+
     async joinTrip(request: JoinRequest): Promise<JoinOutcome> {
       const data = unwrap(
         'join_trip',
@@ -118,6 +161,44 @@ export function createSupabaseTripsRepository(gateway: TripsGateway): TripsRepos
         }),
       );
       return parseJoinOutcome(data);
+    },
+
+    async listSettlementExpenses(tripId: TripId): Promise<readonly SettlementExpense[]> {
+      const data = unwrap('select expenses', await gateway.selectExpenseRecords(tripId));
+      if (data === null) return [];
+      return parseExpenseRecords(data).map(toSettlementExpense);
+    },
+
+    async settleTrip(request: SettleRequest): Promise<SettleOutcome> {
+      const data = unwrap(
+        'settle_trip',
+        await gateway.rpc('settle_trip', {
+          p_trip_id: request.tripId,
+          p_auth_user_id: request.authUserId,
+          p_transfers: request.transfers.map((transfer) => ({
+            from_member_id: transfer.fromMemberId,
+            to_member_id: transfer.toMemberId,
+            krw_amount: transfer.krwAmount,
+          })),
+        }),
+      );
+      return parseSettleOutcome(data);
+    },
+
+    async unsettleTrip(tripId: TripId, authUserId: string): Promise<UnsettleOutcome> {
+      const data = unwrap(
+        'unsettle_trip',
+        await gateway.rpc('unsettle_trip', { p_trip_id: tripId, p_auth_user_id: authUserId }),
+      );
+      return parseUnsettleOutcome(data);
+    },
+
+    async markTransferReceived(transferId: TransferId, authUserId: string): Promise<ReceivedOutcome> {
+      const data = unwrap(
+        'mark_transfer_received',
+        await gateway.rpc('mark_transfer_received', { p_transfer_id: transferId, p_auth_user_id: authUserId }),
+      );
+      return parseReceivedOutcome(data);
     },
   };
 }

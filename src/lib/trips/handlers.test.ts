@@ -95,9 +95,28 @@ function fakeRepository(options: FakeOptions = {}): Fake {
       if (options.lockResult !== undefined) return options.lockResult;
       return trip.status === 'SETTLED' ? 'SETTLED' : 'LOCKED';
     },
+    async unlockTrip() {
+      return trip.status === 'SETTLED' ? 'SETTLED' : 'OPEN';
+    },
+    async deleteTrip() {
+      return 'DELETED';
+    },
     async joinTrip(joinRequest) {
       joined.push(joinRequest);
       return options.joinOutcome ?? { kind: 'TRIP_NOT_FOUND' };
+    },
+    // 정산 확정·해제·받았어요는 이 파일이 아니라 라우트 테스트(`app/api/**`)가 확인한다.
+    async listSettlementExpenses() {
+      return [];
+    },
+    async settleTrip() {
+      return { kind: 'NOT_FOUND' };
+    },
+    async unsettleTrip() {
+      return { kind: 'NOT_FOUND' };
+    },
+    async markTransferReceived() {
+      return { kind: 'NOT_FOUND' };
     },
   };
 

@@ -1,14 +1,23 @@
-import type { CreateTripResult, InviteCode, JoinTripResult, TripStatusResult } from '../../types/api';
+import { minimizeTransfers } from '../../core/minimizeTransfers';
+import { computeBalances } from '../../core/settlement';
+import type {
+  CreateTripResult,
+  InviteCode,
+  JoinTripResult,
+  MarkReceivedResult,
+  TripStatusResult,
+} from '../../types/api';
 import { authenticate, type TokenVerifier } from '../api/auth';
 import { HttpError } from '../api/errors';
 import { jsonResponse, readJsonBody } from '../api/http';
-import type { JoinOutcome, TripsRepository } from './repository';
+import type { JoinOutcome, MemberRow, TripsRepository } from './repository';
 import { findMemberByUser, toJoinInfo } from './tripDetail';
 import {
   parseCreateTripInput,
   parseInviteCodeParam,
   parseJoinTripInput,
-  parseLockTripInput,
+  parseMarkReceivedInput,
+  parseTripActionInput,
 } from './validation';
 
 /**
@@ -28,6 +37,24 @@ function tripNotFound(): HttpError {
   return new HttpError(404, 'TRIP_NOT_FOUND', 'No trip matches the request.');
 }
 
+function notOrganizer(action: string): HttpError {
+  return new HttpError(403, 'NOT_ORGANIZER', `Only the organizer can ${action}.`);
+}
+
+function tripSettled(): HttpError {
+  return new HttpError(423, 'TRIP_SETTLED', 'The trip is settled and no longer accepts changes.');
+}
+
+/**
+ * 총무만 할 수 있는 요청의 1차 확인. 이 여행의 멤버가 아니면 여행이 있는지도 알려주지 않으려고 404,
+ * 멤버인데 총무가 아니면 403이다. (정산 확정·해제는 DB 함수가 잠금 아래에서 한 번 더 확인한다.)
+ */
+function requireOrganizer(members: readonly MemberRow[], userId: string, action: string): void {
+  const me = findMemberByUser(members, userId);
+  if (me === null) throw tripNotFound();
+  if (!me.isOrganizer) throw notOrganizer(action);
+}
+
 /** `POST /api/trips` — 방을 만들고, 만든 익명 계정을 총무 멤버로 묶는다. */
 export async function handleCreateTrip(request: Request, deps: TripsDeps): Promise<Response> {
   const userId = await authenticate(request, deps.verify);
@@ -41,27 +68,106 @@ export async function handleCreateTrip(request: Request, deps: TripsDeps): Promi
 }
 
 /**
- * `PATCH /api/trips` — 초대 링크를 잠근다 (총무만).
- * 이 여행의 멤버가 아니면 여행이 있는지도 알려주지 않으려고 404, 멤버인데 총무가 아니면 403이다.
+ * `PATCH /api/trips` — 초대 링크를 잠근다 (총무만). 이미 잠겨 있으면 그대로 성공(멱등), 정산 확정이면 423.
+ * 잠금이 막는 것은 새 멤버 참여뿐이다. 지출 쓰기와 품목 체크는 OPEN·LOCKED 양쪽에서 된다.
  */
 export async function handleLockTrip(request: Request, deps: TripsDeps): Promise<Response> {
   const userId = await authenticate(request, deps.verify);
-  const { tripId } = parseLockTripInput(await readJsonBody(request));
-
-  const me = findMemberByUser(await deps.repository.listMembers(tripId), userId);
-  if (me === null) throw tripNotFound();
-  if (!me.isOrganizer) {
-    throw new HttpError(403, 'NOT_ORGANIZER', 'Only the organizer can lock the invite link.');
-  }
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  requireOrganizer(await deps.repository.listMembers(tripId), userId, 'lock the invite link');
 
   const status = await deps.repository.lockTrip(tripId);
   if (status === null) throw tripNotFound();
-  if (status === 'SETTLED') {
-    throw new HttpError(423, 'TRIP_SETTLED', 'The trip is settled and no longer accepts changes.');
-  }
+  if (status === 'SETTLED') throw tripSettled();
 
   const result: TripStatusResult = { status };
   return jsonResponse(200, result);
+}
+
+/** `POST /api/trips/unlock` — 초대 링크를 다시 연다 (총무만). 이미 열려 있으면 그대로 성공(멱등), 정산 확정이면 423. */
+export async function handleUnlockTrip(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  requireOrganizer(await deps.repository.listMembers(tripId), userId, 'reopen the invite link');
+
+  const status = await deps.repository.unlockTrip(tripId);
+  if (status === null) throw tripNotFound();
+  if (status === 'SETTLED') throw tripSettled();
+
+  const result: TripStatusResult = { status };
+  return jsonResponse(200, result);
+}
+
+/**
+ * `POST /api/trips/delete` — 여행을 지운다 (총무만, 정산 확정된 여행도). 멤버·지출·품목·체크·조정·송금도 같이 지워진다 (FK cascade).
+ * 총무가 아니면 403, 없거나 멤버가 아니면 404. 성공하면 빈 객체.
+ */
+export async function handleDeleteTrip(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  requireOrganizer(await deps.repository.listMembers(tripId), userId, 'delete the trip');
+
+  const result = await deps.repository.deleteTrip(tripId);
+  if (result === null) throw tripNotFound();
+
+  return jsonResponse(200, {});
+}
+
+/**
+ * `PUT /api/trips` — 정산을 확정한다 (총무만, OPEN·LOCKED 어느 쪽에서든). 이미 확정이면 423.
+ * 송금은 여기서 core로 계산해서 넘기기만 하고, 확인·저장·상태 전환은 DB 함수 한 번(트랜잭션)이 한다.
+ * 지출을 읽은 뒤 잠금을 잡기 전에 다른 기기가 지출을 저장하면 그 지출은 이번 확정에 빠질 수 있다 (아주 드문 경합).
+ */
+export async function handleSettleTrip(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  const action = 'confirm the settlement';
+
+  const members = await deps.repository.listMembers(tripId);
+  requireOrganizer(members, userId, action);
+
+  const expenses = await deps.repository.listSettlementExpenses(tripId);
+  const balances = computeBalances(
+    members.map((member) => member.id),
+    expenses,
+  );
+  const transfers = minimizeTransfers(balances);
+
+  const outcome = await deps.repository.settleTrip({ tripId, authUserId: userId, transfers });
+  switch (outcome.kind) {
+    case 'CONFIRMED': {
+      const result: TripStatusResult = { status: 'SETTLED' };
+      return jsonResponse(200, result);
+    }
+    case 'ALREADY_SETTLED':
+      throw tripSettled();
+    case 'FORBIDDEN':
+      throw notOrganizer(action);
+    case 'NOT_FOUND':
+      throw tripNotFound();
+  }
+}
+
+/** `DELETE /api/trips` — 정산 확정을 해제한다 (총무만). 송금을 전부 지우고 LOCKED로 돌린다. 확정이 아니면 409. */
+export async function handleUnsettleTrip(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { tripId } = parseTripActionInput(await readJsonBody(request));
+  const action = 'undo the settlement';
+  requireOrganizer(await deps.repository.listMembers(tripId), userId, action);
+
+  const outcome = await deps.repository.unsettleTrip(tripId, userId);
+  switch (outcome.kind) {
+    case 'UNSETTLED': {
+      const result: TripStatusResult = { status: 'LOCKED' };
+      return jsonResponse(200, result);
+    }
+    case 'NOT_SETTLED':
+      throw new HttpError(409, 'NOT_SETTLED', 'The trip is not settled.');
+    case 'FORBIDDEN':
+      throw notOrganizer(action);
+    case 'NOT_FOUND':
+      throw tripNotFound();
+  }
 }
 
 /** `GET /api/join?inviteCode=` — 이름 고르기 화면에 필요한 정보와, 이 기기가 이미 참여했는지. */
@@ -106,4 +212,25 @@ export async function handleJoinTrip(request: Request, deps: TripsDeps): Promise
 
   const outcome = await deps.repository.joinTrip({ ...input, authUserId: userId });
   return joinResponse(outcome);
+}
+
+/**
+ * `POST /api/transfers` — 받는 사람 본인이 "받았어요"를 누른다. 총무도 남의 송금은 누를 수 없다(403).
+ * 이미 눌렀으면 처음 시각 그대로 성공(멱등). 송금이 있는 건 정산이 확정된 여행뿐이라 상태는 따로 보지 않는다.
+ */
+export async function handleMarkReceived(request: Request, deps: TripsDeps): Promise<Response> {
+  const userId = await authenticate(request, deps.verify);
+  const { transferId } = parseMarkReceivedInput(await readJsonBody(request));
+
+  const outcome = await deps.repository.markTransferReceived(transferId, userId);
+  switch (outcome.kind) {
+    case 'RECEIVED': {
+      const result: MarkReceivedResult = { receivedAt: outcome.receivedAt };
+      return jsonResponse(200, result);
+    }
+    case 'NOT_RECEIVER':
+      throw new HttpError(403, 'NOT_RECEIVER', 'Only the person receiving the money can mark it as received.');
+    case 'NOT_FOUND':
+      throw new HttpError(404, 'TRANSFER_NOT_FOUND', 'No such transfer.');
+  }
 }

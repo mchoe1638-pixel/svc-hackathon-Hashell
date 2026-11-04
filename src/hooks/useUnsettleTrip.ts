@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { unsettleTripRequest } from '@/lib/trips/api';
 import { mockRequest, mockUnsettleTrip } from '@/mocks';
 import type { ApiError, TripActionInput, TripStatusResult } from '@/types/api';
 
@@ -10,17 +10,17 @@ import { queryKeys } from './queryKeys';
 
 /**
  * 정산 확정 해제 (총무). 고정된 송금을 지우고 상태가 SETTLED → LOCKED로 돌아간다.
- * 정산 확정(SETTLED) 상태에서도 되는 예외 쓰기라 423을 받지 않는다.
+ * 정산 확정(SETTLED) 상태에서도 되는 예외 쓰기라 423을 받지 않는다. 확정 상태가 아니면 409.
  */
 export function useUnsettleTrip(): UseMutationResult<TripStatusResult, ApiError, TripActionInput> {
   const queryClient = useQueryClient();
   return useMutation<TripStatusResult, ApiError, TripActionInput>({
-    mutationFn: async () => {
+    mutationFn: async ({ tripId }) => {
       if (USE_MOCK) {
         return mockRequest(mockUnsettleTrip);
       }
-      // TODO(real-api): 정산 확정 해제 (총무만). 고정된 transfers를 삭제하고 상태를 LOCKED로.
-      throw notImplemented('useUnsettleTrip');
+      // 진짜 API: 정산 확정 해제 (총무만). 고정된 transfers를 삭제하고 상태를 LOCKED로.
+      return unsettleTripRequest(tripId);
     },
     onSuccess: (_result, { tripId }) =>
       invalidateAll(queryClient, [

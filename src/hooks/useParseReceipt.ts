@@ -1,6 +1,6 @@
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 
-import { notImplemented } from '@/lib/apiError';
+import { parseReceiptRequest } from '@/lib/receipts/api';
 import { mockParseReceipt, mockRequest } from '@/mocks';
 import type { ApiError, ParsedReceiptDraft, ParseReceiptInput } from '@/types/api';
 
@@ -16,12 +16,13 @@ export function useParseReceipt(): UseMutationResult<
   ParseReceiptInput
 > {
   return useMutation<ParsedReceiptDraft, ApiError, ParseReceiptInput>({
-    mutationFn: async () => {
+    mutationFn: async (input) => {
       if (USE_MOCK) {
         return mockRequest(mockParseReceipt);
       }
-      // TODO(real-api): 이미지를 서버로 보내 판독 (2MB 상한). Claude API는 서버에서만 부른다.
-      throw notImplemented('useParseReceipt');
+      // 이미지는 서버가 판독하고 버린다 (2MB 상한). 정산 확정 여행이면 423, 여행당 하루 한도를 넘으면 429.
+      // 읽을 수 없으면 422, 판독 서비스가 안 되면 503 — 화면은 이 셋이면 수동 입력으로 넘어간다.
+      return parseReceiptRequest(input);
     },
   });
 }

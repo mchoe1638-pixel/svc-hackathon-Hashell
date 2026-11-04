@@ -437,7 +437,9 @@ button.row:active{transform:scale(.985)}
     "직접 입력은 메뉴별로만 (메뉴 이름·금액·수량). '총액만 적기'(전원 n분의 1)는 없앰. 저장 후 품목 체크로",
     "새 여행 만들기에서 등록 여행지 예시 버튼(제주·상하이·오사카…)을 없앰. 여행지는 글자로만 적는다",
     "지출 추가에 '그냥 n분의 1' 칸 추가: 가게·낸 사람·결제수단·총액만 적으면 전원이 똑같이 나눔(최대 잔여법). 저장 → 홈",
-    "인스타 스토리 이미지를 여행 돌아보기 장마다 한 장씩(6장): 위 탭·좌우 넘기기, 장마다 아래 '인스타 스토리에 올리기'(휴대폰 공유 창 → 인스타그램)"
+    "인스타 스토리 이미지를 여행 돌아보기 장마다 한 장씩(6장): 위 탭·좌우 넘기기, 장마다 아래 '인스타 스토리에 올리기'(휴대폰 공유 창 → 인스타그램)",
+    "여행지 그림을 6장까지(art[0] 명소, art[1] 음식, 나머지 kind: landmark·food·drink·symbol). 스토리 장마다 명소·음식·술·상징 그림을 스티커로 붙임",
+    "그림은 테두리 없는 플랫 스타일(art/*.svg). 37개 도시 그림은 art/manifest.json, 등록되지 않은 여행지는 이름을 보고 도시·바닷가·산 기본 그림 6장"
   ],
   "newData": [
     {
@@ -1061,12 +1063,32 @@ button.row:active{transform:scale(.985)}
       {
         "key": "osaka-castle",
         "label": "오사카성",
+        "kind": "landmark",
         "file": "osaka-castle.svg"
       },
       {
         "key": "takoyaki",
         "label": "타코야키",
+        "kind": "food",
         "file": "takoyaki.svg"
+      },
+      {
+        "key": "tsutenkaku",
+        "label": "츠텐카쿠",
+        "kind": "landmark",
+        "file": "tsutenkaku.svg"
+      },
+      {
+        "key": "highball",
+        "label": "하이볼",
+        "kind": "drink",
+        "file": "highball.svg"
+      },
+      {
+        "key": "maneki-neko",
+        "label": "마네키네코",
+        "kind": "symbol",
+        "file": "maneki-neko.svg"
       }
     ],
     "expenses": [
@@ -1413,12 +1435,32 @@ button.row:active{transform:scale(.985)}
       {
         "key": "oriental-pearl",
         "label": "동방명주",
+        "kind": "landmark",
         "file": "oriental-pearl.svg"
       },
       {
         "key": "xiaolongbao",
         "label": "샤오롱바오",
+        "kind": "food",
         "file": "xiaolongbao.svg"
+      },
+      {
+        "key": "yuyuan",
+        "label": "예원",
+        "kind": "landmark",
+        "file": "yuyuan.svg"
+      },
+      {
+        "key": "huangjiu",
+        "label": "황주",
+        "kind": "drink",
+        "file": "huangjiu.svg"
+      },
+      {
+        "key": "red-lantern",
+        "label": "홍등",
+        "kind": "symbol",
+        "file": "red-lantern.svg"
       }
     ],
     "expenses": [
@@ -1766,12 +1808,38 @@ button.row:active{transform:scale(.985)}
       {
         "key": "dolhareubang",
         "label": "돌하르방",
+        "kind": "landmark",
         "file": "dolhareubang.svg"
       },
       {
         "key": "tangerine",
         "label": "감귤",
+        "kind": "food",
         "file": "tangerine.svg"
+      },
+      {
+        "key": "seongsan",
+        "label": "성산일출봉",
+        "kind": "landmark",
+        "file": "seongsan.svg"
+      },
+      {
+        "key": "black-pork",
+        "label": "흑돼지 구이",
+        "kind": "food",
+        "file": "black-pork.svg"
+      },
+      {
+        "key": "soju",
+        "label": "소주",
+        "kind": "drink",
+        "file": "soju.svg"
+      },
+      {
+        "key": "tewak",
+        "label": "해녀 테왁",
+        "kind": "symbol",
+        "file": "tewak.svg"
       }
     ],
     "expenses": [
@@ -2068,9 +2136,9 @@ button.row:active{transform:scale(.985)}
 
 <script>
 /* ---------- 여행지 데이터: 데이터베이스(destinations)에서 읽고, 못 읽으면 오사카 하나로 ---------- */
-const FALLBACK_RAW = {"order": 1, "name": "오사카", "country": "일본", "match": ["오사카", "osaka", "大阪", "간사이", "도톤보리", "난바", "교토", "일본"], "cur": {"code": "JPY", "sym": "¥", "unit": "엔", "per": 100}, "cash": 905, "tts": 9124, "fee": 22, "nights": "3박 4일", "days": ["10월 24일 토", "10월 25일 일", "10월 26일 월", "10월 27일 화"], "title": "이자카야 정복대", "hb": {"name": "하이볼", "title": "하이볼 장인"}, "readNote": "일본어 영수증도 돼요.", "colors": {"accent": "#E0362C", "glow": "#FFB81C", "night": "#0A1433", "paper": "#FFF9EC"}, "art": [{"key": "osaka-castle", "label": "오사카성"}, {"key": "takoyaki", "label": "타코야키"}], "expenses": [{"id": "izakaya", "name": "이자카야 마루하치", "orig": "居酒屋 まる八 道頓堀店", "day": 0, "payer": "sh", "pay": "CASH", "items": [{"o": "お通し", "k": "오토시 (자릿세)", "u": 330, "q": 4, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール", "k": "생맥주", "u": 600, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 3, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "烏龍茶", "k": "우롱차", "u": 300, "q": 3, "cat": "drink", "eat": ["jh"], "tag": "tea"}, {"o": "お好み焼き", "k": "오코노미야키", "u": 1300, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "唐揚げ", "k": "가라아게", "u": 780, "q": 1, "cat": "snack", "eat": ["mk", "jh", "mj"]}, {"o": "枝豆", "k": "에다마메", "u": 450, "q": 1, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}]}, {"id": "ichiran", "name": "이치란 라멘", "orig": "一蘭 道頓堀店", "day": 0, "payer": "mk", "pay": "CARD", "items": [{"o": "天然とんこつラーメン", "k": "돈코츠 라멘", "u": 980, "q": 4, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "替玉", "k": "면 추가", "u": 210, "q": 3, "cat": "meal", "eat": ["mk", "sh", "jh"]}, {"o": "生ビール", "k": "생맥주", "u": 590, "q": 3, "cat": "alcohol", "eat": ["mk", "sh", "mj"], "tag": "beer"}]}, {"id": "famima", "name": "패밀리마트 난바점", "orig": "ファミリーマート 難波店", "day": 1, "payer": "jh", "pay": "CASH", "items": [{"o": "アサヒスーパードライ 350ml", "k": "아사히 캔맥주", "u": 278, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "おにぎり", "k": "오니기리", "u": 158, "q": 5, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "ファミチキ", "k": "패미치키", "u": 220, "q": 2, "cat": "snack", "eat": ["jh", "mj"]}, {"o": "綾鷹", "k": "녹차", "u": 160, "q": 2, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}, {"id": "daruma", "name": "쿠시카츠 다루마", "orig": "串カツだるま 新世界総本店", "day": 2, "payer": "mk", "pay": "CARD", "items": [{"o": "串カツ盛り合わせ", "k": "쿠시카츠 모둠", "u": 1650, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール 中", "k": "생맥주 (중)", "u": 600, "q": 3, "cat": "alcohol", "eat": ["sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 2, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "ウーロン茶", "k": "우롱차", "u": 350, "q": 1, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}], "parsed": {"name": "타코야키 쥬하치반", "orig": "たこ焼き 十八番 道頓堀店", "day": 3, "items": [{"o": "たこ焼き 8個", "k": "타코야키 8개", "u": 650, "q": 2, "cat": "snack", "eat": []}, {"o": "ねぎマヨ", "k": "파 마요 타코야키", "u": 750, "q": 1, "cat": "snack", "eat": []}, {"o": "ハイボール", "k": "하이볼", "u": 500, "q": 2, "cat": "alcohol", "eat": [], "tag": "hb"}, {"o": "ラムネ", "k": "라무네", "u": 250, "q": 1, "cat": "drink", "eat": []}]}};
-const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="46" y="62" width="108" height="104" rx="16" fill="#4B5CF1"/><rect x="80" y="40" width="40" height="26" rx="8" fill="none" stroke="#191F28" stroke-width="8"/><rect x="46" y="98" width="108" height="10" fill="#FFB81C"/><circle cx="70" cy="172" r="8" fill="#191F28"/><circle cx="130" cy="172" r="8" fill="#191F28"/></svg>`;
-const HEX = /^#[0-9a-fA-F]{6}$/, ASSET = /^[0-9a-f]{32}$/;
+const FALLBACK_RAW = {"order": 1, "name": "오사카", "country": "일본", "match": ["오사카", "osaka", "大阪", "간사이", "도톤보리", "난바", "교토", "일본"], "cur": {"code": "JPY", "sym": "¥", "unit": "엔", "per": 100}, "cash": 905, "tts": 9124, "fee": 22, "nights": "3박 4일", "days": ["10월 24일 토", "10월 25일 일", "10월 26일 월", "10월 27일 화"], "title": "이자카야 정복대", "hb": {"name": "하이볼", "title": "하이볼 장인"}, "readNote": "일본어 영수증도 돼요.", "colors": {"accent": "#E0362C", "glow": "#FFB81C", "night": "#0A1433", "paper": "#FFF9EC"}, "art": [{"key": "osaka-castle", "label": "오사카성", "kind": "landmark", "file": "osaka-castle.svg"}, {"key": "takoyaki", "label": "타코야키", "kind": "food", "file": "takoyaki.svg"}, {"key": "tsutenkaku", "label": "츠텐카쿠", "kind": "landmark", "file": "tsutenkaku.svg"}, {"key": "highball", "label": "하이볼", "kind": "drink", "file": "highball.svg"}, {"key": "maneki-neko", "label": "마네키네코", "kind": "symbol", "file": "maneki-neko.svg"}], "expenses": [{"id": "izakaya", "name": "이자카야 마루하치", "orig": "居酒屋 まる八 道頓堀店", "day": 0, "payer": "sh", "pay": "CASH", "items": [{"o": "お通し", "k": "오토시 (자릿세)", "u": 330, "q": 4, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール", "k": "생맥주", "u": 600, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 3, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "烏龍茶", "k": "우롱차", "u": 300, "q": 3, "cat": "drink", "eat": ["jh"], "tag": "tea"}, {"o": "お好み焼き", "k": "오코노미야키", "u": 1300, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "唐揚げ", "k": "가라아게", "u": 780, "q": 1, "cat": "snack", "eat": ["mk", "jh", "mj"]}, {"o": "枝豆", "k": "에다마메", "u": 450, "q": 1, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}]}, {"id": "ichiran", "name": "이치란 라멘", "orig": "一蘭 道頓堀店", "day": 0, "payer": "mk", "pay": "CARD", "items": [{"o": "天然とんこつラーメン", "k": "돈코츠 라멘", "u": 980, "q": 4, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "替玉", "k": "면 추가", "u": 210, "q": 3, "cat": "meal", "eat": ["mk", "sh", "jh"]}, {"o": "生ビール", "k": "생맥주", "u": 590, "q": 3, "cat": "alcohol", "eat": ["mk", "sh", "mj"], "tag": "beer"}]}, {"id": "famima", "name": "패밀리마트 난바점", "orig": "ファミリーマート 難波店", "day": 1, "payer": "jh", "pay": "CASH", "items": [{"o": "アサヒスーパードライ 350ml", "k": "아사히 캔맥주", "u": 278, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "おにぎり", "k": "오니기리", "u": 158, "q": 5, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "ファミチキ", "k": "패미치키", "u": 220, "q": 2, "cat": "snack", "eat": ["jh", "mj"]}, {"o": "綾鷹", "k": "녹차", "u": 160, "q": 2, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}, {"id": "daruma", "name": "쿠시카츠 다루마", "orig": "串カツだるま 新世界総本店", "day": 2, "payer": "mk", "pay": "CARD", "items": [{"o": "串カツ盛り合わせ", "k": "쿠시카츠 모둠", "u": 1650, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール 中", "k": "생맥주 (중)", "u": 600, "q": 3, "cat": "alcohol", "eat": ["sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 2, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "ウーロン茶", "k": "우롱차", "u": 350, "q": 1, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}], "parsed": {"name": "타코야키 쥬하치반", "orig": "たこ焼き 十八番 道頓堀店", "day": 3, "items": [{"o": "たこ焼き 8個", "k": "타코야키 8개", "u": 650, "q": 2, "cat": "snack", "eat": []}, {"o": "ねぎマヨ", "k": "파 마요 타코야키", "u": 750, "q": 1, "cat": "snack", "eat": []}, {"o": "ハイボール", "k": "하이볼", "u": 500, "q": 2, "cat": "alcohol", "eat": [], "tag": "hb"}, {"o": "ラムネ", "k": "라무네", "u": 250, "q": 1, "cat": "drink", "eat": []}]}};
+const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><path d="M82 56 V36 Q82 30 88 30 H112 Q118 30 118 36 V56" fill="none" stroke="#5C5F64" stroke-width="8" stroke-linecap="round"/><rect x="40" y="54" width="120" height="116" rx="16" fill="#4B6FA8"/><rect x="40" y="104" width="120" height="10" fill="#F2C45A"/><rect x="58" y="66" width="34" height="22" rx="6" fill="#E58A4A"/><circle cx="130" cy="80" r="12" fill="#F7F6F1"/><rect x="116" y="130" width="26" height="18" rx="5" fill="#9CCB8E"/><circle cx="66" cy="176" r="8" fill="#4A4C50"/><circle cx="134" cy="176" r="8" fill="#4A4C50"/></svg>`;
+const HEX = /^#[0-9a-fA-F]{6}$/, ASSET = /^[0-9a-f]{32}$/, ART_KINDS = ["landmark", "food", "drink", "symbol"];
 const ALL = ["mk", "sh", "jh", "mj"];
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -2082,7 +2150,9 @@ function cleanDest(d) {
     match: (Array.isArray(d.match) ? d.match : [d.name]).map(s => String(s).toLowerCase()),
     colors: Object.fromEntries(["accent", "glow", "night", "paper"].map(k => [k, HEX.test(c[k]) ? c[k] : null])),
     // 그림: 아티팩트에서는 데이터베이스의 asset, 파일로 열면 art/ 폴더의 file
-    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && (ASSET.test(a.asset) || /^[a-z0-9-]+\.svg$/.test(a.file || ""))).slice(0, 2),
+    // 0번 = 대표 명소, 1번 = 대표 음식(앱 화면), 2~5번은 스토리 이미지 장식. kind: landmark·food·drink·symbol
+    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && (ASSET.test(a.asset) || /^[a-z0-9-]+\.svg$/.test(a.file || ""))).slice(0, 6)
+      .map((a, i) => ({ ...a, kind: ART_KINDS.includes(a.kind) ? a.kind : (i === 0 ? "landmark" : i === 1 ? "food" : "symbol") })),
   };
 }
 // 등록된 여행지만 찾는다. 못 찾으면 null (다른 여행지로 바꾸지 않는다)
@@ -2265,9 +2335,18 @@ const loc = n => money(n, S.trip.cur);
 // 지금 여행의 여행지 (직접 적은 여행지면 그림·색·예시 없이 이름만)
 const D = () => destOf(S.trip.dest) || genericDest();
 const placeLabel = () => { const d = D(); return d.country ? `${d.country} ${d.name}` : d.name; };
+// 등록되지 않은 여행지 그림: 이름에 바다·산 낌새가 있으면 그 그림, 아니면 도시. 어느 나라든 어색하지 않은 그림만
+const GENERIC_SETS = {"city": [{"key": "generic-city", "label": "도시", "kind": "landmark", "file": "generic-city.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "generic-snack", "label": "길거리 간식", "kind": "food", "file": "generic-snack.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "airplane", "label": "비행기", "kind": "symbol", "file": "airplane.svg"}], "beach": [{"key": "generic-beach", "label": "바닷가", "kind": "landmark", "file": "generic-beach.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "palm-tree", "label": "야자수", "kind": "symbol", "file": "palm-tree.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "airplane", "label": "비행기", "kind": "symbol", "file": "airplane.svg"}], "mountain": [{"key": "generic-mountain", "label": "산", "kind": "landmark", "file": "generic-mountain.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "camera", "label": "카메라", "kind": "symbol", "file": "camera.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "map-pin", "label": "지도", "kind": "symbol", "file": "map-pin.svg"}]};
+const BEACH_WORDS = ["해변", "비치", "바다", "해수욕", "섬", "아일랜드", "리조트", "beach", "island", "resort", "몰디브", "코타키나발루", "사이판", "팔라우", "칸쿤"];
+const MOUNTAIN_WORDS = ["산맥", "등산", "트레킹", "알프스", "국립공원", "캠핑", "mountain", "alps", "히말라야", "로키", "파타고니아"];
+function genericArt(place) {
+  const n = String(place || "").toLowerCase();
+  const k = BEACH_WORDS.some(w => n.includes(w)) ? "beach" : MOUNTAIN_WORDS.some(w => n.includes(w)) ? "mountain" : "city";
+  return GENERIC_SETS[k];
+}
 function genericDest() {
   const T = S.trip;
-  return { name: T.place, country: "", art: [], colors: {}, hb: { name: "하이볼", title: "하이볼 장인" }, readNote: "",
+  return { name: T.place, country: "", art: genericArt(T.place), colors: {}, hb: { name: "하이볼", title: "하이볼 장인" }, readNote: "",
     title: T.title, parsed: genericParsed() };
 }
 /* 시안 전용: 직접 적은 여행지의 영수증 읽기 예시 (원화 금액을 이 여행 통화로 바꿔 둔다) */
@@ -3131,6 +3210,18 @@ function getDownloads() {
   return dlPromise;
 }
 const TALLY = [[14, 14, 86, 14], [50, 14, 50, 86], [50, 50, 80, 50], [24, 46, 24, 86], [8, 86, 92, 86]];
+// 여행지 그림 중 kind 순서대로 하나 고른다 (이미 쓴 그림은 건너뜀)
+function pickArt(d, kinds, used = []) {
+  const l = (d && d.art) || [];
+  for (const k of kinds) { const a = l.find(a => a.kind === k && !used.includes(a)); if (a) { used.push(a); return a; } }
+  return null;
+}
+function artSrc(a) {
+  if (!a) return null;
+  if (ASSET.test(a.asset || "")) return "/_blob/" + a.asset;
+  return location.protocol !== "file:" && a.file ? "art/" + a.file : null;
+}
+const loadArt = a => { const src = artSrc(a); return src ? loadImg(src) : Promise.resolve(null); };
 function loadImg(src) {
   return new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 }
@@ -3144,7 +3235,7 @@ async function drawStory() {
   const sample = [T.name, T.nights, T.days[0] || "", T.title, won(s.total), ...S.members.map(m => m.name), ...ids.flatMap(id => s.titles[id]),
     "hashell 여행 돌아보기 우리가 쓴 돈 맥주를 가장 많이 마신 사람 맥주 잔 이번 여행 우리의 칭호 로 정산했어요 부터 외 명 0123456789₩,"].join("");
   if (document.fonts) await Promise.all(["500", "700", "900"].map(w => document.fonts.load(`${w} 40px "Noto Sans KR"`, sample).catch(() => null)));
-  const art = d.art && d.art[0] ? await loadImg("/_blob/" + d.art[0].asset) : null;
+  const art = await loadArt(d.art && d.art[0]);
 
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
@@ -3243,8 +3334,18 @@ async function drawStoryPage(k) {
   const sample = [T.name, T.nights, T.title, s.top.name, ...T.days, ...S.members.map(m => m.name), ...ids.flatMap(id => s.titles[id]), ...CAT.map(c => c[1]),
     "hashell 여행 돌아보기 우리가 먹고 마신 기록 영수증 장 명 우리가 쓴 돈은 모두 하루에 씩 먹고 마셨어요 이번 여행에서 맥주를 가장 많이 마신 사람은 맥주 잔 모두 맨정신으로 다녔어요 가장 비싼 한 끼 한 사람당 이번 여행의 칭호 로 정산했어요 0123456789₩¥元,.%/"].join("");
   if (document.fonts) await Promise.all(["500", "700", "900"].map(w => document.fonts.load(`${w} 40px "Noto Sans KR"`, sample).catch(() => null)));
-  const a = d.art && d.art[k === 3 ? 1 : 0];
-  const art = (k === 0 || k === 3) && a && ASSET.test(a.asset || "") ? await loadImg("/_blob/" + a.asset) : null;
+  // 장마다 쓰는 그림: [큰 그림, 스티커들]. 한 장 안에서는 같은 그림을 두 번 쓰지 않는다
+  const L = d.art || [];
+  const pick = (skip, ...groups) => { const used = skip.filter(Boolean); return groups.map(g => pickArt(d, g, used)); };
+  const plan = [
+    () => [L[0], pick([L[0]], ["food"], ["drink", "symbol"])],
+    () => [null, pick([], ["food"], ["food", "symbol"])],
+    () => [null, pick([], ["drink", "symbol"], ["symbol", "food"])],
+    () => [L[1], pick([L[1]], ["food", "drink"])],
+    () => [null, pick([L[0]], ["landmark", "symbol"], ["symbol", "drink"])],
+  ][k]();
+  const [art, ...stk] = await Promise.all([loadArt(plan[0]), ...plan[1].map(loadArt)]);
+  const stickers = stk.filter(Boolean);
 
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
@@ -3259,6 +3360,12 @@ async function drawStoryPage(k) {
   // 상자보다 길면 글자 크기를 줄인다
   const fitPx = (t, w, px, max, min = 30) => { x.font = F(w, px); while (x.measureText(t).width > max && px > min) { px -= 2; x.font = F(w, px); } return px; };
   const fit = (t, w, px, color, X, Y, o = {}) => text(t, fitPx(t, w, px, o.max || maxW), w, color, X, Y, o);
+  // 그림을 살짝 돌려서 붙인다 (cx, cy = 가운데)
+  const sticker = (im, cx, cy, size, deg) => {
+    if (!im) return;
+    x.save(); x.translate(cx, cy); x.rotate(deg * Math.PI / 180);
+    x.drawImage(im, -size / 2, -size / 2, size, size); x.restore();
+  };
   const box = (X, Y, w, h, r, fill) => { x.beginPath(); if (x.roundRect) x.roundRect(X, Y, w, h, r); else x.rect(X, Y, w, h); x.fillStyle = fill; x.fill(); };
 
   const [stops, fg] = BG;
@@ -3269,11 +3376,17 @@ async function drawStoryPage(k) {
   // 인스타 스토리 위·아래 약 250px는 가려지므로 내용은 그 사이에
   text("hashell 여행 돌아보기", 34, 700, fg, P, 300, { a: 0.8 });
   text(`${k + 1} / ${STORY_PAGES.length}`, 34, 700, fg, W - P, 300, { a: 0.6, align: "right" });
+  // 1·2·5번째 장: 오른쪽 위 빈자리에 작은 그림 두 장 (가려지는 위 250px 아래, 제목 위)
+  if (k === 1 || k === 2 || k === 4) {
+    sticker(stickers[1], W - P - 250, 420, 150, -8);
+    sticker(stickers[0], W - P - 80, 410, 170, 7);
+  }
 
   if (k === 0) {
     // 그림이 없으면(파일로 열 때) 글을 가운데로
     const oy = art ? 0 : -300;
     if (art) x.drawImage(art, (W - 560) / 2, 420, 560, 560);
+    if (art) { sticker(stickers[0], P + 120, 900, 240, -10); sticker(stickers[1], W - P - 110, 520, 220, 9); }
     fit(`${T.nights}, 우리가 먹고 마신 기록`, 500, 44, fg, P, 1150 + oy, { a: 0.9 });
     fit(T.name, 900, 140, fg, P, 1300 + oy);
     fit(`영수증 ${S.expenses.length}장, ${S.members.length}명`, 500, 40, fg, P, 1390 + oy, { a: 0.8 });
@@ -3324,6 +3437,7 @@ async function drawStoryPage(k) {
     fit(foreign() ? loc(yenOf(s.top)) : won(krwOf(s.top)), 900, 84, fg, P, 830);
     fit(`${T.days[s.top.day] || ""}, 한 사람당 ${won(rd(krwOf(s.top), s.topEaters))}`, 500, 44, fg, P, 920, { a: 0.9 });
     if (art) x.drawImage(art, W - P - 520, 1060, 520, 520);
+    sticker(stickers[0], P + 140, art ? 1420 : 1260, 260, -9);
   } else {
     text("이번 여행의 칭호", 48, 500, fg, P, 520);
     const step = Math.min(150, Math.floor(1000 / Math.max(1, ids.length)));

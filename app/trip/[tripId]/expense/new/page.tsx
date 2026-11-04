@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { Suspense, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 
 import { AppBar } from "@/components/app-bar";
 import { BottomCTA } from "@/components/bottom-cta";
@@ -18,6 +18,7 @@ import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { Segmented } from "@/components/segmented";
 import { useToast } from "@/components/toast";
+import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/components/utils";
@@ -42,7 +43,7 @@ type Step = "add" | "receipt" | "failed" | "review" | "manual";
 /**
  * 지출 추가 — 시안 "add" · "receipt" · "review" · "manual"을 한 주소 안의 단계로.
  * 영수증 찍기(또는 앨범) → 읽는 중 → 읽은 내용 확인·수정 → 저장하면 품목 체크로.
- * 읽기에 실패하면 다시 찍기 / 직접 입력. 직접 입력은 저장하면 홈으로.
+ * 읽기에 실패하면 다시 찍기 / 직접 입력. 직접 입력도 메뉴별로 적고, 저장하면 똑같이 품목 체크로.
  */
 export default function NewExpensePage() {
   return (
@@ -59,6 +60,7 @@ function NewExpense() {
 
   if (trip.status === "pending") return <ScreenSkeleton card={false} />;
   if (trip.status === "error") {
+    if (trip.error.status === 404) return <TripGone />;
     return (
       <>
         <AppBar title={t("expense.addTitle")} backHref={homeHref} />
@@ -95,6 +97,24 @@ function Flow({ trip }: { trip: TripDetail }) {
   const [payerId, setPayerId] = useState<MemberId>(trip.me.id);
   const [method, setMethod] = useState<PaymentMethod>("CASH");
 
+  // 이 화면을 떠나면 입력을 모두 비운다. cacheComponents가 지나간 화면을 숨겨 두고 state를 그대로 살려 둬서,
+  // 저장하고 "지출 추가"로 다시 오면 방금 쓴 가게 이름·메뉴·낸 사람이 남아 있었다.
+  // 효과 정리는 화면이 숨겨질 때 돌기 때문에 떠나는 순간 비워도 깜빡임이 없다. (읽는 중에 떠나 멈춘 단계도 함께 풀린다)
+  const myId = trip.me.id;
+  const resetParse = parse.reset;
+  const resetCreate = create.reset;
+  useEffect(
+    () => () => {
+      setStep("add");
+      setDraft(null);
+      setPayerId(myId);
+      setMethod("CASH");
+      resetParse();
+      resetCreate();
+    },
+    [myId, resetParse, resetCreate],
+  );
+
   const homeHref = `/trip/${trip.id}`;
 
   async function onPhoto(file: File | undefined) {
@@ -121,19 +141,15 @@ function Flow({ trip }: { trip: TripDetail }) {
     );
   }
 
-  function save(content: ExpenseContent, afterSave: "check" | "home") {
+  // 영수증이든 직접 입력이든 저장하면 그 지출의 품목 체크로 간다 (메뉴는 모두 전원 체크로 시작)
+  function save(content: ExpenseContent) {
     if (create.isPending) return;
     create.mutate(
       { ...content, tripId: trip.id, payerId, paymentMethod: method },
       {
         onSuccess: ({ expenseId }) => {
-          if (afterSave === "check") {
-            router.replace(`${homeHref}/expense/${expenseId}?saved=1`);
-            toast(t("expense.savedReceipt"));
-          } else {
-            router.replace(homeHref);
-            toast(t("expense.saved"));
-          }
+          router.replace(`${homeHref}/expense/${expenseId}?saved=1`);
+          toast(t("expense.savedReceipt"));
         },
         onError: (error: ApiError) => {
           if (error.status === 423) {
@@ -231,7 +247,7 @@ function Flow({ trip }: { trip: TripDetail }) {
         payment={payment}
         saving={create.isPending}
         onBack={back}
-        onSave={(content) => save(content, "check")}
+        onSave={save}
       />
     );
   }
@@ -243,7 +259,7 @@ function Flow({ trip }: { trip: TripDetail }) {
         payment={payment}
         saving={create.isPending}
         onBack={back}
-        onSave={(content) => save(content, "home")}
+        onSave={save}
       />
     );
   }
@@ -628,7 +644,45 @@ function EditItemRow({
   );
 }
 
-/** 직접 입력 (시안 "manual"): 가게 이름 + 총액. 품목 없이 저장하면 모두 똑같이 나눈다. */
+/** 직접 입력에서 적는 메뉴 한 줄. 금액은 입력창 글자 그대로 들고 있다가 저장할 때 정수로 바꾼다. */
+interface ManualLine {
+  readonly key: number;
+  readonly name: string;
+  readonly price: string;
+  readonly qty: number;
+}
+
+/** 오류가 난 칸의 id와 그 아래에 보여 줄 문구 */
+interface FieldIssue {
+  readonly id: string;
+  readonly message: string;
+}
+
+const blankLine = (key: number): ManualLine => ({ key, name: "", price: "", qty: 1 });
+
+/** 합계: 금액이 제대로 적힌 줄만 (금액 × 수량)으로 더한다. 더하기는 core의 sumAmounts. */
+function manualTotal(lines: readonly ManualLine[], currency: string): number {
+  return sumAmounts(
+    lines.flatMap((line) => {
+      const unitPrice = parseAmountInput(line.price, currency);
+      return unitPrice !== null && unitPrice > 0 ? [itemLineAmount(unitPrice, line.qty)] : [];
+    }),
+  );
+}
+
+function FieldError({ id, message, className }: { id: string; message: string; className?: string }) {
+  return (
+    <p id={id} role="alert" className={cn("text-caption font-medium text-send", className)}>
+      {message}
+    </p>
+  );
+}
+
+/**
+ * 직접 입력 (시안 "manual"): 가게 이름 + 메뉴별로 이름·금액·수량.
+ * 금액은 한 개 값이고 줄 합계는 금액 × 수량. 완전히 빈 줄은 무시하고, 반만 적은 줄은 그 칸에서 알려준다.
+ * 저장하면 모든 메뉴가 전원 체크로 시작하니, 품목 체크 화면에서 안 먹은 메뉴만 빼면 된다.
+ */
 function Manual({
   trip,
   payment,
@@ -643,35 +697,61 @@ function Manual({
   onSave: (content: ExpenseContent) => void;
 }) {
   const [title, setTitle] = useState("");
-  const [amountText, setAmountText] = useState("");
-  const [error, setError] = useState<{ field: "title" | "amount"; message: string } | null>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
-  const amountRef = useRef<HTMLInputElement>(null);
-  const errorId = useId();
+  const [lines, setLines] = useState<readonly ManualLine[]>(() => [blankLine(0)]);
+  const [nextKey, setNextKey] = useState(1);
+  const [issue, setIssue] = useState<FieldIssue | null>(null);
+  const uid = useId();
   const currency = trip.localCurrency;
+  const titleId = `${uid}-title`;
+  const errorId = `${uid}-error`;
+  const nameId = (key: number) => `${uid}-name-${key}`;
+  const priceId = (key: number) => `${uid}-price-${key}`;
 
-  function submit() {
-    const name = title.trim();
-    if (!name) {
-      setError({ field: "title", message: t("expense.whereMissing") });
-      titleRef.current?.focus();
-      return;
-    }
-    const amount = parseAmountInput(amountText, currency);
-    if (amount === null || amount <= 0) {
-      setError({ field: "amount", message: t("expense.amountMissing") });
-      amountRef.current?.focus();
-      return;
-    }
-    onSave({ title: name, currency, amount, items: [], adjustments: [] });
+  function patch(key: number, change: Partial<ManualLine>) {
+    setLines((list) => list.map((line) => (line.key === key ? { ...line, ...change } : line)));
+    setIssue(null);
   }
 
-  const errorFor = (field: "title" | "amount") =>
-    error?.field === field ? (
-      <p id={errorId} className="-mt-2.5 text-caption font-medium text-send">
-        {error.message}
-      </p>
-    ) : null;
+  function addLine() {
+    setLines((list) => [...list, blankLine(nextKey)]);
+    setNextKey((key) => key + 1);
+  }
+
+  function fail(controlId: string, message: string) {
+    setIssue({ id: controlId, message });
+    document.getElementById(controlId)?.focus();
+  }
+
+  function submit() {
+    const shop = title.trim();
+    if (!shop) return fail(titleId, t("expense.whereMissing"));
+    const filled = lines.filter((line) => line.name.trim() || line.price.trim());
+    if (filled.length === 0) return fail(nameId(lines[0]?.key ?? 0), t("expense.menuMissing"));
+    const items: ExpenseItemInput[] = [];
+    for (const line of filled) {
+      const name = line.name.trim();
+      if (!name) return fail(nameId(line.key), t("expense.itemNameMissing"));
+      const unitPrice = parseAmountInput(line.price, currency);
+      if (unitPrice === null || unitPrice <= 0) {
+        return fail(priceId(line.key), t("expense.itemPriceMissing"));
+      }
+      items.push({
+        originalName: name,
+        koreanName: name,
+        unitPrice,
+        quantity: line.qty,
+        splitType: "EACH",
+        category: "other",
+      });
+    }
+    onSave({
+      title: shop,
+      currency,
+      amount: sumAmounts(items.map((item) => itemLineAmount(item.unitPrice, item.quantity))),
+      items,
+      adjustments: [],
+    });
+  }
 
   return (
     <>
@@ -681,40 +761,179 @@ function Manual({
         <label className="grid gap-1.5 text-hint font-medium text-sub">
           {t("expense.whereLabel")}
           <Input
-            ref={titleRef}
+            id={titleId}
             value={title}
             placeholder={t("expense.wherePlaceholder")}
             maxLength={40}
             onChange={(event) => {
               setTitle(event.target.value);
-              setError(null);
+              setIssue(null);
             }}
-            aria-invalid={error?.field === "title" ? true : undefined}
-            aria-describedby={error?.field === "title" ? errorId : undefined}
+            aria-invalid={issue?.id === titleId ? true : undefined}
+            aria-describedby={issue?.id === titleId ? errorId : undefined}
           />
         </label>
-        {errorFor("title")}
-        <label className="grid gap-1.5 text-hint font-medium text-sub">
-          {t("expense.amountLabel", { currency })}
-          <Input
-            ref={amountRef}
-            value={amountText}
-            inputMode="decimal"
-            placeholder="0"
-            onChange={(event) => {
-              setAmountText(event.target.value);
-              setError(null);
-            }}
-            aria-invalid={error?.field === "amount" ? true : undefined}
-            aria-describedby={error?.field === "amount" ? errorId : undefined}
-          />
-        </label>
-        {errorFor("amount")}
+        {issue?.id === titleId ? (
+          <FieldError id={errorId} message={issue.message} className="-mt-2.5" />
+        ) : null}
+
         {payment}
+
+        <ul className="grid">
+          {lines.map((line) => (
+            <ManualLineRow
+              key={line.key}
+              line={line}
+              currency={currency}
+              removable={lines.length > 1}
+              disabled={saving}
+              nameId={nameId(line.key)}
+              priceId={priceId(line.key)}
+              issue={issue}
+              errorId={errorId}
+              onChange={(change) => patch(line.key, change)}
+              onRemove={() => {
+                setLines((list) => list.filter((other) => other.key !== line.key));
+                setIssue(null);
+              }}
+            />
+          ))}
+        </ul>
+        <Button variant="ghost" size="sm" className="self-start" disabled={saving} onClick={addLine}>
+          {t("expense.addItem")}
+        </Button>
+        <div className="-mt-2">
+          <ReceiptSum
+            label={t("expense.total")}
+            value={formatMoney(manualTotal(lines, currency), currency)}
+            total
+          />
+        </div>
+
         <BottomCTA disabled={saving} aria-busy={saving || undefined} onClick={submit}>
           {saving ? t("expense.saving") : t("expense.save")}
         </BottomCTA>
       </Screen>
     </>
+  );
+}
+
+/** 메뉴 한 줄 (시안 .mline): 이름 / 금액 + 수량 − + / 지우기(줄이 둘 이상일 때). */
+function ManualLineRow({
+  line,
+  currency,
+  removable,
+  disabled,
+  nameId,
+  priceId,
+  issue,
+  errorId,
+  onChange,
+  onRemove,
+}: {
+  line: ManualLine;
+  currency: string;
+  removable: boolean;
+  disabled: boolean;
+  nameId: string;
+  priceId: string;
+  issue: FieldIssue | null;
+  errorId: string;
+  onChange: (change: Partial<ManualLine>) => void;
+  onRemove: () => void;
+}) {
+  const label = line.name.trim() || t("expense.newItemName");
+  const nameIssue = issue?.id === nameId ? issue : null;
+  const priceIssue = issue?.id === priceId ? issue : null;
+  return (
+    <li className="grid gap-2 border-b border-dashed border-line py-3">
+      <label className="grid gap-1.5 text-hint font-medium text-sub">
+        {t("expense.itemNameLabel")}
+        <Input
+          id={nameId}
+          value={line.name}
+          placeholder={t("expense.newItemName")}
+          maxLength={40}
+          disabled={disabled}
+          // 줄 추가로 새로 생긴 줄(키 1 이상)만 바로 이름 칸에 커서를 둔다
+          autoFocus={line.key > 0}
+          onChange={(event) => onChange({ name: event.target.value })}
+          aria-invalid={nameIssue ? true : undefined}
+          aria-describedby={nameIssue ? errorId : undefined}
+        />
+      </label>
+      {nameIssue ? <FieldError id={errorId} message={nameIssue.message} /> : null}
+      <div className="flex items-end gap-2">
+        <label className="grid min-w-0 flex-1 gap-1.5 text-hint font-medium text-sub">
+          {t("expense.amountLabel", { currency })}
+          <Input
+            id={priceId}
+            value={line.price}
+            inputMode="decimal"
+            placeholder="0"
+            disabled={disabled}
+            onChange={(event) => onChange({ price: event.target.value })}
+            aria-invalid={priceIssue ? true : undefined}
+            aria-describedby={priceIssue ? errorId : undefined}
+          />
+        </label>
+        <div role="group" aria-label={t("expense.quantityLabel")} className="grid gap-1.5 text-hint font-medium text-sub">
+          <span aria-hidden>{t("expense.quantityLabel")}</span>
+          <QtyStepper value={line.qty} name={label} disabled={disabled} onChange={(qty) => onChange({ qty })} />
+        </div>
+        {removable ? (
+          <button
+            type="button"
+            aria-label={t("expense.removeItem", { name: label })}
+            disabled={disabled}
+            onClick={onRemove}
+            className="press grid h-13 w-11 shrink-0 place-items-center text-2xl text-sub"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+      {priceIssue ? <FieldError id={errorId} message={priceIssue.message} /> : null}
+    </li>
+  );
+}
+
+/** 수량 − + (시안 .qty): 1 밑으로는 못 내린다. 바뀐 숫자는 스크린리더가 읽는다. */
+function QtyStepper({
+  value,
+  name,
+  disabled,
+  onChange,
+}: {
+  value: number;
+  name: string;
+  disabled: boolean;
+  onChange: (next: number) => void;
+}) {
+  const stepClass = "press grid h-13 w-11 place-items-center text-xl text-ink disabled:opacity-35";
+  return (
+    <div className="flex h-13 items-center rounded-md bg-field">
+      <button
+        type="button"
+        aria-label={t("expense.qtyDown", { name })}
+        disabled={disabled || value <= 1}
+        onClick={() => onChange(value - 1)}
+        className={stepClass}
+      >
+        −
+      </button>
+      <b aria-live="polite" className="min-w-6 text-center tabular-nums">
+        {value}
+      </b>
+      <button
+        type="button"
+        aria-label={t("expense.qtyUp", { name })}
+        disabled={disabled}
+        onClick={() => onChange(value + 1)}
+        className={stepClass}
+      >
+        +
+      </button>
+    </div>
   );
 }

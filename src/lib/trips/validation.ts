@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import type { CreateTripInput, InviteCode, JoinTripInput, TripActionInput } from '../../types/api';
+import type {
+  CreateTripInput,
+  InviteCode,
+  JoinTripInput,
+  MarkReceivedInput,
+  TripActionInput,
+} from '../../types/api';
 import { HttpError } from '../api/errors';
 import { INVITE_CODE_PATTERN } from './inviteCode';
 
@@ -58,13 +64,24 @@ const inviteCodeSchema = z
 
 const tripIdSchema = z.uuid('must be a UUID');
 
-const createTripSchema = z.object({
-  title: titleSchema,
-  localCurrency: localCurrencySchema,
-  cashRate: cashRateSchema,
-  cardFeeRate: cardFeeRateSchema,
-  memberNames: memberNamesSchema,
-});
+/** 시각 없는 달력 날짜 (`2026-11-04`). 없는 날짜(2월 30일 등)는 거부한다. 여행 기간과 지출 날짜가 같이 쓴다. */
+export const dateSchema = z.iso.date('must be a date (YYYY-MM-DD)');
+
+const createTripSchema = z
+  .object({
+    title: titleSchema,
+    localCurrency: localCurrencySchema,
+    cashRate: cashRateSchema,
+    cardFeeRate: cardFeeRateSchema,
+    memberNames: memberNamesSchema,
+    startDate: dateSchema.nullable().optional(),
+    endDate: dateSchema.nullable().optional(),
+  })
+  // DB의 trips_date_range_check와 같은 규칙. 둘 중 하나라도 없으면 통과한다. 같은 형식의 날짜 문자열은 글자 순서가 날짜 순서다.
+  .refine((value) => value.startDate == null || value.endDate == null || value.endDate >= value.startDate, {
+    error: 'must not be before startDate',
+    path: ['endDate'],
+  });
 
 const joinTripSchema = z
   .object({
@@ -77,7 +94,10 @@ const joinTripSchema = z
     path: ['memberId'],
   });
 
-const lockTripSchema = z.object({ tripId: tripIdSchema });
+/** 잠금·잠금 해제·정산 확정·확정 해제가 같이 쓰는 본문: `{ tripId }`. */
+const tripActionSchema = z.object({ tripId: tripIdSchema });
+
+const markReceivedSchema = z.object({ transferId: z.uuid('must be a UUID') });
 
 /** 첫 번째 문제만 "필드: 이유" 형태로 알려준다. 값 자체는 메시지에 싣지 않는다. */
 export function parseWith<T>(schema: z.ZodType<T>, raw: unknown, rootLabel: string): T {
@@ -101,8 +121,12 @@ export function parseJoinTripInput(raw: unknown): JoinTripInput {
   throw new HttpError(400, 'INVALID_REQUEST', 'memberId: provide exactly one of memberId or newName');
 }
 
-export function parseLockTripInput(raw: unknown): TripActionInput {
-  return parseWith(lockTripSchema, raw, 'body');
+export function parseTripActionInput(raw: unknown): TripActionInput {
+  return parseWith(tripActionSchema, raw, 'body');
+}
+
+export function parseMarkReceivedInput(raw: unknown): MarkReceivedInput {
+  return parseWith(markReceivedSchema, raw, 'body');
 }
 
 export function parseInviteCodeParam(raw: string | null): InviteCode {

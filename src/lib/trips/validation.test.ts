@@ -6,7 +6,7 @@ import {
   parseCreateTripInput,
   parseInviteCodeParam,
   parseJoinTripInput,
-  parseLockTripInput,
+  parseTripActionInput,
 } from './validation';
 
 const VALID_CREATE = {
@@ -226,15 +226,15 @@ describe('parseJoinTripInput', () => {
   });
 });
 
-describe('parseLockTripInput', () => {
+describe('parseTripActionInput', () => {
   it('accepts a trip id', () => {
-    expect(parseLockTripInput({ tripId: MEMBER_ID })).toEqual({ tripId: MEMBER_ID });
+    expect(parseTripActionInput({ tripId: MEMBER_ID })).toEqual({ tripId: MEMBER_ID });
   });
 
   it('rejects a missing or malformed trip id', () => {
-    expectInvalid(() => parseLockTripInput({}), 'tripId');
-    expectInvalid(() => parseLockTripInput({ tripId: 'nope' }), 'tripId');
-    expectInvalid(() => parseLockTripInput(undefined), 'body');
+    expectInvalid(() => parseTripActionInput({}), 'tripId');
+    expectInvalid(() => parseTripActionInput({ tripId: 'nope' }), 'tripId');
+    expectInvalid(() => parseTripActionInput(undefined), 'body');
   });
 });
 

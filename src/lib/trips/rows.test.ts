@@ -138,7 +138,9 @@ describe('parseJoinOutcome', () => {
 
 describe('select column lists', () => {
   it('name the columns the PostgREST selects must ask for, members embedded under their own key', () => {
-    expect(TRIP_COLUMNS).toBe('id,title,local_currency,cash_rate,card_fee_rate,invite_code,status');
+    expect(TRIP_COLUMNS).toBe(
+      'id,title,local_currency,cash_rate,card_fee_rate,invite_code,status,start_date,end_date',
+    );
     expect(MEMBER_COLUMNS).toBe('id,trip_id,name,auth_user_id,join_order,is_organizer');
     expect(TRIP_WITH_MEMBERS_COLUMNS).toBe(`${TRIP_COLUMNS},members(${MEMBER_COLUMNS})`);
   });

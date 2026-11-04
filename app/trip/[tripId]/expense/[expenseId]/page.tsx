@@ -11,10 +11,12 @@ import { ErrorState } from "@/components/error-state";
 import { EstimateBadge } from "@/components/estimate-badge";
 import { payLabel, percentText } from "@/components/format";
 import { MemberChip } from "@/components/member-chip";
+import { MenuSheet } from "@/components/menu-sheet";
 import { Receipt, ReceiptHead, ReceiptSum } from "@/components/receipt";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { useToast } from "@/components/toast";
+import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/utils";
 import { formatMoney } from "@/core/money";
@@ -40,6 +42,7 @@ function ExpenseCheck() {
 
   if (trip.status === "pending" || expense.status === "pending") return <ScreenSkeleton />;
   if (trip.status === "error" || expense.status === "error") {
+    if (trip.error?.status === 404) return <TripGone />;
     const notFound = expense.error?.status === 404;
     return (
       <>
@@ -82,12 +85,15 @@ function CheckBody({
   const toggleShare = useToggleShare();
   const deleteExpense = useDeleteExpense();
   const [estOpen, setEstOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const estId = useId();
 
   const homeHref = `/trip/${trip.id}`;
   const { me, members, status } = trip;
   const settled = status === "SETTLED";
+  // `canEdit`은 정산 확정 뒤 false라서, ⋯ 메뉴(확정 뒤엔 흐리게 + 안내)의 노출은 서버와 같은 "올린 사람 또는 총무"로 정한다.
+  const isOwner = expense.createdBy === me.id || me.isOrganizer;
   const foreign = expense.currency !== "KRW";
   const isCard = expense.paymentMethod === "CARD";
   const stagger = searchParams.get("saved") === "1";
@@ -142,9 +148,14 @@ function CheckBody({
 
   return (
     <>
-      <AppBar title={expense.title} backHref={homeHref} status={status} />
+      <AppBar
+        title={expense.title}
+        backHref={homeHref}
+        status={status}
+        onMore={isOwner ? () => setMenuOpen(true) : undefined}
+      />
       <Screen className="bg-field pt-0">
-        <div className="sticky top-13.5 z-20 -mx-gutter flex items-end justify-between gap-3 bg-grad px-gutter pt-3.5 pb-4 text-paper">
+        <div className="sticky top-bar-safe z-20 -mx-gutter flex items-end justify-between gap-3 bg-grad px-gutter pt-3.5 pb-4 text-paper">
           <div className="min-w-0">
             <div className="text-caption opacity-85">
               {t("itemCheck.mineLabel", { name: me.name })}
@@ -233,17 +244,6 @@ function CheckBody({
           ) : null}
         </Receipt>
 
-        {expense.canEdit ? (
-          <Button
-            variant="danger"
-            size="sm"
-            className="self-center"
-            onClick={() => setConfirmingDelete(true)}
-          >
-            {t("itemCheck.delete")}
-          </Button>
-        ) : null}
-
         <BottomBar>
           <Button asChild>
             <Link href={homeHref}>{t("itemCheck.done")}</Link>
@@ -251,8 +251,22 @@ function CheckBody({
         </BottomBar>
       </Screen>
 
+      <MenuSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={[
+          {
+            key: "delete",
+            label: t("itemCheck.delete"),
+            danger: true,
+            dim: settled,
+            onSelect: () =>
+              settled ? toast(t("itemCheck.deleteSettledToast")) : setConfirmingDelete(true),
+          },
+        ]}
+      />
       <ConfirmSheet
-        open={expense.canEdit && confirmingDelete}
+        open={confirmingDelete}
         title={t("itemCheck.deleteTitle")}
         hint={t("itemCheck.deleteHint")}
         confirmLabel={t("itemCheck.deleteConfirm")}
@@ -306,17 +320,17 @@ function ItemBlock({
 
   return (
     <div
-      className={cn("grid gap-2.5 border-b border-dashed border-line py-3.5", stagger && "stagger-item")}
+      className={cn("grid grid-cols-1 gap-2.5 border-b border-dashed border-line py-3.5", stagger && "stagger-item")}
       style={stagger ? ({ "--n": index } as CSSProperties) : undefined}
     >
       <div className="flex items-start gap-2.5">
-        <div className="min-w-0 flex-1 font-bold break-keep">
+        <div className="min-w-0 flex-1 font-bold break-keep wrap-break-word">
           {item.koreanName} ×{item.quantity}
           {item.originalName !== item.koreanName ? (
             <small className="block text-caption font-normal text-sub">{item.originalName}</small>
           ) : null}
         </div>
-        <div className="max-w-[48%] overflow-hidden text-right whitespace-nowrap tabular-nums">
+        <div className="shrink-0 text-right whitespace-nowrap tabular-nums">
           {formatMoney(line, currency)}
           {range ? (
             <small className="block text-xs text-sub">
