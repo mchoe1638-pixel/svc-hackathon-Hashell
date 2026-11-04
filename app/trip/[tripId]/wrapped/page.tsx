@@ -9,12 +9,13 @@ import { ErrorState } from "@/components/error-state";
 import { memberColor } from "@/components/member-avatar";
 import { Screen } from "@/components/screen";
 import { useToast } from "@/components/toast";
-import { TripArt } from "@/components/trip-art";
+import { DestinationArtImage } from "@/components/trip-art";
 import { cn } from "@/components/utils";
 import { CountUp, Stories, Tally, type StorySlide } from "@/components/wrapped/stories";
 import { renderStoryFile, shareStoryFile, type StoryInput } from "@/components/wrapped/story-image";
 import { formatMoney } from "@/core/money";
 import { buildWrapped, type Wrapped, type WrappedCategory, type WrappedTitle } from "@/core/tripStats";
+import { detect } from "@/data/destinations";
 import { useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { ExpenseDetail, ExpenseId, TripDetail } from "@/types/api";
@@ -295,13 +296,15 @@ function buildSlides({
   const longTitle = trip.title.length > 6;
   const king = wrapped.beerRank[0];
   const top = wrapped.top;
+  // 여행지 그림: 0번 대표 명소(1장), 1번 대표 음식(4·6장). 제목에 키워드가 없으면 기본 세트.
+  const destination = detect(trip.title);
 
   return [
     {
       tone: "s-brand",
       content: (
         <>
-          <TripArt className="wr-hero" />
+          <DestinationArtImage art={destination.art[0]} className="wr-hero" />
           <p className="wr-lead in">{t("wrapped.s1Lead")}</p>
           <h2 className={cn("d in relative", longTitle ? "d-l" : "d-xl")} style={i(1)}>
             {trip.title}
@@ -415,7 +418,7 @@ function buildSlides({
                       })
                     : null}
                 </p>
-                <TripArt className="wr-hero sm" />
+                <DestinationArtImage art={destination.art[1]} className="wr-hero sm" />
               </>
             ),
           },
@@ -455,7 +458,7 @@ function buildSlides({
       tone: "s-deep",
       content: (
         <>
-          <TripArt className="wr-hero" />
+          <DestinationArtImage art={destination.art[1]} className="wr-hero" />
           <p className="wr-lead in relative">{t("wrapped.s6Lead")}</p>
           <h2 className="d d-l in pop relative text-glow" style={i(1)}>
             {trip.title}

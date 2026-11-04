@@ -13,13 +13,16 @@ import { WebNotice } from "@/components/web-notice";
 import { useTrips } from "@/hooks";
 import { t } from "@/i18n/ko";
 
-/** 국내/해외 카드. 그림은 분위기만 보여주는 장식이다 (`public/art`). */
+/**
+ * 국내/해외 카드. 그림은 분위기만 보여주는 장식이다 (`public/art`).
+ * 국내 카드는 그림이 겹쳐 보여서 뺐다 (`art: []`). 해외 카드는 그대로.
+ */
 const SCOPE_CHOICES = [
   {
     scope: "domestic",
     title: "create.scopeDomestic",
     hint: "create.scopeDomesticHint",
-    art: ["dolhareubang.svg", "tangerine.svg", "gamcheon.svg"],
+    art: [],
   },
   {
     scope: "overseas",
@@ -63,29 +66,34 @@ function ScopeChoice() {
         <h2 className="mt-1 text-title font-bold tracking-tight">{t("create.scopeQuestion")}</h2>
         <p className="-mt-2 text-hint text-sub">{t("create.scopeHint")}</p>
 
-        {SCOPE_CHOICES.map((choice) => (
-          <Link
-            key={choice.scope}
-            href={`/new?scope=${choice.scope}`}
-            className="press grid gap-1 rounded-2xl border-2 border-line bg-paper px-4.5 py-5 text-left"
-          >
-            <span aria-hidden className="mb-1.5 flex">
-              {choice.art.map((file, index) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={file}
-                  src={`/art/${file}`}
-                  alt=""
-                  width={44}
-                  height={44}
-                  className={cn("size-11", index > 0 && "-ml-2.5")}
-                />
-              ))}
-            </span>
-            <b className="text-lead font-bold">{t(choice.title)}</b>
-            <span className="text-hint text-sub">{t(choice.hint)}</span>
-          </Link>
-        ))}
+        {/* 두 카드는 같은 높이. 그림이 없는 국내 카드도 해외 카드와 높이가 같고, 글은 세로 가운데에 온다. */}
+        <div className="grid auto-rows-fr gap-4">
+          {SCOPE_CHOICES.map((choice) => (
+            <Link
+              key={choice.scope}
+              href={`/new?scope=${choice.scope}`}
+              className="press grid content-center gap-1 rounded-2xl border-2 border-line bg-paper px-4.5 py-5 text-left"
+            >
+              {choice.art.length > 0 ? (
+                <span aria-hidden className="mb-1.5 flex">
+                  {choice.art.map((file, index) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={file}
+                      src={`/art/${file}`}
+                      alt=""
+                      width={44}
+                      height={44}
+                      className={cn("size-11", index > 0 && "-ml-2.5")}
+                    />
+                  ))}
+                </span>
+              ) : null}
+              <b className="text-lead font-bold">{t(choice.title)}</b>
+              <span className="text-hint text-sub">{t(choice.hint)}</span>
+            </Link>
+          ))}
+        </div>
       </Screen>
     </>
   );

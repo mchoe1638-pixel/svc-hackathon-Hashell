@@ -193,7 +193,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
                   ref={cashRateRef}
                   value={cashRate}
                   inputMode="decimal"
-                  placeholder="9.4"
+                  placeholder={t("create.cashRatePlaceholder")}
                   disabled={busy}
                   onChange={(event) => {
                     setCashRate(event.target.value);

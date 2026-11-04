@@ -1,4 +1,5 @@
 import { cn } from "@/components/utils";
+import { artSrc, type DestinationArt } from "@/data/destinations";
 
 /**
  * 여행 그림 (시안 GENERIC_ART: 여행 가방). 여행지별 그림 데이터가 아직 없어 모든 여행에 이 그림을 쓴다.
@@ -13,6 +14,18 @@ export function TripArt({ className }: { className?: string }) {
       <circle cx="70" cy="172" r="8" fill="var(--ink)" />
       <circle cx="130" cy="172" r="8" fill="var(--ink)" />
     </svg>
+  );
+}
+
+/**
+ * 여행지 그림 한 장 (`public/art/*.svg`, `detect(제목).art[n]`). 장식이라 스크린 리더에는 숨긴다.
+ * `TripArt`와 달리 `size-12`를 붙이지 않는다: 크기는 부르는 쪽 클래스(`.wr-hero` 등)가 정한다.
+ * (`size-12`는 유틸리티 층이라 components 층의 `.wr-hero` 크기를 덮어써 48px로 줄어든다.)
+ */
+export function DestinationArtImage({ art, className }: { art: DestinationArt; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={artSrc(art)} alt="" aria-hidden width={200} height={200} className={className} />
   );
 }
 
