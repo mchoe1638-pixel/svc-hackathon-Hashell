@@ -24,9 +24,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover", // env(safe-area-inset-bottom) 사용에 필요
   themeColor: "#ffffff",
   colorScheme: "light",
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({
