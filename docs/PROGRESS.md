@@ -20,7 +20,7 @@
 
 
 ## 디자인·화면 (이승화)
-- 날짜/시간: 2026-11-03 (S3 영수증 흐름·정산 확정 화면 완성, 실연결 대비)
+- 날짜/시간: 2026-11-04 (발표 자료 `docs/pitch/hashell_pitch.pptx`·`sources.md` 추가, [확인 필요]·[팀 결정 필요] 표시 남음) / 2026-11-03 (S3 영수증 흐름·정산 확정 화면 완성)
 - 완료: 영수증 촬영+앨범·읽기 실패 화면(다시 찍기/직접 입력)·결과 확인에서 품목 이름·단가·수량 수정+카테고리 표시+합계 불일치 경고(저장 막음), 정산 확정 확인 시트·해제 위험 시트·409/423 다시 받기, 홈 빈 목록 버튼, 스토리 공유는 이미지를 미리 만들어 누른 순간 share(아이폰) + 안 되면 길게 눌러 저장 화면. tsc·vitest 760 통과, 미커밋
 - 다음: (사람) design에 main 받아오기(1-5 미반영 상태였음) → 커밋, 폰(아이폰 사파리·앱)으로 공유·촬영 확인, 지출 수정 화면(시안 없음)
 - 막힌 점(백엔드 요청): `src/lib/image/resize.ts`(없어서 `src/components/image.ts` 사용), `JoinInfo.alreadyJoined`, `MemberBalance.paidKrw/eatenKrw`, `ExpenseSummary.myShareKrw`·날짜, 품목 `tag`, `useWrapped`+`wrapped_title`, `parseMoney`, 정산 확정이 OPEN에서도 되는지(LOCKED만이면 화면에서 안내 필요)
