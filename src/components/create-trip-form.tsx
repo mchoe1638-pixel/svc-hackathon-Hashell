@@ -13,7 +13,7 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OVERSEAS_CURRENCIES } from "@/core/currencies";
-import { useCreateTrip } from "@/hooks";
+import { useCashRate, useCreateTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { CurrencyCode } from "@/types/api";
 
@@ -42,6 +42,12 @@ const DEFAULT_CARD_FEE_RATE = 0.022;
 
 type FieldKey = "title" | "dates" | "myName" | "cashRate" | "member";
 
+/** 고시일 'YYYY-MM-DD'의 월·일. Date를 거치지 않고 잘라 쓴다 (시간대 때문에 하루가 밀리지 않게). */
+function rateMonthDay(rateDate: string): { month: number; day: number } {
+  const [, month, day] = rateDate.split("-");
+  return { month: Number(month), day: Number(day) };
+}
+
 /** 여행 만들기 폼. 국내면 환율 칸을 숨기고 원화·환율 1·수수료 0으로, 해외면 환율만 받고 카드 수수료는 기본값(2.2%)으로 저장한다. */
 export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund: boolean }) {
   const router = useRouter();
@@ -52,7 +58,8 @@ export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund
   const [dates, setDates] = useState<DateRange>(NO_DATES);
   const [myName, setMyName] = useState("");
   const [overseasCurrency, setOverseasCurrency] = useState<CurrencyCode>(DEFAULT_OVERSEAS_CURRENCY);
-  const [cashRate, setCashRate] = useState("");
+  // 사용자가 직접 적은 환율. null이면 아직 손대지 않은 칸이라서, 고시 환율이 도착해 있으면 그 값이 칸에 보인다.
+  const [cashRateInput, setCashRateInput] = useState<string | null>(null);
   const [others, setOthers] = useState<string[]>([]);
   const [memberDraft, setMemberDraft] = useState("");
   const [error, setError] = useState<{ field: FieldKey; message: string } | null>(null);
@@ -66,6 +73,11 @@ export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund
   const busy = createTrip.isPending;
   const domestic = scope === "domestic";
   const currency = domestic ? DOMESTIC_CURRENCY : overseasCurrency;
+  // 해외 여행에서만 그 통화의 최근 고시 환율을 조회한다 (국내는 KRW라 조회하지 않는다). 실패하면 quote가 없어 칸은 빈칸 그대로다.
+  const quote = useCashRate(currency).data;
+  // 손대지 않은 칸에만 고시 환율을 채운다. 사용자가 적은 값은 (지워서 빈칸이 된 것도) 덮어쓰지 않는다.
+  const autoFilled = cashRateInput === null ? quote : undefined;
+  const cashRate = cashRateInput ?? (quote ? String(quote.rate) : "");
 
   function fail(field: FieldKey, message: string) {
     setError({ field, message });
@@ -195,7 +207,8 @@ export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund
                 onChange={(event) => {
                   setOverseasCurrency(event.target.value);
                   // 환율은 통화마다 다르다. 앞 통화로 적은 값이 남아 새 통화의 환율로 저장되지 않게 비운다.
-                  setCashRate("");
+                  // (비운 칸은 새 통화의 고시 환율이 있으면 다시 채워진다.)
+                  setCashRateInput(null);
                   clear();
                 }}
                 className="h-13 w-full min-w-0 rounded-md border-2 border-transparent bg-field px-3 text-body text-ink outline-none transition-colors focus:border-brand focus:bg-paper disabled:pointer-events-none disabled:opacity-50"
@@ -216,13 +229,18 @@ export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund
                 placeholder={t("create.cashRatePlaceholder")}
                 disabled={busy}
                 onChange={(event) => {
-                  setCashRate(event.target.value);
+                  setCashRateInput(event.target.value);
                   clear();
                 }}
                 {...invalid("cashRate")}
               />
             </label>
             {errorFor("cashRate")}
+            {autoFilled ? (
+              <p className="-mt-2.5 text-caption text-sub break-keep">
+                {t("create.cashRateFilled", rateMonthDay(autoFilled.rateDate))}
+              </p>
+            ) : null}
           </>
         )}
 

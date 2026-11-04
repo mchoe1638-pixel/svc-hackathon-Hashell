@@ -46,6 +46,7 @@ export const ko = {
     currencyLabel: "현지 통화",
     cashRateLabel: "현금 환율 (1 {currency}당 원)",
     cashRatePlaceholder: "환율을 적어주세요",
+    cashRateFilled: "{month}월 {day}일 고시 환율로 채웠어요. 환전 영수증과 다르면 고쳐주세요",
     feeLabel: "카드 수수료 (%)",
     krwNoRate: "원화 여행이라 환율 입력이 필요 없어요.",
     membersLabel: "함께 가는 사람",

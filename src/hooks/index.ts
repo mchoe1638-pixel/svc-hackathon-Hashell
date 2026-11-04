@@ -3,6 +3,7 @@
  * 입출력 타입은 `@/types/api`. `NEXT_PUBLIC_USE_MOCK=true`면 `src/mocks/`의 가짜 데이터로 동작한다.
  * `app/layout.tsx`에서 `<Providers>`(`@/lib/providers`)로 감싸야 동작한다.
  */
+export { useCashRate } from './useCashRate';
 export { useCreateExpense } from './useCreateExpense';
 export { useCreateTrip } from './useCreateTrip';
 export { useDeleteExpense } from './useDeleteExpense';
