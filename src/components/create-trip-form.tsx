@@ -12,6 +12,7 @@ import { Screen } from "@/components/screen";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OVERSEAS_CURRENCIES } from "@/core/currencies";
 import { useCreateTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { CurrencyCode } from "@/types/api";
@@ -24,8 +25,8 @@ export function parseScope(value: string | null): TripScope | null {
 }
 
 const DOMESTIC_CURRENCY: CurrencyCode = "KRW";
-/** 해외 여행의 현지통화. 지금은 엔만 연다 (통화를 늘리려면 이 줄을 목록으로 바꾼다). */
-const OVERSEAS_CURRENCY: CurrencyCode = "JPY";
+/** 해외 여행에서 처음 골라져 있는 현지통화. 고를 수 있는 목록은 `OVERSEAS_CURRENCIES`. */
+const DEFAULT_OVERSEAS_CURRENCY: CurrencyCode = "JPY";
 /** 원화 여행의 환율과 카드 수수료. 원화끼리라 바뀔 게 없다. */
 const KRW_RATE = 1;
 const KRW_FEE_RATE = 0;
@@ -41,6 +42,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
   const [title, setTitle] = useState("");
   const [dates, setDates] = useState<DateRange>(NO_DATES);
   const [myName, setMyName] = useState("");
+  const [overseasCurrency, setOverseasCurrency] = useState<CurrencyCode>(DEFAULT_OVERSEAS_CURRENCY);
   const [cashRate, setCashRate] = useState("");
   const [fee, setFee] = useState("2.5");
   const [others, setOthers] = useState<string[]>([]);
@@ -56,7 +58,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
   const errorId = useId();
   const busy = createTrip.isPending;
   const domestic = scope === "domestic";
-  const currency = domestic ? DOMESTIC_CURRENCY : OVERSEAS_CURRENCY;
+  const currency = domestic ? DOMESTIC_CURRENCY : overseasCurrency;
 
   function fail(field: FieldKey, message: string) {
     setError({ field, message });
@@ -180,12 +182,26 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
           <p className="text-hint text-sub">{t("create.krwNoRate")}</p>
         ) : (
           <>
-            <div className="grid gap-1.5 text-hint font-medium text-sub">
+            <label className="grid gap-1.5 text-hint font-medium text-sub">
               {t("create.currencyLabel")}
-              <p className="flex h-13 items-center rounded-md bg-field px-3.5 text-body font-normal text-ink">
-                {currencyLabel(currency)}
-              </p>
-            </div>
+              <select
+                value={overseasCurrency}
+                disabled={busy}
+                onChange={(event) => {
+                  setOverseasCurrency(event.target.value);
+                  // 환율은 통화마다 다르다. 앞 통화로 적은 값이 남아 새 통화의 환율로 저장되지 않게 비운다.
+                  setCashRate("");
+                  clear();
+                }}
+                className="h-13 w-full min-w-0 rounded-md border-2 border-transparent bg-field px-3 text-body text-ink outline-none transition-colors focus:border-brand focus:bg-paper disabled:pointer-events-none disabled:opacity-50"
+              >
+                {OVERSEAS_CURRENCIES.map((code) => (
+                  <option key={code} value={code}>
+                    {currencyLabel(code)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="grid grid-cols-2 gap-2.5">
               <label className="grid gap-1.5 text-hint font-medium text-sub">
                 {t("create.cashRateLabel", { currency })}
