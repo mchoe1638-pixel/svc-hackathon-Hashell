@@ -274,12 +274,22 @@ button.row{cursor:pointer}
 .wr-nav.prev{left:6px} .wr-nav.next{right:6px}
 .wr.stopped .wr-prog i.now::after{animation-play-state:paused}
 .wrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.share{position:absolute;inset:0;z-index:5;background:rgba(10,14,40,.74);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:52px 22px 22px;cursor:default;animation:fadeIn .2s var(--ease-out)}
-.share img{height:min(60%,430px);aspect-ratio:9/16;max-width:100%;border-radius:14px;box-shadow:0 18px 40px -12px rgba(0,0,0,.55);animation:shareIn .42s var(--ease-out)}
+.share{position:absolute;inset:0;z-index:5;background:rgba(10,14,40,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 22px calc(22px + env(safe-area-inset-bottom));cursor:default;animation:fadeIn .2s var(--ease-out)}
+.share img{flex:none;height:min(56dvh,400px);width:auto;aspect-ratio:9/16;max-width:100%;object-fit:contain;border-radius:14px;box-shadow:0 18px 40px -12px rgba(0,0,0,.55);animation:shareIn .42s var(--ease-out);transition:opacity .18s var(--ease-out)}
+.share img.wait{opacity:.35}
+.st-tabs{display:flex;gap:4px;width:100%}
+.st-tabs button{flex:1;min-height:44px;border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center}
+.st-tabs i{display:block;width:100%;height:4px;border-radius:2px;background:color-mix(in srgb,var(--foam) 35%,transparent)}
+.st-tabs button.done i,.st-tabs button[aria-selected="true"] i{background:var(--foam)}
+.st-stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;touch-action:pan-y;user-select:none}
+.st-nav{position:absolute;top:50%;width:44px;height:44px;margin-top:-22px;border:0;border-radius:50%;background:rgba(10,20,51,.45);color:var(--foam);font-size:24px;cursor:pointer;z-index:1}
+.st-nav:first-child{left:0}
+.st-nav:last-child{right:0}
+.st-nav:disabled{opacity:0;pointer-events:none}
 @keyframes shareIn{from{transform:translateY(16px) scale(.96);opacity:0}}
 .share p{color:var(--foam);font-size:14px;line-height:1.5;text-align:center;margin:0;max-width:30ch;word-break:keep-all}
 .share .acts{display:grid;gap:8px;width:100%}
-@media (prefers-reduced-motion:reduce){.share,.share img{animation:none}}
+@media (prefers-reduced-motion:reduce){.share,.share img{animation:none;transition:none}}
 @media (prefers-reduced-motion:reduce){
   .scan::after,.mine.flash .v,.slide.on .in,.slide.on .tally path,.wr-prog i.now::after,.dest.flip .pics{animation:none}
 }
@@ -287,10 +297,6 @@ button.row{cursor:pointer}
 .scope-opt .pics{display:flex;margin-bottom:6px}
 .scope-opt .pics img,.scope-opt .pics svg{width:44px;height:44px}
 .scope-opt .pics img+img{margin-left:-10px}
-.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:-6px}
-.qchip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px 0 6px;border-radius:999px;border:1.5px solid var(--line);background:var(--paper);font-size:14px;cursor:pointer}
-.qchip img,.qchip svg{width:30px;height:30px}
-.qchip[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);font-weight:700}
 .cal{display:grid;gap:6px;background:var(--field);border-radius:16px;padding:6px 8px 12px;color:var(--ink);font-weight:400}
 .cal-head{display:flex;align-items:center;justify-content:space-between}
 .cal-head b{font-size:15px}
@@ -314,9 +320,9 @@ button.row{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.cal-grid.from-next,.cal-grid.from-prev{animation:fadeIn .2s ease}}
 .cal-sum b{color:var(--brand-ink)}
 /* 날짜 칸은 누름 효과 없음: 고른 표시가 누르는 즉시 바뀌어야 해서 (다른 버튼은 그대로) */
-.qchip,.cal-head button{transition:transform 160ms cubic-bezier(.23,1,.32,1)}
-.qchip:active,.cal-head button:active{transform:scale(.97)}
-@media (prefers-reduced-motion:reduce){.qchip:active,.cal-head button:active{transform:none}}
+.cal-head button{transition:transform 160ms cubic-bezier(.23,1,.32,1)}
+.cal-head button:active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){.cal-head button:active{transform:none}}
 
 /* ---------- v4: 상단 바 ⋯, 여행 목록, 메뉴 서랍, 직접 입력 메뉴별 ---------- */
 .more{width:44px;height:44px;border:0;background:none;border-radius:12px;font-size:20px;line-height:1;cursor:pointer;margin-right:-8px;flex:none}
@@ -427,8 +433,13 @@ button.row:active{transform:scale(.985)}
     "해외 직접 적은 여행지는 통화 목록(12개)에서 고르고 환율은 빈칸(예시는 placeholder), 수수료 기본 2.2%",
     "예시 날짜는 등록된 여행지이고 날짜를 안 골랐을 때만. 예시 지출 날짜는 고른 기간 안으로",
     "금액 표시를 money()/loc()/won() 한 곳에서: 화면마다 기호를 직접 쓰지 않음",
-    "직접 입력: '메뉴별로 적기'(기본, 메뉴 이름·금액·수량) / '총액만 적기'. 메뉴별은 저장 후 품목 체크로",
-    "현금 환율을 소수 둘째 자리까지 받음 (계산은 정수로 바꿔서)"
+    "현금 환율을 소수 둘째 자리까지 받음 (계산은 정수로 바꿔서)",
+    "직접 입력은 메뉴별로만 (메뉴 이름·금액·수량). '총액만 적기'(전원 n분의 1)는 없앰. 저장 후 품목 체크로",
+    "새 여행 만들기에서 등록 여행지 예시 버튼(제주·상하이·오사카…)을 없앰. 여행지는 글자로만 적는다",
+    "지출 추가에 '그냥 n분의 1' 칸 추가: 가게·낸 사람·결제수단·총액만 적으면 전원이 똑같이 나눔(최대 잔여법). 저장 → 홈",
+    "인스타 스토리 이미지를 여행 돌아보기 장마다 한 장씩(6장): 위 탭·좌우 넘기기, 장마다 아래 '인스타 스토리에 올리기'(휴대폰 공유 창 → 인스타그램)",
+    "여행지 그림을 6장까지(art[0] 명소, art[1] 음식, 나머지 kind: landmark·food·drink·symbol). 스토리 장마다 명소·음식·술·상징 그림을 스티커로 붙임",
+    "그림은 테두리 없는 플랫 스타일(art/*.svg). 37개 도시 그림은 art/manifest.json, 등록되지 않은 여행지는 이름을 보고 도시·바닷가·산 기본 그림 6장"
   ],
   "newData": [
     {
@@ -710,7 +721,8 @@ button.row:active{transform:scale(.985)}
         "직접 입력"
       ],
       "actions": [
-        "→ receipt / manual"
+        "→ receipt / manual",
+        "그냥 n분의 1 → even"
       ],
       "states": []
     },
@@ -754,17 +766,33 @@ button.row:active{transform:scale(.985)}
         "어디서 썼어요(공통)",
         "누가 냈어요(공통)",
         "어떻게 냈어요(공통)",
-        "메뉴별로 적기 / 총액만 적기",
         "메뉴별: 줄마다 메뉴 이름·금액(여행 통화)·수량(− +), 줄 지우기, 메뉴 추가, 합계(해외면 원화 어림값)"
       ],
       "actions": [
-        "메뉴별 저장 → check (품목 그대로, 단가×수량, category other, 전원 체크)",
-        "총액만 저장 → home ('기타' 한 줄)"
+        "메뉴별 저장 → check (품목 그대로, 단가×수량, category other, 전원 체크)"
       ],
       "states": [
         "이름·금액이 빈 줄은 그 칸 아래 오류 + 초점",
         "완전히 빈 줄은 무시",
         "줄이 하나도 없으면 막기"
+      ]
+    },
+    {
+      "id": "even",
+      "path": "/trip/[id]/expense/new",
+      "who": "참여한 사람",
+      "shows": [
+        "어디서 썼어요",
+        "누가 냈어요",
+        "어떻게 냈어요",
+        "총액(여행 통화)",
+        "'n명이 나눠요, x씩' 바로 계산(해외면 원화 어림값)"
+      ],
+      "actions": [
+        "저장 → home (품목 '총액' 한 줄, category other, 전원 체크)"
+      ],
+      "states": [
+        "가게·총액이 빠지면 그 칸 아래 오류 + 초점"
       ]
     },
     {
@@ -836,7 +864,8 @@ button.row:active{transform:scale(.985)}
         "누르면 넘김, 길게 누르면 멈춤",
         "인스타 스토리 이미지 만들기 → 저장",
         "글로 복사",
-        "처음부터"
+        "처음부터",
+        "인스타 스토리 이미지 만들기 → 6장(여행 이름·쓴 돈·맥주왕·비싼 한 끼·칭호·한 장 요약), 장마다 '인스타 스토리에 올리기'"
       ],
       "states": [
         "지출 0개",
@@ -885,6 +914,10 @@ button.row:active{transform:scale(.985)}
     {
       "q": "위안·달러처럼 소수점 금액을 받을지 (지금 시안은 정수만. CLAUDE.md는 '통화 최소 단위 정수'라 USD는 센트로 받아야 함)",
       "who": "디자인+백엔드"
+    },
+    {
+      "q": "앱에서 인스타 스토리로 바로 보내기: 이미지 파일 공유 함수(Capacitor Share)를 native.ts에 추가할지. 웹은 navigator.share(파일)",
+      "who": "백엔드"
     }
   ],
   "rules": {
@@ -1030,12 +1063,32 @@ button.row:active{transform:scale(.985)}
       {
         "key": "osaka-castle",
         "label": "오사카성",
+        "kind": "landmark",
         "file": "osaka-castle.svg"
       },
       {
         "key": "takoyaki",
         "label": "타코야키",
+        "kind": "food",
         "file": "takoyaki.svg"
+      },
+      {
+        "key": "tsutenkaku",
+        "label": "츠텐카쿠",
+        "kind": "landmark",
+        "file": "tsutenkaku.svg"
+      },
+      {
+        "key": "highball",
+        "label": "하이볼",
+        "kind": "drink",
+        "file": "highball.svg"
+      },
+      {
+        "key": "maneki-neko",
+        "label": "마네키네코",
+        "kind": "symbol",
+        "file": "maneki-neko.svg"
       }
     ],
     "expenses": [
@@ -1382,12 +1435,32 @@ button.row:active{transform:scale(.985)}
       {
         "key": "oriental-pearl",
         "label": "동방명주",
+        "kind": "landmark",
         "file": "oriental-pearl.svg"
       },
       {
         "key": "xiaolongbao",
         "label": "샤오롱바오",
+        "kind": "food",
         "file": "xiaolongbao.svg"
+      },
+      {
+        "key": "yuyuan",
+        "label": "예원",
+        "kind": "landmark",
+        "file": "yuyuan.svg"
+      },
+      {
+        "key": "huangjiu",
+        "label": "황주",
+        "kind": "drink",
+        "file": "huangjiu.svg"
+      },
+      {
+        "key": "red-lantern",
+        "label": "홍등",
+        "kind": "symbol",
+        "file": "red-lantern.svg"
       }
     ],
     "expenses": [
@@ -1735,12 +1808,38 @@ button.row:active{transform:scale(.985)}
       {
         "key": "dolhareubang",
         "label": "돌하르방",
+        "kind": "landmark",
         "file": "dolhareubang.svg"
       },
       {
         "key": "tangerine",
         "label": "감귤",
+        "kind": "food",
         "file": "tangerine.svg"
+      },
+      {
+        "key": "seongsan",
+        "label": "성산일출봉",
+        "kind": "landmark",
+        "file": "seongsan.svg"
+      },
+      {
+        "key": "black-pork",
+        "label": "흑돼지 구이",
+        "kind": "food",
+        "file": "black-pork.svg"
+      },
+      {
+        "key": "soju",
+        "label": "소주",
+        "kind": "drink",
+        "file": "soju.svg"
+      },
+      {
+        "key": "tewak",
+        "label": "해녀 테왁",
+        "kind": "symbol",
+        "file": "tewak.svg"
       }
     ],
     "expenses": [
@@ -2037,9 +2136,9 @@ button.row:active{transform:scale(.985)}
 
 <script>
 /* ---------- 여행지 데이터: 데이터베이스(destinations)에서 읽고, 못 읽으면 오사카 하나로 ---------- */
-const FALLBACK_RAW = {"order": 1, "name": "오사카", "country": "일본", "match": ["오사카", "osaka", "大阪", "간사이", "도톤보리", "난바", "교토", "일본"], "cur": {"code": "JPY", "sym": "¥", "unit": "엔", "per": 100}, "cash": 905, "tts": 9124, "fee": 22, "nights": "3박 4일", "days": ["10월 24일 토", "10월 25일 일", "10월 26일 월", "10월 27일 화"], "title": "이자카야 정복대", "hb": {"name": "하이볼", "title": "하이볼 장인"}, "readNote": "일본어 영수증도 돼요.", "colors": {"accent": "#E0362C", "glow": "#FFB81C", "night": "#0A1433", "paper": "#FFF9EC"}, "art": [{"key": "osaka-castle", "label": "오사카성"}, {"key": "takoyaki", "label": "타코야키"}], "expenses": [{"id": "izakaya", "name": "이자카야 마루하치", "orig": "居酒屋 まる八 道頓堀店", "day": 0, "payer": "sh", "pay": "CASH", "items": [{"o": "お通し", "k": "오토시 (자릿세)", "u": 330, "q": 4, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール", "k": "생맥주", "u": 600, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 3, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "烏龍茶", "k": "우롱차", "u": 300, "q": 3, "cat": "drink", "eat": ["jh"], "tag": "tea"}, {"o": "お好み焼き", "k": "오코노미야키", "u": 1300, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "唐揚げ", "k": "가라아게", "u": 780, "q": 1, "cat": "snack", "eat": ["mk", "jh", "mj"]}, {"o": "枝豆", "k": "에다마메", "u": 450, "q": 1, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}]}, {"id": "ichiran", "name": "이치란 라멘", "orig": "一蘭 道頓堀店", "day": 0, "payer": "mk", "pay": "CARD", "items": [{"o": "天然とんこつラーメン", "k": "돈코츠 라멘", "u": 980, "q": 4, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "替玉", "k": "면 추가", "u": 210, "q": 3, "cat": "meal", "eat": ["mk", "sh", "jh"]}, {"o": "生ビール", "k": "생맥주", "u": 590, "q": 3, "cat": "alcohol", "eat": ["mk", "sh", "mj"], "tag": "beer"}]}, {"id": "famima", "name": "패밀리마트 난바점", "orig": "ファミリーマート 難波店", "day": 1, "payer": "jh", "pay": "CASH", "items": [{"o": "アサヒスーパードライ 350ml", "k": "아사히 캔맥주", "u": 278, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "おにぎり", "k": "오니기리", "u": 158, "q": 5, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "ファミチキ", "k": "패미치키", "u": 220, "q": 2, "cat": "snack", "eat": ["jh", "mj"]}, {"o": "綾鷹", "k": "녹차", "u": 160, "q": 2, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}, {"id": "daruma", "name": "쿠시카츠 다루마", "orig": "串カツだるま 新世界総本店", "day": 2, "payer": "mk", "pay": "CARD", "items": [{"o": "串カツ盛り合わせ", "k": "쿠시카츠 모둠", "u": 1650, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール 中", "k": "생맥주 (중)", "u": 600, "q": 3, "cat": "alcohol", "eat": ["sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 2, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "ウーロン茶", "k": "우롱차", "u": 350, "q": 1, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}], "parsed": {"name": "타코야키 쥬하치반", "orig": "たこ焼き 十八番 道頓堀店", "day": 3, "items": [{"o": "たこ焼き 8個", "k": "타코야키 8개", "u": 650, "q": 2, "cat": "snack", "eat": []}, {"o": "ねぎマヨ", "k": "파 마요 타코야키", "u": 750, "q": 1, "cat": "snack", "eat": []}, {"o": "ハイボール", "k": "하이볼", "u": 500, "q": 2, "cat": "alcohol", "eat": [], "tag": "hb"}, {"o": "ラムネ", "k": "라무네", "u": 250, "q": 1, "cat": "drink", "eat": []}]}};
-const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><rect x="46" y="62" width="108" height="104" rx="16" fill="#4B5CF1"/><rect x="80" y="40" width="40" height="26" rx="8" fill="none" stroke="#191F28" stroke-width="8"/><rect x="46" y="98" width="108" height="10" fill="#FFB81C"/><circle cx="70" cy="172" r="8" fill="#191F28"/><circle cx="130" cy="172" r="8" fill="#191F28"/></svg>`;
-const HEX = /^#[0-9a-fA-F]{6}$/, ASSET = /^[0-9a-f]{32}$/;
+const FALLBACK_RAW = {"order": 1, "name": "오사카", "country": "일본", "match": ["오사카", "osaka", "大阪", "간사이", "도톤보리", "난바", "교토", "일본"], "cur": {"code": "JPY", "sym": "¥", "unit": "엔", "per": 100}, "cash": 905, "tts": 9124, "fee": 22, "nights": "3박 4일", "days": ["10월 24일 토", "10월 25일 일", "10월 26일 월", "10월 27일 화"], "title": "이자카야 정복대", "hb": {"name": "하이볼", "title": "하이볼 장인"}, "readNote": "일본어 영수증도 돼요.", "colors": {"accent": "#E0362C", "glow": "#FFB81C", "night": "#0A1433", "paper": "#FFF9EC"}, "art": [{"key": "osaka-castle", "label": "오사카성", "kind": "landmark", "file": "osaka-castle.svg"}, {"key": "takoyaki", "label": "타코야키", "kind": "food", "file": "takoyaki.svg"}, {"key": "tsutenkaku", "label": "츠텐카쿠", "kind": "landmark", "file": "tsutenkaku.svg"}, {"key": "highball", "label": "하이볼", "kind": "drink", "file": "highball.svg"}, {"key": "maneki-neko", "label": "마네키네코", "kind": "symbol", "file": "maneki-neko.svg"}], "expenses": [{"id": "izakaya", "name": "이자카야 마루하치", "orig": "居酒屋 まる八 道頓堀店", "day": 0, "payer": "sh", "pay": "CASH", "items": [{"o": "お通し", "k": "오토시 (자릿세)", "u": 330, "q": 4, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール", "k": "생맥주", "u": 600, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 3, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "烏龍茶", "k": "우롱차", "u": 300, "q": 3, "cat": "drink", "eat": ["jh"], "tag": "tea"}, {"o": "お好み焼き", "k": "오코노미야키", "u": 1300, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "唐揚げ", "k": "가라아게", "u": 780, "q": 1, "cat": "snack", "eat": ["mk", "jh", "mj"]}, {"o": "枝豆", "k": "에다마메", "u": 450, "q": 1, "cat": "snack", "eat": ["mk", "sh", "jh", "mj"]}]}, {"id": "ichiran", "name": "이치란 라멘", "orig": "一蘭 道頓堀店", "day": 0, "payer": "mk", "pay": "CARD", "items": [{"o": "天然とんこつラーメン", "k": "돈코츠 라멘", "u": 980, "q": 4, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "替玉", "k": "면 추가", "u": 210, "q": 3, "cat": "meal", "eat": ["mk", "sh", "jh"]}, {"o": "生ビール", "k": "생맥주", "u": 590, "q": 3, "cat": "alcohol", "eat": ["mk", "sh", "mj"], "tag": "beer"}]}, {"id": "famima", "name": "패밀리마트 난바점", "orig": "ファミリーマート 難波店", "day": 1, "payer": "jh", "pay": "CASH", "items": [{"o": "アサヒスーパードライ 350ml", "k": "아사히 캔맥주", "u": 278, "q": 4, "cat": "alcohol", "eat": ["mk", "sh"], "tag": "beer"}, {"o": "おにぎり", "k": "오니기리", "u": 158, "q": 5, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "ファミチキ", "k": "패미치키", "u": 220, "q": 2, "cat": "snack", "eat": ["jh", "mj"]}, {"o": "綾鷹", "k": "녹차", "u": 160, "q": 2, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}, {"id": "daruma", "name": "쿠시카츠 다루마", "orig": "串カツだるま 新世界総本店", "day": 2, "payer": "mk", "pay": "CARD", "items": [{"o": "串カツ盛り合わせ", "k": "쿠시카츠 모둠", "u": 1650, "q": 2, "cat": "meal", "eat": ["mk", "sh", "jh", "mj"]}, {"o": "生ビール 中", "k": "생맥주 (중)", "u": 600, "q": 3, "cat": "alcohol", "eat": ["sh"], "tag": "beer"}, {"o": "ハイボール", "k": "하이볼", "u": 550, "q": 2, "cat": "alcohol", "eat": ["mj"], "tag": "hb"}, {"o": "ウーロン茶", "k": "우롱차", "u": 350, "q": 1, "cat": "drink", "eat": ["jh"], "tag": "tea"}]}], "parsed": {"name": "타코야키 쥬하치반", "orig": "たこ焼き 十八番 道頓堀店", "day": 3, "items": [{"o": "たこ焼き 8個", "k": "타코야키 8개", "u": 650, "q": 2, "cat": "snack", "eat": []}, {"o": "ねぎマヨ", "k": "파 마요 타코야키", "u": 750, "q": 1, "cat": "snack", "eat": []}, {"o": "ハイボール", "k": "하이볼", "u": 500, "q": 2, "cat": "alcohol", "eat": [], "tag": "hb"}, {"o": "ラムネ", "k": "라무네", "u": 250, "q": 1, "cat": "drink", "eat": []}]}};
+const GENERIC_ART = `<svg viewBox="0 0 200 200" aria-hidden="true"><path d="M82 56 V36 Q82 30 88 30 H112 Q118 30 118 36 V56" fill="none" stroke="#5C5F64" stroke-width="8" stroke-linecap="round"/><rect x="40" y="54" width="120" height="116" rx="16" fill="#4B6FA8"/><rect x="40" y="104" width="120" height="10" fill="#F2C45A"/><rect x="58" y="66" width="34" height="22" rx="6" fill="#E58A4A"/><circle cx="130" cy="80" r="12" fill="#F7F6F1"/><rect x="116" y="130" width="26" height="18" rx="5" fill="#9CCB8E"/><circle cx="66" cy="176" r="8" fill="#4A4C50"/><circle cx="134" cy="176" r="8" fill="#4A4C50"/></svg>`;
+const HEX = /^#[0-9a-fA-F]{6}$/, ASSET = /^[0-9a-f]{32}$/, ART_KINDS = ["landmark", "food", "drink", "symbol"];
 const ALL = ["mk", "sh", "jh", "mj"];
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -2051,7 +2150,9 @@ function cleanDest(d) {
     match: (Array.isArray(d.match) ? d.match : [d.name]).map(s => String(s).toLowerCase()),
     colors: Object.fromEntries(["accent", "glow", "night", "paper"].map(k => [k, HEX.test(c[k]) ? c[k] : null])),
     // 그림: 아티팩트에서는 데이터베이스의 asset, 파일로 열면 art/ 폴더의 file
-    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && (ASSET.test(a.asset) || /^[a-z0-9-]+\.svg$/.test(a.file || ""))).slice(0, 2),
+    // 0번 = 대표 명소, 1번 = 대표 음식(앱 화면), 2~5번은 스토리 이미지 장식. kind: landmark·food·drink·symbol
+    art: (Array.isArray(d.art) ? d.art : []).filter(a => a && (ASSET.test(a.asset) || /^[a-z0-9-]+\.svg$/.test(a.file || ""))).slice(0, 6)
+      .map((a, i) => ({ ...a, kind: ART_KINDS.includes(a.kind) ? a.kind : (i === 0 ? "landmark" : i === 1 ? "food" : "symbol") })),
   };
 }
 // 등록된 여행지만 찾는다. 못 찾으면 null (다른 여행지로 바꾸지 않는다)
@@ -2234,9 +2335,18 @@ const loc = n => money(n, S.trip.cur);
 // 지금 여행의 여행지 (직접 적은 여행지면 그림·색·예시 없이 이름만)
 const D = () => destOf(S.trip.dest) || genericDest();
 const placeLabel = () => { const d = D(); return d.country ? `${d.country} ${d.name}` : d.name; };
+// 등록되지 않은 여행지 그림: 이름에 바다·산 낌새가 있으면 그 그림, 아니면 도시. 어느 나라든 어색하지 않은 그림만
+const GENERIC_SETS = {"city": [{"key": "generic-city", "label": "도시", "kind": "landmark", "file": "generic-city.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "generic-snack", "label": "길거리 간식", "kind": "food", "file": "generic-snack.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "airplane", "label": "비행기", "kind": "symbol", "file": "airplane.svg"}], "beach": [{"key": "generic-beach", "label": "바닷가", "kind": "landmark", "file": "generic-beach.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "palm-tree", "label": "야자수", "kind": "symbol", "file": "palm-tree.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "airplane", "label": "비행기", "kind": "symbol", "file": "airplane.svg"}], "mountain": [{"key": "generic-mountain", "label": "산", "kind": "landmark", "file": "generic-mountain.svg"}, {"key": "generic-food", "label": "여행 밥상", "kind": "food", "file": "generic-food.svg"}, {"key": "camera", "label": "카메라", "kind": "symbol", "file": "camera.svg"}, {"key": "cheers", "label": "건배", "kind": "drink", "file": "cheers.svg"}, {"key": "suitcase", "label": "여행 가방", "kind": "symbol", "file": "suitcase.svg"}, {"key": "map-pin", "label": "지도", "kind": "symbol", "file": "map-pin.svg"}]};
+const BEACH_WORDS = ["해변", "비치", "바다", "해수욕", "섬", "아일랜드", "리조트", "beach", "island", "resort", "몰디브", "코타키나발루", "사이판", "팔라우", "칸쿤"];
+const MOUNTAIN_WORDS = ["산맥", "등산", "트레킹", "알프스", "국립공원", "캠핑", "mountain", "alps", "히말라야", "로키", "파타고니아"];
+function genericArt(place) {
+  const n = String(place || "").toLowerCase();
+  const k = BEACH_WORDS.some(w => n.includes(w)) ? "beach" : MOUNTAIN_WORDS.some(w => n.includes(w)) ? "mountain" : "city";
+  return GENERIC_SETS[k];
+}
 function genericDest() {
   const T = S.trip;
-  return { name: T.place, country: "", art: [], colors: {}, hb: { name: "하이볼", title: "하이볼 장인" }, readNote: "",
+  return { name: T.place, country: "", art: genericArt(T.place), colors: {}, hb: { name: "하이볼", title: "하이볼 장인" }, readNote: "",
     title: T.title, parsed: genericParsed() };
 }
 /* 시안 전용: 직접 적은 여행지의 영수증 읽기 예시 (원화 금액을 이 여행 통화로 바꿔 둔다) */
@@ -2364,11 +2474,6 @@ function syncCreateBtn() {
   const b = $("foot").querySelector('[data-act="create-trip"]');
   if (b) b.setAttribute("aria-disabled", String(scopeMismatch()));
 }
-function placeChips() {
-  const want = S.form.scope === "domestic", now = detect(S.form.place);
-  return `<div class="qchips" id="qchips" role="group" aria-label="등록된 여행지">${destsSorted().filter(([, d]) => isDomestic(d) === want)
-    .map(([k, d]) => `<button type="button" class="qchip" data-act="place:${k}" aria-pressed="${now === k}">${artImg(d, 0)}${esc(d.name)}</button>`).join("")}</div>`;
-}
 function calendar() {
   const f = S.form;
   if (!f.month) { const t = new Date(); f.month = { y: t.getFullYear(), m: t.getMonth() }; }
@@ -2442,7 +2547,6 @@ function refreshCreate(flip) {
   $("place-err").outerHTML = placeErr();
   $("rate-box").outerHTML = rateFields();
   $("cur-box").outerHTML = curField();
-  $("qchips").outerHTML = placeChips();
   refreshCal();
   if (flip) $("dest-card").classList.add("flip");
   syncCreateBtn();
@@ -2476,6 +2580,11 @@ function menuTotal() {
 function menuTotalHtml() {
   const y = menuTotal();
   return `<span>합계</span><span class="num">${loc(y)}${foreign() && y ? ` <span class="meta">약 ${won(toKrw(y))}</span>` : ""}</span>`;
+}
+// n분의 1: 모두에게 똑같이 (최대 잔여법이라 1 단위 차이는 참여 순서대로)
+function evenSumHtml() {
+  const y = parseInt(S.draft.total, 10) || 0, n = order().length, max = Math.max(0, ...Object.values(split(y, order())));
+  return `<span>${n}명이 나눠요</span><span class="num">${y > 0 ? `${loc(max)}씩${foreign() ? ` <span class="meta">약 ${won(rd(toKrw(y), n))}</span>` : ""}` : "총액을 적어주세요"}</span>`;
 }
 function menuLines() {
   const d = S.draft, many = d.lines.length > 1, unit = esc(S.trip.cur.unit);
@@ -2533,7 +2642,6 @@ const V = {
         <p class="hint" id="f-name-hint" style="margin-top:-10px">비워 두면 여행지와 날짜로 지어요. 예: 오사카 3박 4일</p>
         <label class="field">여행지<input id="f-place" name="place" type="text" value="${esc(S.form.place)}" placeholder="${S.form.scope === "domestic" ? "예: 제주, 부산" : "예: 오사카, 방콕"}" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
         ${placeErr()}
-        ${placeChips()}
         ${destCard()}
         ${calendar()}
         ${curField()}
@@ -2603,6 +2711,7 @@ const V = {
     body: () => `<p class="q">어떻게 추가할까요?</p>
       <button class="opt main" type="button" data-act="go:receipt"><b>영수증 찍기</b><span>메뉴와 가격을 자동으로 읽어요. ${esc(D().readNote || "")}</span></button>
       <button class="opt" type="button" data-act="go:manual"><b>직접 입력</b><span>메뉴가 안 적힌 영수증이나 카드 전표일 때</span></button>
+      <button class="opt" type="button" data-act="go:even"><b>n분의1</b><span>총액만 적으면 모두 똑같이 나눠요</span></button>
       <p class="hint">영수증 사진은 읽은 뒤 바로 지워요.</p>`,
     foot: () => [],
   },
@@ -2637,10 +2746,22 @@ const V = {
       <label class="field">어디서 썼어요?<input id="f-shop" name="shop" type="text" autocomplete="off" value="${esc(d.name)}" placeholder="예: 동네 편의점"></label>
       <p class="hint">누가 냈어요?</p>${payerSeg()}
       <p class="hint">어떻게 냈어요?</p>${paySeg()}
-      ${seg("mmode", [{ act: "mmode:menu", on: d.mode === "menu", label: "메뉴별로 적기" }, { act: "mmode:total", on: d.mode === "total", label: "총액만 적기" }])}
-      ${d.mode === "menu" ? menuLines() : `<label class="field">총액 (${esc(S.trip.cur.unit)})<input id="f-amt" name="amount" type="number" inputmode="numeric" min="0" value="${esc(d.total)}" placeholder="예: ${amtExample(18000)}"></label>`}`;
+      ${menuLines()}`;
     },
     foot: () => [["저장", "save-manual"]],
+  },
+  even: {
+    title: () => "n분의1", path: "/trip/7kq2/expense/new", back: "add",
+    body() {
+      const d = S.draft;
+      return `<p class="q">얼마를 썼어요?</p>
+      <label class="field">어디서 썼어요?<input id="f-shop" name="shop" type="text" autocomplete="off" value="${esc(d.name)}" placeholder="예: 택시"></label>
+      <p class="hint">누가 냈어요?</p>${payerSeg()}
+      <p class="hint">어떻게 냈어요?</p>${paySeg()}
+      <label class="field">총액 (${esc(S.trip.cur.unit)})<input id="f-amt" name="amount" type="number" inputmode="numeric" min="0" value="${esc(d.total)}" placeholder="예: ${amtExample(18000)}"></label>
+      <div class="sum total" id="even-sum">${evenSumHtml()}</div>`;
+    },
+    foot: () => [["저장", "save-even"]],
   },
   check: {
     title: () => exp().name, path: () => `/trip/7kq2/expense/${exp().id}`, back: "home", cls: "grey flush",
@@ -2742,7 +2863,8 @@ function go(r, dir) {
   if (r === "settled" && !settled()) r = "settle";
   if (r === "check" && !S.expenses.length) r = "home";
   if (r === "review" && !S.draft) S.draft = { payer: S.viewer, pay: "CASH", name: D().parsed.name };
-  if (r === "manual" && !(S.draft && S.draft.lines)) S.draft = { payer: S.viewer, pay: "CASH", name: "", mode: "menu", lines: [blankLine()], total: "" };
+  if (r === "manual" && !(S.draft && S.draft.lines)) S.draft = { payer: S.viewer, pay: "CASH", name: "", lines: [blankLine()] };
+  if (r === "even" && !(S.draft && "total" in S.draft)) S.draft = { payer: S.viewer, pay: "CASH", name: "", total: "" };
   if (r === "create") { if (!S.form.scope) S.form.scope = "overseas"; syncDates(); syncRate(); }
   clearTimeout(parseTimer);
   if (r === "receipt") {
@@ -3088,6 +3210,18 @@ function getDownloads() {
   return dlPromise;
 }
 const TALLY = [[14, 14, 86, 14], [50, 14, 50, 86], [50, 50, 80, 50], [24, 46, 24, 86], [8, 86, 92, 86]];
+// 여행지 그림 중 kind 순서대로 하나 고른다 (이미 쓴 그림은 건너뜀)
+function pickArt(d, kinds, used = []) {
+  const l = (d && d.art) || [];
+  for (const k of kinds) { const a = l.find(a => a.kind === k && !used.includes(a)); if (a) { used.push(a); return a; } }
+  return null;
+}
+function artSrc(a) {
+  if (!a) return null;
+  if (ASSET.test(a.asset || "")) return "/_blob/" + a.asset;
+  return location.protocol !== "file:" && a.file ? "art/" + a.file : null;
+}
+const loadArt = a => { const src = artSrc(a); return src ? loadImg(src) : Promise.resolve(null); };
 function loadImg(src) {
   return new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 }
@@ -3101,7 +3235,7 @@ async function drawStory() {
   const sample = [T.name, T.nights, T.days[0] || "", T.title, won(s.total), ...S.members.map(m => m.name), ...ids.flatMap(id => s.titles[id]),
     "hashell 여행 돌아보기 우리가 쓴 돈 맥주를 가장 많이 마신 사람 맥주 잔 이번 여행 우리의 칭호 로 정산했어요 부터 외 명 0123456789₩,"].join("");
   if (document.fonts) await Promise.all(["500", "700", "900"].map(w => document.fonts.load(`${w} 40px "Noto Sans KR"`, sample).catch(() => null)));
-  const art = d.art && d.art[0] ? await loadImg("/_blob/" + d.art[0].asset) : null;
+  const art = await loadArt(d.art && d.art[0]);
 
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
@@ -3174,10 +3308,207 @@ async function drawStory() {
 
   return new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
 }
+/* 여행 돌아보기 장마다 인스타 스토리 이미지 한 장씩. 마지막 장은 한 장 요약(drawStory) */
+const STORY_PAGES = ["여행 이름", "우리가 쓴 돈", "맥주왕", "가장 비싼 한 끼", "우리의 칭호", "한 장 요약"];
+let storyCache = {}, storyUrls = {}, storyAt = 0;
+// #RRGGBB 두 색을 t만큼 섞는다 (화면의 color-mix와 같은 계산)
+function mixHex(a, b, t) {
+  const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const A = p(a), B = p(b);
+  return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+async function drawStoryPage(k) {
+  if (k === STORY_PAGES.length - 1) return drawStory();
+  const W = 1080, H = 1920, P = 88, maxW = W - P * 2;
+  const T = S.trip, d = D(), s = stats(), king = s.beerRank[0], ids = order();
+  const C = d.colors || {}, glow = C.glow || "#FFB81C", foam = C.paper || "#FFF9EC", night = C.night || "#0A1433", accent = C.accent || "#E0362C";
+  const BLUE = "#4B5CF1", BLUE2 = "#5E6EF4", BLUE0 = "#3A4AD9", BUTTER = "#FFE08A";
+  // 화면의 .s-brand ~ .s-paper 배경과 같은 색
+  const BG = [
+    [[BLUE0, BLUE, BLUE2], foam],
+    [[mixHex(glow, foam, 0.3), glow, mixHex(glow, accent, 0.28)], night],
+    [[mixHex(night, BLUE, 0.55), mixHex(night, BLUE2, 0.4)], foam],
+    [[mixHex(accent, glow, 0.2), accent, mixHex(accent, night, 0.22)], foam],
+    [[foam, mixHex(foam, glow, 0.16), mixHex(foam, BLUE, 0.14)], night],
+  ][k];
+  const sample = [T.name, T.nights, T.title, s.top.name, ...T.days, ...S.members.map(m => m.name), ...ids.flatMap(id => s.titles[id]), ...CAT.map(c => c[1]),
+    "hashell 여행 돌아보기 우리가 먹고 마신 기록 영수증 장 명 우리가 쓴 돈은 모두 하루에 씩 먹고 마셨어요 이번 여행에서 맥주를 가장 많이 마신 사람은 맥주 잔 모두 맨정신으로 다녔어요 가장 비싼 한 끼 한 사람당 이번 여행의 칭호 로 정산했어요 0123456789₩¥元,.%/"].join("");
+  if (document.fonts) await Promise.all(["500", "700", "900"].map(w => document.fonts.load(`${w} 40px "Noto Sans KR"`, sample).catch(() => null)));
+  // 장마다 쓰는 그림: [큰 그림, 스티커들]. 한 장 안에서는 같은 그림을 두 번 쓰지 않는다
+  const L = d.art || [];
+  const pick = (skip, ...groups) => { const used = skip.filter(Boolean); return groups.map(g => pickArt(d, g, used)); };
+  const plan = [
+    () => [L[0], pick([L[0]], ["food"], ["drink", "symbol"])],
+    () => [null, pick([], ["food"], ["food", "symbol"])],
+    () => [null, pick([], ["drink", "symbol"], ["symbol", "food"])],
+    () => [L[1], pick([L[1]], ["food", "drink"])],
+    () => [null, pick([L[0]], ["landmark", "symbol"], ["symbol", "drink"])],
+  ][k]();
+  const [art, ...stk] = await Promise.all([loadArt(plan[0]), ...plan[1].map(loadArt)]);
+  const stickers = stk.filter(Boolean);
+
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  const F = (w, px) => `${w} ${px}px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif`;
+  const text = (t, px, w, color, X, Y, o = {}) => {
+    x.font = F(w, px); x.fillStyle = color; x.globalAlpha = o.a ?? 1; x.textAlign = o.align || "left";
+    x.fillText(t, X, Y);
+    x.globalAlpha = 1; x.textAlign = "left";
+    return x.measureText(t).width;
+  };
+  // 상자보다 길면 글자 크기를 줄인다
+  const fitPx = (t, w, px, max, min = 30) => { x.font = F(w, px); while (x.measureText(t).width > max && px > min) { px -= 2; x.font = F(w, px); } return px; };
+  const fit = (t, w, px, color, X, Y, o = {}) => text(t, fitPx(t, w, px, o.max || maxW), w, color, X, Y, o);
+  // 그림을 살짝 돌려서 붙인다 (cx, cy = 가운데)
+  const sticker = (im, cx, cy, size, deg) => {
+    if (!im) return;
+    x.save(); x.translate(cx, cy); x.rotate(deg * Math.PI / 180);
+    x.drawImage(im, -size / 2, -size / 2, size, size); x.restore();
+  };
+  const box = (X, Y, w, h, r, fill) => { x.beginPath(); if (x.roundRect) x.roundRect(X, Y, w, h, r); else x.rect(X, Y, w, h); x.fillStyle = fill; x.fill(); };
+
+  const [stops, fg] = BG;
+  const g = x.createLinearGradient(0, 0, W * 0.35, H);
+  stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c));
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const hi = k === 1 || k === 4 ? night : glow;
+  // 인스타 스토리 위·아래 약 250px는 가려지므로 내용은 그 사이에
+  text("hashell 여행 돌아보기", 34, 700, fg, P, 300, { a: 0.8 });
+  text(`${k + 1} / ${STORY_PAGES.length}`, 34, 700, fg, W - P, 300, { a: 0.6, align: "right" });
+  // 1·2·5번째 장: 오른쪽 위 빈자리에 작은 그림 두 장 (가려지는 위 250px 아래, 제목 위)
+  if (k === 1 || k === 2 || k === 4) {
+    sticker(stickers[1], W - P - 250, 420, 150, -8);
+    sticker(stickers[0], W - P - 80, 410, 170, 7);
+  }
+
+  if (k === 0) {
+    // 그림이 없으면(파일로 열 때) 글을 가운데로
+    const oy = art ? 0 : -300;
+    if (art) x.drawImage(art, (W - 560) / 2, 420, 560, 560);
+    if (art) { sticker(stickers[0], P + 120, 900, 240, -10); sticker(stickers[1], W - P - 110, 520, 220, 9); }
+    fit(`${T.nights}, 우리가 먹고 마신 기록`, 500, 44, fg, P, 1150 + oy, { a: 0.9 });
+    fit(T.name, 900, 140, fg, P, 1300 + oy);
+    fit(`영수증 ${S.expenses.length}장, ${S.members.length}명`, 500, 40, fg, P, 1390 + oy, { a: 0.8 });
+  } else if (k === 1) {
+    text("우리가 쓴 돈은 모두", 48, 500, fg, P, 560);
+    fit(won(s.total), 900, 150, fg, P, 730);
+    fit(`하루에 ${won(rd(s.total, T.days.length || 1))}씩 먹고 마셨어요`, 500, 44, fg, P, 820, { a: 0.9 });
+    const COL = { alcohol: night, meal: accent, snack: BLUE, drink: foam, other: BUTTER };
+    let bx = P;
+    x.save(); x.beginPath(); if (x.roundRect) x.roundRect(P, 960, maxW, 72, 36); else x.rect(P, 960, maxW, 72); x.clip();
+    CAT.forEach(([key]) => { const w = (s.cat[key] || 0) / s.all * maxW; x.fillStyle = COL[key]; x.fillRect(bx, 960, w + 1, 72); bx += w; });
+    x.restore();
+    CAT.forEach(([key, label], i) => {
+      const y = 1140 + i * 86;
+      x.fillStyle = COL[key]; x.beginPath(); x.arc(P + 18, y - 14, 18, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = fg; x.globalAlpha = 0.35; x.lineWidth = 2; x.stroke(); x.globalAlpha = 1;
+      text(label, 44, 700, fg, P + 56, y);
+      text(`${Math.round((s.cat[key] || 0) / s.all * 100)}%`, 44, 700, fg, W - P, y, { align: "right" });
+    });
+  } else if (k === 2) {
+    if (s.beer[king]) {
+      fit("이번 여행에서 맥주를 가장 많이 마신 사람은", 500, 46, fg, P, 560);
+      fit(mem(king).name, 900, 180, hi, P, 760);
+      const lw = text(`맥주 ${s.beer[king]}잔`, 72, 900, fg, P, 880);
+      x.strokeStyle = hi; x.lineWidth = 10; x.lineCap = "round";
+      const kk = 0.7, top = 880 - 64;
+      for (let n = 0; n < s.beer[king]; n++) {
+        const gx = P + lw + 40 + Math.floor(n / 5) * 84;
+        if (gx + 70 > W - P) break;
+        const [a1, b1, a2, b2] = TALLY[n % 5];
+        x.beginPath(); x.moveTo(gx + a1 * kk, top + b1 * kk); x.lineTo(gx + a2 * kk, top + b2 * kk); x.stroke();
+      }
+      const rest = s.beerRank.slice(1, 6);
+      if (rest.length) box(P, 1000, maxW, rest.length * 96 + 40, 36, "rgba(10,20,51,.28)");
+      rest.forEach((id, i) => {
+        const y = 1086 + i * 96;
+        text(mem(id).name, 44, 700, fg, P + 44, y);
+        text(`${s.beer[id]}잔`, 44, 700, fg, W - P - 44, y, { align: "right" });
+      });
+    } else {
+      text("이번 여행에서 맥주는", 48, 500, fg, P, 700);
+      text("0잔", 180, 900, hi, P, 900);
+      text("모두 맨정신으로 다녔어요.", 48, 500, fg, P, 1000, { a: 0.9 });
+    }
+  } else if (k === 3) {
+    text("가장 비싼 한 끼", 48, 500, fg, P, 560);
+    fit(s.top.name, 900, 120, fg, P, 710);
+    fit(foreign() ? loc(yenOf(s.top)) : won(krwOf(s.top)), 900, 84, fg, P, 830);
+    fit(`${T.days[s.top.day] || ""}, 한 사람당 ${won(rd(krwOf(s.top), s.topEaters))}`, 500, 44, fg, P, 920, { a: 0.9 });
+    if (art) x.drawImage(art, W - P - 520, 1060, 520, 520);
+    sticker(stickers[0], P + 140, art ? 1420 : 1260, 260, -9);
+  } else {
+    text("이번 여행의 칭호", 48, 500, fg, P, 520);
+    const step = Math.min(150, Math.floor(1000 / Math.max(1, ids.length)));
+    ids.forEach((id, i) => {
+      const y = 640 + i * step, r = Math.min(40, step * 0.3), tx = P + r * 2 + 28, room = maxW - r * 2 - 28;
+      x.fillStyle = col(id); x.beginPath(); x.arc(P + r, y, r, 0, Math.PI * 2); x.fill();
+      text(mem(id).name.slice(0, 1), Math.round(r * 0.9), 900, "#191F28", P + r, y + r * 0.32, { align: "center" });
+      fit(s.titles[id][0], 900, Math.min(56, step * 0.38), hi, tx, y + 4, { max: room });
+      fit(`${mem(id).name}, ${s.titles[id][1]}`, 500, Math.min(34, step * 0.24), fg, tx, y + Math.min(50, step * 0.34), { a: 0.75, max: room });
+    });
+  }
+  text("hashell로 정산했어요", 30, 500, fg, P, 1620, { a: 0.7 });
+  return new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
+}
+function storyBlob(k) {
+  if (!storyCache[k]) storyCache[k] = drawStoryPage(k).catch(e => { delete storyCache[k]; throw e; });
+  return storyCache[k];
+}
+function forgetStories() {
+  Object.values(storyUrls).forEach(u => URL.revokeObjectURL(u));
+  storyCache = {}; storyUrls = {};
+}
+async function showStory(k) {
+  const panel = $("overlay").querySelector(".share");
+  if (!panel) return;
+  const n = STORY_PAGES.length;
+  storyAt = Math.max(0, Math.min(n - 1, k));
+  panel.querySelectorAll(".st-tabs button").forEach((b, i) => { b.setAttribute("aria-selected", String(i === storyAt)); b.classList.toggle("done", i < storyAt); });
+  panel.querySelector('[data-act="st-prev"]').disabled = storyAt === 0;
+  panel.querySelector('[data-act="st-next"]').disabled = storyAt === n - 1;
+  $("st-cap").textContent = `${storyAt + 1} / ${n}, ${STORY_PAGES[storyAt]}`;
+  const img = panel.querySelector(".st-stage img"), at = storyAt;
+  img.classList.add("wait");
+  try {
+    const b = await storyBlob(at);
+    if (!storyUrls[at]) storyUrls[at] = URL.createObjectURL(b);
+    if (at !== storyAt) return;
+    img.src = storyUrls[at];
+    img.alt = `인스타 스토리 이미지 ${at + 1}번째, ${STORY_PAGES[at]}`;
+    img.classList.remove("wait");
+    shareBlob = b;
+  } catch (e) {
+    if (at === storyAt) $("st-cap").textContent = "이미지를 만들지 못했어요. 닫고 다시 눌러 주세요.";
+  }
+}
+// 인스타 스토리로 보내기: 휴대폰 공유 창(인스타그램 → 스토리)을 연다. 공유 창이 없으면 저장
+async function sendInsta() {
+  const k = storyAt;
+  let b;
+  try { b = await storyBlob(k); } catch (e) { return toast("이미지를 만들지 못했어요. 닫고 다시 눌러 주세요"); }
+  const name = `hashell-${S.trip.name.replace(/[\\/:*?"<>|]/g, "").trim() || "여행"}-${k + 1}.png`;
+  const file = typeof File === "function" ? new File([b], name, { type: "image/png" }) : null;
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return toast(k < STORY_PAGES.length - 1 ? `${k + 1}번째 이미지를 보냈어요. 넘겨서 다음 장도 올려 보세요` : "마지막 이미지까지 보냈어요");
+    } catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  /* 시안 전용: 공유 창이 없는 곳(아티팩트·PC)에서는 저장 창으로 */
+  const dl = await getDownloads();
+  if (dl) {
+    try { await dl.save({ filename: name, data: b }); return toast("이미지를 저장했어요. 인스타그램 스토리에서 사진으로 올려 주세요"); }
+    catch (e) { if (e && e.code === "declined") return; }
+  }
+  toast("이미지를 길게 눌러 저장한 뒤 인스타그램 스토리에 올려 주세요");
+}
 async function openShare() {
   const wr = $("overlay").querySelector(".wr");
   if (!wr) return;
   clearTimeout(wrTimer);
+  forgetStories();
   let panel = wr.querySelector(".share");
   if (!panel) {
     panel = document.createElement("div");
@@ -3186,19 +3517,21 @@ async function openShare() {
     panel.setAttribute("aria-label", "인스타 스토리 이미지");
     wr.appendChild(panel);
   }
-  panel.innerHTML = `<p role="status">이미지를 만들고 있어요…</p>`;
-  try {
-    shareBlob = await drawStory();
-    if (shareUrl) URL.revokeObjectURL(shareUrl);
-    shareUrl = URL.createObjectURL(shareBlob);
-    const dl = await getDownloads();
-    panel.innerHTML = `<img src="${shareUrl}" alt="인스타 스토리용 여행 돌아보기 이미지">
-      <p>${dl ? "저장한 뒤 인스타그램 스토리에서 사진으로 올려 주세요." : "이미지를 길게 눌러 저장한 뒤 인스타그램 스토리에 올려 주세요."}</p>
-      <div class="acts">${dl ? `<button class="wbtn a" type="button" data-act="share-save">이미지 저장</button>` : ""}<button class="wbtn b" type="button" data-act="share-close">닫기</button></div>`;
-    panel.querySelector("button")?.focus();
-  } catch (e) {
-    panel.innerHTML = `<p>이미지를 만들지 못했어요. 닫고 다시 눌러 주세요.</p><div class="acts"><button class="wbtn b" type="button" data-act="share-close">닫기</button></div>`;
-  }
+  panel.innerHTML = `<div class="st-tabs" role="tablist" aria-label="스토리 이미지">${STORY_PAGES.map((l, i) => `<button type="button" role="tab" aria-selected="false" aria-label="${i + 1}번째, ${l}" data-act="st-go:${i}"><i></i></button>`).join("")}</div>
+    <div class="st-stage">
+      <button class="st-nav" type="button" data-act="st-prev" aria-label="이전 이미지">‹</button>
+      <img class="wait" alt="" width="1080" height="1920">
+      <button class="st-nav" type="button" data-act="st-next" aria-label="다음 이미지">›</button>
+    </div>
+    <p id="st-cap" role="status"></p>
+    <div class="acts"><button class="wbtn a" type="button" data-act="share-insta">인스타 스토리에 올리기</button><button class="wbtn b" type="button" data-act="share-close">닫기</button></div>`;
+  // 좌우로 밀어서 넘기기
+  const stage = panel.querySelector(".st-stage");
+  let sx = null;
+  stage.addEventListener("pointerdown", e => { sx = e.clientX; });
+  stage.addEventListener("pointerup", e => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) showStory(storyAt + (dx < 0 ? 1 : -1)); });
+  panel.querySelector('[data-act="share-insta"]')?.focus();
+  await showStory(0);
 }
 async function saveShare() {
   const dl = await getDownloads();
@@ -3214,6 +3547,7 @@ async function saveShare() {
 function closeShare() {
   const p = $("overlay").querySelector(".share");
   if (p) p.remove();
+  forgetStories();
   $("overlay").querySelector('[data-act="wr-share"]')?.focus({ preventScroll: true });
   resumeAuto();
 }
@@ -3271,7 +3605,7 @@ document.addEventListener("input", e => {
   if (id === "f-cash") { f.cash = e.target.value; f.rateTouched = true; return; }
   if (id === "f-fee") { f.fee = e.target.value; f.rateTouched = true; return; }
   if (id === "f-shop" && S.draft) { S.draft.name = e.target.value; return; }
-  if (id === "f-amt" && S.draft) { S.draft.total = e.target.value; return; }
+  if (id === "f-amt" && S.draft) { S.draft.total = e.target.value; const b = $("even-sum"); if (b) b.innerHTML = evenSumHtml(); return; }
   const ml = /^ml-(name|amt)-(\d+)$/.exec(id);
   if (ml && S.draft && S.draft.lines) {
     S.draft.lines[+ml[2]][ml[1] === "name" ? "name" : "amt"] = e.target.value;
@@ -3347,7 +3681,6 @@ document.addEventListener("click", e => {
       go("home");
       return toast("지출을 지웠어요");
     }
-    case "mmode": S.draft.mode = p; return render();
     case "qty": {
       const l = S.draft.lines[+p];
       l.qty = Math.max(1, l.qty + Number(q));
@@ -3382,10 +3715,6 @@ document.addEventListener("click", e => {
       render();
       return $("f-place")?.focus();
     }
-    case "place":
-      S.form.place = destOf(p).name; S.form.curCode = ""; S.form.rateTouched = false; S.lastPreview = previewId();
-      syncDates(); syncRate();
-      return render();
     case "month": {
       const f = S.form, next = new Date(f.month.y, f.month.m + Number(p), 1);
       f.month = { y: next.getFullYear(), m: next.getMonth() };
@@ -3496,18 +3825,19 @@ document.addEventListener("click", e => {
       go("check");
       return toast("저장했어요. 안 먹은 메뉴에서 이름을 빼주세요");
     }
+    case "save-even": {
+      const d = S.draft, n = ($("f-shop").value || "").trim(), y = parseInt(d.total, 10);
+      if (!n) return fieldError("f-shop", "어디서 썼는지 적어주세요");
+      if (!(y > 0)) return fieldError("f-amt", `총액을 ${S.trip.cur.unit} 단위 숫자로 적어주세요`);
+      S.expenses.push({ id: "m" + Date.now(), name: n, orig: "", day: lastDay(), payer: d.payer, by: S.viewer, pay: d.pay,
+        items: [{ o: "", k: "총액", u: y, q: 1, cat: "other", eat: order() }] });
+      S.draft = null;
+      go("home");
+      return toast(`저장했어요. ${order().length}명이 똑같이 나눠요`);
+    }
     case "save-manual": {
       const d = S.draft, n = ($("f-shop").value || "").trim();
       if (!n) return fieldError("f-shop", "어디서 썼는지 적어주세요");
-      if (d.mode === "total") {
-        const y = parseInt(d.total, 10);
-        if (!(y > 0)) return fieldError("f-amt", `총액을 ${S.trip.cur.unit} 단위 숫자로 적어주세요`);
-        S.expenses.push({ id: "m" + Date.now(), name: n, orig: "", day: lastDay(), payer: d.payer, by: S.viewer, pay: d.pay,
-          items: [{ o: "", k: "기타", u: y, q: 1, cat: "other", eat: order() }] });
-        S.draft = null;
-        go("home");
-        return toast("저장했어요");
-      }
       // 메뉴별: 완전히 빈 줄은 무시하고, 반만 적은 줄은 그 칸 아래에 알려준다. 적은 금액이 단가, 단가×수량이 줄 합계
       const lines = d.lines.map((l, k) => ({ ...l, k })).filter(l => l.name.trim() || String(l.amt).trim());
       if (!lines.length) return fieldError("ml-name-0", "메뉴를 하나 이상 적어주세요");
@@ -3537,6 +3867,10 @@ document.addEventListener("click", e => {
     case "wr-share": return openShare();
     case "share-save": return saveShare();
     case "share-close": return closeShare();
+    case "share-insta": return sendInsta();
+    case "st-go": return showStory(+p);
+    case "st-prev": return showStory(storyAt - 1);
+    case "st-next": return showStory(storyAt + 1);
     case "wr-prev": return wrStep(-1);
     case "wr-next": return wrStep(1);
     case "wr-pause": {
@@ -3561,12 +3895,12 @@ document.addEventListener("keydown", e => {
   }
   if (!S.wrapped) { if (e.key === "Escape" && S.sheet) closeSheet(); return; }
   if (e.key === "Escape") return share ? closeShare() : closeWrapped();
-  if (share) return;
+  if (share) { if (e.key === "ArrowRight") showStory(storyAt + 1); if (e.key === "ArrowLeft") showStory(storyAt - 1); return; }
   if (e.key === "ArrowRight") wrStep(1);
   if (e.key === "ArrowLeft") wrStep(-1);
 });
 // 다시 그린 뒤에도 방금 누른 버튼에 초점을 돌려준다 (키보드로 칩을 연달아 누를 수 있게)
-const KEEP_FOCUS = /^(toggle|payer|pay|pick|est-info|month|place|mmode|qty|mline-del)(:|$)/;
+const KEEP_FOCUS = /^(toggle|payer|pay|pick|est-info|month|qty|mline-del)(:|$)/;
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-act]");
   if (!t || t.isConnected || !KEEP_FOCUS.test(t.dataset.act)) return;

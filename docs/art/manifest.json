@@ -1,0 +1,1538 @@
+{
+ "cities": [
+  {
+   "id": "osaka",
+   "name": "오사카",
+   "country": "일본",
+   "cur": "JPY",
+   "art": [
+    {
+     "key": "osaka-castle",
+     "label": "오사카성",
+     "kind": "landmark",
+     "file": "osaka-castle.svg"
+    },
+    {
+     "key": "takoyaki",
+     "label": "타코야키",
+     "kind": "food",
+     "file": "takoyaki.svg"
+    },
+    {
+     "key": "tsutenkaku",
+     "label": "츠텐카쿠",
+     "kind": "landmark",
+     "file": "tsutenkaku.svg"
+    },
+    {
+     "key": "highball",
+     "label": "하이볼",
+     "kind": "drink",
+     "file": "highball.svg"
+    },
+    {
+     "key": "maneki-neko",
+     "label": "마네키네코",
+     "kind": "symbol",
+     "file": "maneki-neko.svg"
+    }
+   ]
+  },
+  {
+   "id": "tokyo",
+   "name": "도쿄",
+   "country": "일본",
+   "cur": "JPY",
+   "art": [
+    {
+     "key": "tokyo-tower",
+     "label": "도쿄타워",
+     "kind": "landmark",
+     "file": "tokyo-tower.svg"
+    },
+    {
+     "key": "sushi",
+     "label": "스시",
+     "kind": "food",
+     "file": "sushi.svg"
+    },
+    {
+     "key": "sensoji",
+     "label": "센소지",
+     "kind": "landmark",
+     "file": "sensoji.svg"
+    },
+    {
+     "key": "sake",
+     "label": "사케",
+     "kind": "drink",
+     "file": "sake.svg"
+    },
+    {
+     "key": "maneki-neko",
+     "label": "마네키네코",
+     "kind": "symbol",
+     "file": "maneki-neko.svg"
+    }
+   ]
+  },
+  {
+   "id": "fukuoka",
+   "name": "후쿠오카",
+   "country": "일본",
+   "cur": "JPY",
+   "art": [
+    {
+     "key": "fukuoka-tower",
+     "label": "후쿠오카타워",
+     "kind": "landmark",
+     "file": "fukuoka-tower.svg"
+    },
+    {
+     "key": "motsunabe",
+     "label": "모츠나베",
+     "kind": "food",
+     "file": "motsunabe.svg"
+    },
+    {
+     "key": "mentaiko",
+     "label": "명란",
+     "kind": "food",
+     "file": "mentaiko.svg"
+    },
+    {
+     "key": "shochu",
+     "label": "소주(이모)",
+     "kind": "drink",
+     "file": "shochu.svg"
+    },
+    {
+     "key": "maneki-neko",
+     "label": "마네키네코",
+     "kind": "symbol",
+     "file": "maneki-neko.svg"
+    }
+   ]
+  },
+  {
+   "id": "sapporo",
+   "name": "삿포로",
+   "country": "일본",
+   "cur": "JPY",
+   "art": [
+    {
+     "key": "sapporo-clocktower",
+     "label": "삿포로 시계탑",
+     "kind": "landmark",
+     "file": "sapporo-clocktower.svg"
+    },
+    {
+     "key": "jingisukan",
+     "label": "징기스칸",
+     "kind": "food",
+     "file": "jingisukan.svg"
+    },
+    {
+     "key": "soup-curry",
+     "label": "수프카레",
+     "kind": "food",
+     "file": "soup-curry.svg"
+    },
+    {
+     "key": "beer-mug",
+     "label": "생맥주",
+     "kind": "drink",
+     "file": "beer-mug.svg"
+    },
+    {
+     "key": "maneki-neko",
+     "label": "마네키네코",
+     "kind": "symbol",
+     "file": "maneki-neko.svg"
+    }
+   ]
+  },
+  {
+   "id": "okinawa",
+   "name": "오키나와",
+   "country": "일본",
+   "cur": "JPY",
+   "art": [
+    {
+     "key": "shuri-castle",
+     "label": "슈리성",
+     "kind": "landmark",
+     "file": "shuri-castle.svg"
+    },
+    {
+     "key": "okinawa-soba",
+     "label": "오키나와 소바",
+     "kind": "food",
+     "file": "okinawa-soba.svg"
+    },
+    {
+     "key": "shisa",
+     "label": "시사",
+     "kind": "symbol",
+     "file": "shisa.svg"
+    },
+    {
+     "key": "awamori",
+     "label": "아와모리",
+     "kind": "drink",
+     "file": "awamori.svg"
+    },
+    {
+     "key": "palm-tree",
+     "label": "야자수",
+     "kind": "symbol",
+     "file": "palm-tree.svg"
+    }
+   ]
+  },
+  {
+   "id": "danang",
+   "name": "다낭",
+   "country": "베트남",
+   "cur": "VND",
+   "art": [
+    {
+     "key": "golden-bridge",
+     "label": "골든브릿지",
+     "kind": "landmark",
+     "file": "golden-bridge.svg"
+    },
+    {
+     "key": "mi-quang",
+     "label": "미꽝",
+     "kind": "food",
+     "file": "mi-quang.svg"
+    },
+    {
+     "key": "dragon-bridge",
+     "label": "용다리",
+     "kind": "landmark",
+     "file": "dragon-bridge.svg"
+    },
+    {
+     "key": "beer-ice",
+     "label": "얼음 맥주",
+     "kind": "drink",
+     "file": "beer-ice.svg"
+    },
+    {
+     "key": "non-la",
+     "label": "논라",
+     "kind": "symbol",
+     "file": "non-la.svg"
+    }
+   ]
+  },
+  {
+   "id": "nhatrang",
+   "name": "나트랑",
+   "country": "베트남",
+   "cur": "VND",
+   "art": [
+    {
+     "key": "ponagar",
+     "label": "포나가르 탑",
+     "kind": "landmark",
+     "file": "ponagar.svg"
+    },
+    {
+     "key": "grilled-seafood",
+     "label": "해산물 구이",
+     "kind": "food",
+     "file": "grilled-seafood.svg"
+    },
+    {
+     "key": "nhatrang-beach",
+     "label": "나트랑 해변",
+     "kind": "landmark",
+     "file": "nhatrang-beach.svg"
+    },
+    {
+     "key": "coconut",
+     "label": "코코넛",
+     "kind": "drink",
+     "file": "coconut.svg"
+    },
+    {
+     "key": "non-la",
+     "label": "논라",
+     "kind": "symbol",
+     "file": "non-la.svg"
+    }
+   ]
+  },
+  {
+   "id": "hanoi",
+   "name": "하노이",
+   "country": "베트남",
+   "cur": "VND",
+   "art": [
+    {
+     "key": "hoan-kiem",
+     "label": "호안끼엠 호수",
+     "kind": "landmark",
+     "file": "hoan-kiem.svg"
+    },
+    {
+     "key": "pho",
+     "label": "쌀국수",
+     "kind": "food",
+     "file": "pho.svg"
+    },
+    {
+     "key": "bun-cha",
+     "label": "분짜",
+     "kind": "food",
+     "file": "bun-cha.svg"
+    },
+    {
+     "key": "beer-ice",
+     "label": "얼음 맥주",
+     "kind": "drink",
+     "file": "beer-ice.svg"
+    },
+    {
+     "key": "non-la",
+     "label": "논라",
+     "kind": "symbol",
+     "file": "non-la.svg"
+    }
+   ]
+  },
+  {
+   "id": "hochiminh",
+   "name": "호치민",
+   "country": "베트남",
+   "cur": "VND",
+   "art": [
+    {
+     "key": "saigon-cathedral",
+     "label": "사이공 노트르담 성당",
+     "kind": "landmark",
+     "file": "saigon-cathedral.svg"
+    },
+    {
+     "key": "banh-mi",
+     "label": "반미",
+     "kind": "food",
+     "file": "banh-mi.svg"
+    },
+    {
+     "key": "com-tam",
+     "label": "껌땀",
+     "kind": "food",
+     "file": "com-tam.svg"
+    },
+    {
+     "key": "viet-coffee",
+     "label": "베트남 커피",
+     "kind": "drink",
+     "file": "viet-coffee.svg"
+    },
+    {
+     "key": "non-la",
+     "label": "논라",
+     "kind": "symbol",
+     "file": "non-la.svg"
+    }
+   ]
+  },
+  {
+   "id": "shanghai",
+   "name": "상하이",
+   "country": "중국",
+   "cur": "CNY",
+   "art": [
+    {
+     "key": "oriental-pearl",
+     "label": "동방명주",
+     "kind": "landmark",
+     "file": "oriental-pearl.svg"
+    },
+    {
+     "key": "xiaolongbao",
+     "label": "샤오롱바오",
+     "kind": "food",
+     "file": "xiaolongbao.svg"
+    },
+    {
+     "key": "yuyuan",
+     "label": "예원",
+     "kind": "landmark",
+     "file": "yuyuan.svg"
+    },
+    {
+     "key": "huangjiu",
+     "label": "황주",
+     "kind": "drink",
+     "file": "huangjiu.svg"
+    },
+    {
+     "key": "red-lantern",
+     "label": "홍등",
+     "kind": "symbol",
+     "file": "red-lantern.svg"
+    }
+   ]
+  },
+  {
+   "id": "beijing",
+   "name": "베이징",
+   "country": "중국",
+   "cur": "CNY",
+   "art": [
+    {
+     "key": "tiananmen",
+     "label": "천안문",
+     "kind": "landmark",
+     "file": "tiananmen.svg"
+    },
+    {
+     "key": "peking-duck",
+     "label": "베이징 덕",
+     "kind": "food",
+     "file": "peking-duck.svg"
+    },
+    {
+     "key": "great-wall",
+     "label": "만리장성",
+     "kind": "landmark",
+     "file": "great-wall.svg"
+    },
+    {
+     "key": "baijiu",
+     "label": "바이주",
+     "kind": "drink",
+     "file": "baijiu.svg"
+    },
+    {
+     "key": "red-lantern",
+     "label": "홍등",
+     "kind": "symbol",
+     "file": "red-lantern.svg"
+    }
+   ]
+  },
+  {
+   "id": "qingdao",
+   "name": "칭다오",
+   "country": "중국",
+   "cur": "CNY",
+   "art": [
+    {
+     "key": "zhanqiao",
+     "label": "칭다오 잔교",
+     "kind": "landmark",
+     "file": "zhanqiao.svg"
+    },
+    {
+     "key": "clams",
+     "label": "바지락 볶음",
+     "kind": "food",
+     "file": "clams.svg"
+    },
+    {
+     "key": "lamb-skewer",
+     "label": "양꼬치",
+     "kind": "food",
+     "file": "lamb-skewer.svg"
+    },
+    {
+     "key": "beer-bag",
+     "label": "봉지 맥주",
+     "kind": "drink",
+     "file": "beer-bag.svg"
+    },
+    {
+     "key": "red-lantern",
+     "label": "홍등",
+     "kind": "symbol",
+     "file": "red-lantern.svg"
+    }
+   ]
+  },
+  {
+   "id": "taipei",
+   "name": "타이베이",
+   "country": "대만",
+   "cur": "TWD",
+   "art": [
+    {
+     "key": "taipei-101",
+     "label": "타이베이 101",
+     "kind": "landmark",
+     "file": "taipei-101.svg"
+    },
+    {
+     "key": "beef-noodle",
+     "label": "우육면",
+     "kind": "food",
+     "file": "beef-noodle.svg"
+    },
+    {
+     "key": "jiufen",
+     "label": "지우펀",
+     "kind": "landmark",
+     "file": "jiufen.svg"
+    },
+    {
+     "key": "bubble-tea",
+     "label": "버블티",
+     "kind": "drink",
+     "file": "bubble-tea.svg"
+    },
+    {
+     "key": "sky-lantern",
+     "label": "천등",
+     "kind": "symbol",
+     "file": "sky-lantern.svg"
+    }
+   ]
+  },
+  {
+   "id": "bangkok",
+   "name": "방콕",
+   "country": "태국",
+   "cur": "THB",
+   "art": [
+    {
+     "key": "wat-arun",
+     "label": "왓아룬",
+     "kind": "landmark",
+     "file": "wat-arun.svg"
+    },
+    {
+     "key": "pad-thai",
+     "label": "팟타이",
+     "kind": "food",
+     "file": "pad-thai.svg"
+    },
+    {
+     "key": "tuk-tuk",
+     "label": "툭툭",
+     "kind": "landmark",
+     "file": "tuk-tuk.svg"
+    },
+    {
+     "key": "thai-tea",
+     "label": "타이 밀크티",
+     "kind": "drink",
+     "file": "thai-tea.svg"
+    },
+    {
+     "key": "thai-elephant",
+     "label": "코끼리",
+     "kind": "symbol",
+     "file": "thai-elephant.svg"
+    }
+   ]
+  },
+  {
+   "id": "chiangmai",
+   "name": "치앙마이",
+   "country": "태국",
+   "cur": "THB",
+   "art": [
+    {
+     "key": "doi-suthep",
+     "label": "도이수텝",
+     "kind": "landmark",
+     "file": "doi-suthep.svg"
+    },
+    {
+     "key": "khao-soi",
+     "label": "카오쏘이",
+     "kind": "food",
+     "file": "khao-soi.svg"
+    },
+    {
+     "key": "chiang-umbrella",
+     "label": "보쌍 우산",
+     "kind": "symbol",
+     "file": "chiang-umbrella.svg"
+    },
+    {
+     "key": "beer-bottle",
+     "label": "병맥주",
+     "kind": "drink",
+     "file": "beer-bottle.svg"
+    },
+    {
+     "key": "thai-elephant",
+     "label": "코끼리",
+     "kind": "symbol",
+     "file": "thai-elephant.svg"
+    }
+   ]
+  },
+  {
+   "id": "phuket",
+   "name": "푸켓",
+   "country": "태국",
+   "cur": "THB",
+   "art": [
+    {
+     "key": "big-buddha",
+     "label": "빅 붓다",
+     "kind": "landmark",
+     "file": "big-buddha.svg"
+    },
+    {
+     "key": "mango-sticky-rice",
+     "label": "망고 찹쌀밥",
+     "kind": "food",
+     "file": "mango-sticky-rice.svg"
+    },
+    {
+     "key": "longtail-boat",
+     "label": "롱테일 보트",
+     "kind": "landmark",
+     "file": "longtail-boat.svg"
+    },
+    {
+     "key": "tropical-cocktail",
+     "label": "트로피컬 칵테일",
+     "kind": "drink",
+     "file": "tropical-cocktail.svg"
+    },
+    {
+     "key": "thai-elephant",
+     "label": "코끼리",
+     "kind": "symbol",
+     "file": "thai-elephant.svg"
+    }
+   ]
+  },
+  {
+   "id": "cebu",
+   "name": "세부",
+   "country": "필리핀",
+   "cur": "PHP",
+   "art": [
+    {
+     "key": "magellan-cross",
+     "label": "마젤란 십자가",
+     "kind": "landmark",
+     "file": "magellan-cross.svg"
+    },
+    {
+     "key": "lechon",
+     "label": "레촌",
+     "kind": "food",
+     "file": "lechon.svg"
+    },
+    {
+     "key": "cebu-sea",
+     "label": "세부 바다",
+     "kind": "landmark",
+     "file": "cebu-sea.svg"
+    },
+    {
+     "key": "beer-bottle",
+     "label": "병맥주",
+     "kind": "drink",
+     "file": "beer-bottle.svg"
+    },
+    {
+     "key": "jeepney",
+     "label": "지프니",
+     "kind": "symbol",
+     "file": "jeepney.svg"
+    }
+   ]
+  },
+  {
+   "id": "boracay",
+   "name": "보라카이",
+   "country": "필리핀",
+   "cur": "PHP",
+   "art": [
+    {
+     "key": "white-beach",
+     "label": "화이트 비치",
+     "kind": "landmark",
+     "file": "white-beach.svg"
+    },
+    {
+     "key": "mango",
+     "label": "망고",
+     "kind": "food",
+     "file": "mango.svg"
+    },
+    {
+     "key": "mango-shake",
+     "label": "망고 셰이크",
+     "kind": "drink",
+     "file": "mango-shake.svg"
+    },
+    {
+     "key": "palm-tree",
+     "label": "야자수",
+     "kind": "symbol",
+     "file": "palm-tree.svg"
+    },
+    {
+     "key": "jeepney",
+     "label": "지프니",
+     "kind": "symbol",
+     "file": "jeepney.svg"
+    }
+   ]
+  },
+  {
+   "id": "hongkong",
+   "name": "홍콩",
+   "country": "홍콩",
+   "cur": "HKD",
+   "art": [
+    {
+     "key": "victoria-harbour",
+     "label": "빅토리아 하버",
+     "kind": "landmark",
+     "file": "victoria-harbour.svg"
+    },
+    {
+     "key": "har-gow",
+     "label": "딤섬",
+     "kind": "food",
+     "file": "har-gow.svg"
+    },
+    {
+     "key": "hk-tram",
+     "label": "홍콩 트램",
+     "kind": "landmark",
+     "file": "hk-tram.svg"
+    },
+    {
+     "key": "milk-tea",
+     "label": "홍콩 밀크티",
+     "kind": "drink",
+     "file": "milk-tea.svg"
+    },
+    {
+     "key": "neon-sign",
+     "label": "네온 간판",
+     "kind": "symbol",
+     "file": "neon-sign.svg"
+    }
+   ]
+  },
+  {
+   "id": "singapore",
+   "name": "싱가포르",
+   "country": "싱가포르",
+   "cur": "SGD",
+   "art": [
+    {
+     "key": "marina-bay-sands",
+     "label": "마리나 베이 샌즈",
+     "kind": "landmark",
+     "file": "marina-bay-sands.svg"
+    },
+    {
+     "key": "chili-crab",
+     "label": "칠리크랩",
+     "kind": "food",
+     "file": "chili-crab.svg"
+    },
+    {
+     "key": "merlion",
+     "label": "멀라이언",
+     "kind": "landmark",
+     "file": "merlion.svg"
+    },
+    {
+     "key": "singapore-sling",
+     "label": "싱가포르 슬링",
+     "kind": "drink",
+     "file": "singapore-sling.svg"
+    },
+    {
+     "key": "orchid",
+     "label": "난초",
+     "kind": "symbol",
+     "file": "orchid.svg"
+    }
+   ]
+  },
+  {
+   "id": "bali",
+   "name": "발리",
+   "country": "인도네시아",
+   "cur": "IDR",
+   "art": [
+    {
+     "key": "uluwatu",
+     "label": "울루와뚜 사원",
+     "kind": "landmark",
+     "file": "uluwatu.svg"
+    },
+    {
+     "key": "nasi-goreng",
+     "label": "나시고렝",
+     "kind": "food",
+     "file": "nasi-goreng.svg"
+    },
+    {
+     "key": "rice-terrace",
+     "label": "계단식 논",
+     "kind": "landmark",
+     "file": "rice-terrace.svg"
+    },
+    {
+     "key": "beer-bottle",
+     "label": "병맥주",
+     "kind": "drink",
+     "file": "beer-bottle.svg"
+    },
+    {
+     "key": "frangipani",
+     "label": "프랑지파니",
+     "kind": "symbol",
+     "file": "frangipani.svg"
+    }
+   ]
+  },
+  {
+   "id": "guam",
+   "name": "괌",
+   "country": "미국",
+   "cur": "USD",
+   "art": [
+    {
+     "key": "two-lovers-point",
+     "label": "사랑의 절벽",
+     "kind": "landmark",
+     "file": "two-lovers-point.svg"
+    },
+    {
+     "key": "red-rice",
+     "label": "레드라이스",
+     "kind": "food",
+     "file": "red-rice.svg"
+    },
+    {
+     "key": "latte-stone",
+     "label": "라테 스톤",
+     "kind": "landmark",
+     "file": "latte-stone.svg"
+    },
+    {
+     "key": "tropical-cocktail",
+     "label": "트로피컬 칵테일",
+     "kind": "drink",
+     "file": "tropical-cocktail.svg"
+    },
+    {
+     "key": "palm-tree",
+     "label": "야자수",
+     "kind": "symbol",
+     "file": "palm-tree.svg"
+    }
+   ]
+  },
+  {
+   "id": "paris",
+   "name": "파리",
+   "country": "프랑스",
+   "cur": "EUR",
+   "art": [
+    {
+     "key": "eiffel",
+     "label": "에펠탑",
+     "kind": "landmark",
+     "file": "eiffel.svg"
+    },
+    {
+     "key": "croissant",
+     "label": "크루아상",
+     "kind": "food",
+     "file": "croissant.svg"
+    },
+    {
+     "key": "arc-triomphe",
+     "label": "개선문",
+     "kind": "landmark",
+     "file": "arc-triomphe.svg"
+    },
+    {
+     "key": "wine-red",
+     "label": "레드 와인",
+     "kind": "drink",
+     "file": "wine-red.svg"
+    },
+    {
+     "key": "beret",
+     "label": "베레모",
+     "kind": "symbol",
+     "file": "beret.svg"
+    }
+   ]
+  },
+  {
+   "id": "rome",
+   "name": "로마",
+   "country": "이탈리아",
+   "cur": "EUR",
+   "art": [
+    {
+     "key": "colosseum",
+     "label": "콜로세움",
+     "kind": "landmark",
+     "file": "colosseum.svg"
+    },
+    {
+     "key": "pizza",
+     "label": "피자",
+     "kind": "food",
+     "file": "pizza.svg"
+    },
+    {
+     "key": "gelato",
+     "label": "젤라토",
+     "kind": "food",
+     "file": "gelato.svg"
+    },
+    {
+     "key": "espresso",
+     "label": "에스프레소",
+     "kind": "drink",
+     "file": "espresso.svg"
+    },
+    {
+     "key": "vespa",
+     "label": "스쿠터",
+     "kind": "symbol",
+     "file": "vespa.svg"
+    }
+   ]
+  },
+  {
+   "id": "barcelona",
+   "name": "바르셀로나",
+   "country": "스페인",
+   "cur": "EUR",
+   "art": [
+    {
+     "key": "sagrada-familia",
+     "label": "사그라다 파밀리아",
+     "kind": "landmark",
+     "file": "sagrada-familia.svg"
+    },
+    {
+     "key": "paella",
+     "label": "파에야",
+     "kind": "food",
+     "file": "paella.svg"
+    },
+    {
+     "key": "churros",
+     "label": "추로스",
+     "kind": "food",
+     "file": "churros.svg"
+    },
+    {
+     "key": "sangria",
+     "label": "상그리아",
+     "kind": "drink",
+     "file": "sangria.svg"
+    },
+    {
+     "key": "flamenco-fan",
+     "label": "플라멩코 부채",
+     "kind": "symbol",
+     "file": "flamenco-fan.svg"
+    }
+   ]
+  },
+  {
+   "id": "london",
+   "name": "런던",
+   "country": "영국",
+   "cur": "GBP",
+   "art": [
+    {
+     "key": "big-ben",
+     "label": "빅벤",
+     "kind": "landmark",
+     "file": "big-ben.svg"
+    },
+    {
+     "key": "fish-chips",
+     "label": "피시앤칩스",
+     "kind": "food",
+     "file": "fish-chips.svg"
+    },
+    {
+     "key": "double-decker",
+     "label": "런던 2층 버스",
+     "kind": "landmark",
+     "file": "double-decker.svg"
+    },
+    {
+     "key": "ale",
+     "label": "에일 맥주",
+     "kind": "drink",
+     "file": "ale.svg"
+    },
+    {
+     "key": "phone-box",
+     "label": "빨간 공중전화",
+     "kind": "symbol",
+     "file": "phone-box.svg"
+    }
+   ]
+  },
+  {
+   "id": "prague",
+   "name": "프라하",
+   "country": "체코",
+   "cur": "CZK",
+   "art": [
+    {
+     "key": "charles-bridge",
+     "label": "카를교",
+     "kind": "landmark",
+     "file": "charles-bridge.svg"
+    },
+    {
+     "key": "koleno",
+     "label": "꼴레노",
+     "kind": "food",
+     "file": "koleno.svg"
+    },
+    {
+     "key": "astronomical-clock",
+     "label": "천문시계",
+     "kind": "landmark",
+     "file": "astronomical-clock.svg"
+    },
+    {
+     "key": "pilsner",
+     "label": "필스너",
+     "kind": "drink",
+     "file": "pilsner.svg"
+    },
+    {
+     "key": "marionette",
+     "label": "마리오네트",
+     "kind": "symbol",
+     "file": "marionette.svg"
+    }
+   ]
+  },
+  {
+   "id": "interlaken",
+   "name": "인터라켄",
+   "country": "스위스",
+   "cur": "CHF",
+   "art": [
+    {
+     "key": "jungfrau",
+     "label": "융프라우",
+     "kind": "landmark",
+     "file": "jungfrau.svg"
+    },
+    {
+     "key": "fondue",
+     "label": "퐁뒤",
+     "kind": "food",
+     "file": "fondue.svg"
+    },
+    {
+     "key": "mountain-train",
+     "label": "산악열차",
+     "kind": "landmark",
+     "file": "mountain-train.svg"
+    },
+    {
+     "key": "hot-chocolate",
+     "label": "핫초코",
+     "kind": "drink",
+     "file": "hot-chocolate.svg"
+    },
+    {
+     "key": "cowbell",
+     "label": "카우벨",
+     "kind": "symbol",
+     "file": "cowbell.svg"
+    }
+   ]
+  },
+  {
+   "id": "istanbul",
+   "name": "이스탄불",
+   "country": "튀르키예",
+   "cur": "TRY",
+   "art": [
+    {
+     "key": "blue-mosque",
+     "label": "블루 모스크",
+     "kind": "landmark",
+     "file": "blue-mosque.svg"
+    },
+    {
+     "key": "doner-kebab",
+     "label": "케밥",
+     "kind": "food",
+     "file": "doner-kebab.svg"
+    },
+    {
+     "key": "baklava",
+     "label": "바클라바",
+     "kind": "food",
+     "file": "baklava.svg"
+    },
+    {
+     "key": "turkish-tea",
+     "label": "튀르키예 차이",
+     "kind": "drink",
+     "file": "turkish-tea.svg"
+    },
+    {
+     "key": "nazar",
+     "label": "나자르",
+     "kind": "symbol",
+     "file": "nazar.svg"
+    }
+   ]
+  },
+  {
+   "id": "hawaii",
+   "name": "하와이",
+   "country": "미국",
+   "cur": "USD",
+   "art": [
+    {
+     "key": "diamond-head",
+     "label": "다이아몬드 헤드",
+     "kind": "landmark",
+     "file": "diamond-head.svg"
+    },
+    {
+     "key": "poke",
+     "label": "포케",
+     "kind": "food",
+     "file": "poke.svg"
+    },
+    {
+     "key": "musubi",
+     "label": "무스비",
+     "kind": "food",
+     "file": "musubi.svg"
+    },
+    {
+     "key": "mai-tai",
+     "label": "마이타이",
+     "kind": "drink",
+     "file": "mai-tai.svg"
+    },
+    {
+     "key": "hibiscus",
+     "label": "히비스커스",
+     "kind": "symbol",
+     "file": "hibiscus.svg"
+    },
+    {
+     "key": "surfboard",
+     "label": "서프보드",
+     "kind": "symbol",
+     "file": "surfboard.svg"
+    }
+   ]
+  },
+  {
+   "id": "newyork",
+   "name": "뉴욕",
+   "country": "미국",
+   "cur": "USD",
+   "art": [
+    {
+     "key": "statue-liberty",
+     "label": "자유의 여신상",
+     "kind": "landmark",
+     "file": "statue-liberty.svg"
+    },
+    {
+     "key": "bagel",
+     "label": "베이글",
+     "kind": "food",
+     "file": "bagel.svg"
+    },
+    {
+     "key": "yellow-cab",
+     "label": "옐로캡",
+     "kind": "landmark",
+     "file": "yellow-cab.svg"
+    },
+    {
+     "key": "martini",
+     "label": "마티니",
+     "kind": "drink",
+     "file": "martini.svg"
+    },
+    {
+     "key": "big-apple",
+     "label": "빅 애플",
+     "kind": "symbol",
+     "file": "big-apple.svg"
+    }
+   ]
+  },
+  {
+   "id": "sydney",
+   "name": "시드니",
+   "country": "호주",
+   "cur": "AUD",
+   "art": [
+    {
+     "key": "opera-house",
+     "label": "오페라하우스",
+     "kind": "landmark",
+     "file": "opera-house.svg"
+    },
+    {
+     "key": "meat-pie",
+     "label": "미트파이",
+     "kind": "food",
+     "file": "meat-pie.svg"
+    },
+    {
+     "key": "harbour-bridge",
+     "label": "하버브리지",
+     "kind": "landmark",
+     "file": "harbour-bridge.svg"
+    },
+    {
+     "key": "wine-white",
+     "label": "화이트 와인",
+     "kind": "drink",
+     "file": "wine-white.svg"
+    },
+    {
+     "key": "kangaroo",
+     "label": "캥거루",
+     "kind": "symbol",
+     "file": "kangaroo.svg"
+    }
+   ]
+  },
+  {
+   "id": "jeju",
+   "name": "제주",
+   "country": "한국",
+   "cur": "KRW",
+   "art": [
+    {
+     "key": "dolhareubang",
+     "label": "돌하르방",
+     "kind": "landmark",
+     "file": "dolhareubang.svg"
+    },
+    {
+     "key": "tangerine",
+     "label": "감귤",
+     "kind": "food",
+     "file": "tangerine.svg"
+    },
+    {
+     "key": "seongsan",
+     "label": "성산일출봉",
+     "kind": "landmark",
+     "file": "seongsan.svg"
+    },
+    {
+     "key": "black-pork",
+     "label": "흑돼지 구이",
+     "kind": "food",
+     "file": "black-pork.svg"
+    },
+    {
+     "key": "soju",
+     "label": "소주",
+     "kind": "drink",
+     "file": "soju.svg"
+    },
+    {
+     "key": "tewak",
+     "label": "해녀 테왁",
+     "kind": "symbol",
+     "file": "tewak.svg"
+    }
+   ]
+  },
+  {
+   "id": "busan",
+   "name": "부산",
+   "country": "한국",
+   "cur": "KRW",
+   "art": [
+    {
+     "key": "gwangan-bridge",
+     "label": "광안대교",
+     "kind": "landmark",
+     "file": "gwangan-bridge.svg"
+    },
+    {
+     "key": "dwaeji-gukbap",
+     "label": "돼지국밥",
+     "kind": "food",
+     "file": "dwaeji-gukbap.svg"
+    },
+    {
+     "key": "gamcheon",
+     "label": "감천문화마을",
+     "kind": "landmark",
+     "file": "gamcheon.svg"
+    },
+    {
+     "key": "soju",
+     "label": "소주",
+     "kind": "drink",
+     "file": "soju.svg"
+    },
+    {
+     "key": "seagull",
+     "label": "갈매기",
+     "kind": "symbol",
+     "file": "seagull.svg"
+    }
+   ]
+  },
+  {
+   "id": "gangneung",
+   "name": "강릉",
+   "country": "한국",
+   "cur": "KRW",
+   "art": [
+    {
+     "key": "gyeongpo-pavilion",
+     "label": "경포대",
+     "kind": "landmark",
+     "file": "gyeongpo-pavilion.svg"
+    },
+    {
+     "key": "chodang-tofu",
+     "label": "초당순두부",
+     "kind": "food",
+     "file": "chodang-tofu.svg"
+    },
+    {
+     "key": "gangneung-sunrise",
+     "label": "강릉 해돋이",
+     "kind": "landmark",
+     "file": "gangneung-sunrise.svg"
+    },
+    {
+     "key": "coffee-cup",
+     "label": "커피",
+     "kind": "drink",
+     "file": "coffee-cup.svg"
+    },
+    {
+     "key": "surfboard",
+     "label": "서프보드",
+     "kind": "symbol",
+     "file": "surfboard.svg"
+    }
+   ]
+  },
+  {
+   "id": "gyeongju",
+   "name": "경주",
+   "country": "한국",
+   "cur": "KRW",
+   "art": [
+    {
+     "key": "cheomseongdae",
+     "label": "첨성대",
+     "kind": "landmark",
+     "file": "cheomseongdae.svg"
+    },
+    {
+     "key": "hwangnam-bread",
+     "label": "황남빵",
+     "kind": "food",
+     "file": "hwangnam-bread.svg"
+    },
+    {
+     "key": "bulguksa",
+     "label": "불국사 석가탑",
+     "kind": "landmark",
+     "file": "bulguksa.svg"
+    },
+    {
+     "key": "makgeolli",
+     "label": "막걸리",
+     "kind": "drink",
+     "file": "makgeolli.svg"
+    },
+    {
+     "key": "gold-crown",
+     "label": "신라 금관",
+     "kind": "symbol",
+     "file": "gold-crown.svg"
+    }
+   ]
+  },
+  {
+   "id": "yeosu",
+   "name": "여수",
+   "country": "한국",
+   "cur": "KRW",
+   "art": [
+    {
+     "key": "dolsan-bridge",
+     "label": "돌산대교",
+     "kind": "landmark",
+     "file": "dolsan-bridge.svg"
+    },
+    {
+     "key": "gejang",
+     "label": "간장게장",
+     "kind": "food",
+     "file": "gejang.svg"
+    },
+    {
+     "key": "cable-car",
+     "label": "해상케이블카",
+     "kind": "landmark",
+     "file": "cable-car.svg"
+    },
+    {
+     "key": "soju",
+     "label": "소주",
+     "kind": "drink",
+     "file": "soju.svg"
+    },
+    {
+     "key": "camellia",
+     "label": "동백꽃",
+     "kind": "symbol",
+     "file": "camellia.svg"
+    }
+   ]
+  }
+ ],
+ "generic": {
+  "city": [
+   {
+    "key": "generic-city",
+    "label": "도시",
+    "kind": "landmark",
+    "file": "generic-city.svg"
+   },
+   {
+    "key": "generic-food",
+    "label": "여행 밥상",
+    "kind": "food",
+    "file": "generic-food.svg"
+   },
+   {
+    "key": "generic-snack",
+    "label": "길거리 간식",
+    "kind": "food",
+    "file": "generic-snack.svg"
+   },
+   {
+    "key": "cheers",
+    "label": "건배",
+    "kind": "drink",
+    "file": "cheers.svg"
+   },
+   {
+    "key": "suitcase",
+    "label": "여행 가방",
+    "kind": "symbol",
+    "file": "suitcase.svg"
+   },
+   {
+    "key": "airplane",
+    "label": "비행기",
+    "kind": "symbol",
+    "file": "airplane.svg"
+   }
+  ],
+  "beach": [
+   {
+    "key": "generic-beach",
+    "label": "바닷가",
+    "kind": "landmark",
+    "file": "generic-beach.svg"
+   },
+   {
+    "key": "generic-food",
+    "label": "여행 밥상",
+    "kind": "food",
+    "file": "generic-food.svg"
+   },
+   {
+    "key": "palm-tree",
+    "label": "야자수",
+    "kind": "symbol",
+    "file": "palm-tree.svg"
+   },
+   {
+    "key": "cheers",
+    "label": "건배",
+    "kind": "drink",
+    "file": "cheers.svg"
+   },
+   {
+    "key": "suitcase",
+    "label": "여행 가방",
+    "kind": "symbol",
+    "file": "suitcase.svg"
+   },
+   {
+    "key": "airplane",
+    "label": "비행기",
+    "kind": "symbol",
+    "file": "airplane.svg"
+   }
+  ],
+  "mountain": [
+   {
+    "key": "generic-mountain",
+    "label": "산",
+    "kind": "landmark",
+    "file": "generic-mountain.svg"
+   },
+   {
+    "key": "generic-food",
+    "label": "여행 밥상",
+    "kind": "food",
+    "file": "generic-food.svg"
+   },
+   {
+    "key": "camera",
+    "label": "카메라",
+    "kind": "symbol",
+    "file": "camera.svg"
+   },
+   {
+    "key": "cheers",
+    "label": "건배",
+    "kind": "drink",
+    "file": "cheers.svg"
+   },
+   {
+    "key": "suitcase",
+    "label": "여행 가방",
+    "kind": "symbol",
+    "file": "suitcase.svg"
+   },
+   {
+    "key": "map-pin",
+    "label": "지도",
+    "kind": "symbol",
+    "file": "map-pin.svg"
+   }
+  ]
+ }
+}

@@ -268,7 +268,8 @@ function toTripSummary(trip: TripDetail, records: readonly ExpenseRecord[]): Tri
 }
 
 /**
- * `useTrips` — 내가 멤버인 여행 전부와 각 여행의 멤버 수·내 원화 잔액. 정렬은 화면이 한다.
+ * `useTrips` — 내가 멤버인 여행 전부와 각 여행의 멤버 수·내 원화 잔액. 만든 지 가장 최근인 여행이 앞이다.
+ * 정산 확정을 뒤로 보내는 정렬은 화면이 한다 (안정 정렬이라 이 순서가 그대로 남는다).
  * 멤버가 아닌 여행은 RLS가 행을 숨긴다. 여행이 하나도 없으면 지출은 읽지 않는다.
  */
 export async function fetchTrips(): Promise<readonly TripSummary[]> {
@@ -276,6 +277,7 @@ export async function fetchTrips(): Promise<readonly TripSummary[]> {
   const { data, error, status } = await getBrowserClient()
     .from('trips')
     .select(TRIP_WITH_MEMBERS_COLUMNS)
+    .order('created_at', { ascending: false })
     .retry(false);
   if (error !== null) throw queryError(status, error.message);
   const trips = parseRows(parseTripsWithMembers, data)

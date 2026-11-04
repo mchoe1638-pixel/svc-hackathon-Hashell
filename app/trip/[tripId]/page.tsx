@@ -2,24 +2,28 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 import { AppBar } from "@/components/app-bar";
 import { Banner } from "@/components/banner";
 import { BottomBar } from "@/components/bottom-cta";
+import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
 import { EstimateBadge } from "@/components/estimate-badge";
 import { currencyLabel, payLabel } from "@/components/format";
 import { ListRow } from "@/components/list-row";
 import { MemberAvatar } from "@/components/member-avatar";
+import { MenuSheet } from "@/components/menu-sheet";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
+import { useToast } from "@/components/toast";
 import { TripArt, TripHeader } from "@/components/trip-art";
+import { groupBySpentOn } from "@/components/trip-dates";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
 import { formatMoney } from "@/core/money";
-import { useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
+import { useDeleteTrip, useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { ExpenseSummary, Member, MemberId, TripDetail } from "@/types/api";
 
@@ -58,7 +62,7 @@ function TripHome() {
 
   return (
     <>
-      <AppBar title={title} status={status} />
+      <TripBar trip={trip.data} />
       <Screen>
         <TripHeader
           title={title}
@@ -115,6 +119,68 @@ function TripHome() {
           )}
         </BottomBar>
       </Screen>
+    </>
+  );
+}
+
+/**
+ * 상단바. 총무에게만 ← 목록으로(`/`)와 ⋯ → 여행 삭제를 보여준다 (시안 노트).
+ * 지울 수 있는지는 서버가 정한다 — 403(총무 아님)·423(정산 확정)이면 안내만 하고, 버튼 숨김은 편의일 뿐이다.
+ */
+function TripBar({ trip }: { trip: TripDetail }) {
+  const router = useRouter();
+  const toast = useToast();
+  const deleteTrip = useDeleteTrip();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const isOrganizer = trip.me.isOrganizer;
+
+  function remove() {
+    deleteTrip.mutate(
+      { tripId: trip.id },
+      {
+        onSuccess: () => {
+          router.replace("/");
+          toast(t("home.tripDeleted"));
+        },
+        onError: (error) => {
+          setConfirming(false);
+          if (error.status === 403) toast(t("home.deleteTripForbidden"));
+          else if (error.status === 423) toast(t("home.deleteTripSettled"));
+          else if (error.status === 404) {
+            router.replace("/");
+            toast(t("home.deleteTripGone"));
+          } else toast(t("common.error"));
+        },
+      },
+    );
+  }
+
+  return (
+    <>
+      <AppBar
+        title={trip.title}
+        status={trip.status}
+        backHref={isOrganizer ? "/" : undefined}
+        onMore={isOrganizer ? () => setMenuOpen(true) : undefined}
+      />
+      <MenuSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={[
+          { key: "delete", label: t("home.deleteTrip"), danger: true, onSelect: () => setConfirming(true) },
+        ]}
+      />
+      <ConfirmSheet
+        open={confirming}
+        title={t("home.deleteTripTitle")}
+        hint={t("home.deleteTripHint", { title: trip.title })}
+        confirmLabel={t("home.deleteTripConfirm")}
+        danger
+        busy={deleteTrip.isPending}
+        onConfirm={remove}
+        onCancel={() => setConfirming(false)}
+      />
     </>
   );
 }
@@ -179,12 +245,22 @@ function ExpenseList({
       </div>
     );
   }
+  // 날짜(spent_on)로 묶는다 (시안 .day). 하나라도 날짜가 비어 있으면 묶음 없이 한 목록 그대로 (groupBySpentOn).
   return (
-    <ul className="grid">
-      {expenses.map((expense) => (
-        <ExpenseRow key={expense.id} trip={trip} expense={expense} />
+    <div className="grid">
+      {groupBySpentOn(expenses).map((group) => (
+        <div key={group.key} className="grid">
+          {group.label ? (
+            <h3 className="mt-2 -mb-1 text-caption font-bold text-sub">{group.label}</h3>
+          ) : null}
+          <ul className="grid">
+            {group.items.map((expense) => (
+              <ExpenseRow key={expense.id} trip={trip} expense={expense} />
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
