@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildWrapped,
+  computeBadges,
   itemLineAmount,
   perHeadRange,
+  type BadgeInput,
   type WrappedExpense,
   type WrappedInput,
 } from './tripStats';
@@ -115,11 +117,11 @@ describe('buildWrapped', () => {
     expect(w.titles.find((t) => t.memberId === A)).toEqual({ memberId: A, kind: 'beerKing', value: 2 });
   });
 
-  it('칭호는 한 사람에 하나: 큰손 → 술 제일 적게(먹방 요정·차) → 나머지 먹방 요정', () => {
+  it('칭호는 한 사람에 하나: 큰손 → 술 제일 적게(먹방 요정·차) → 메뉴 올킬 → 나머지 먹방 요정', () => {
     const w = buildWrapped(input([IZAKAYA, SLIP]));
     expect(w.titles).toEqual([
       { memberId: A, kind: 'bigSpender', value: 30001 },
-      { memberId: B, kind: 'foodie', value: 18000 },
+      { memberId: B, kind: 'allKill', value: 2 },
       { memberId: C, kind: 'foodie', value: 12000 },
     ]);
   });
@@ -165,5 +167,92 @@ describe('buildWrapped', () => {
     const w = buildWrapped(input([stranger]));
     expect(w.members.every((m) => m.paidKrw === 0 && m.eatenKrw === 0)).toBe(true);
     expect(() => buildWrapped({ memberIds: [A, A], expenses: [], transferCount: 0 })).toThrow(RangeError);
+  });
+});
+
+describe('computeBadges', () => {
+  const TAKOYAKI = { name: '타코야키', price: 650, unit: '접시', currency: 'JPY' };
+
+  function badges(expenses: readonly WrappedExpense[]): ReturnType<typeof computeBadges> {
+    const badgeInput: BadgeInput = { memberIds: MEMBERS, expenses, signature: TAKOYAKI, keywords: [] };
+    return computeBadges(badgeInput);
+  }
+
+  it('지출이 0건이면 배지 없음', () => {
+    expect(badges([])).toEqual([]);
+  });
+
+  it('환산 비교: 총 현지 금액 ÷ 대표 메뉴 값 (내림), 점수 최고라 맨 앞', () => {
+    // 1,800 + 3,000 = 4,800엔 ÷ 650 = 7.38 → 7접시
+    const list = badges([IZAKAYA, SLIP]);
+    expect(list[0]).toMatchObject({ kind: 'compare', count: 7, name: '타코야키', unit: '접시' });
+  });
+
+  it('편의점: 가게 이름으로 2번 이상 (영문은 단어 단위)', () => {
+    const store = (id: string, title: string): WrappedExpense => ({ ...SLIP, id, title });
+    const two = badges([store('s1', 'セブンイレブン 難波店'), store('s2', 'GS25 강남점'), store('s3', 'CURRY HOUSE')]);
+    expect(two.find((b) => b.kind === 'convenience')).toMatchObject({ count: 2 });
+
+    const one = badges([store('s1', 'ローソン'), store('s3', 'CURRY HOUSE')]);
+    expect(one.some((b) => b.kind === 'convenience')).toBe(false);
+  });
+
+  it('같은 메뉴 반복: 같은 이름 4번 이상', () => {
+    const latte = (id: string): WrappedExpense => ({
+      ...IZAKAYA,
+      id,
+      items: [{ name: '말차 라테', unitPrice: 500, quantity: 1, category: 'drink', checkedMemberIds: [A] }],
+    });
+    const four = badges([latte('l1'), latte('l2'), latte('l3'), latte('l4')]);
+    expect(four.find((b) => b.kind === 'repeat')).toMatchObject({ name: '말차 라테', count: 4 });
+
+    const three = badges([latte('l1'), latte('l2'), latte('l3')]);
+    expect(three.some((b) => b.kind === 'repeat')).toBe(false);
+  });
+
+  it('공금 입금(deposit) 품목은 통계·배지에서 빠지고, 전부 입금인 지출은 개수에서도 빠진다', () => {
+    const deposit = {
+      name: '공금 입금',
+      unitPrice: 10000,
+      quantity: 1,
+      category: 'deposit',
+      checkedMemberIds: [A, B, C],
+    };
+    // 전부 입금인 지출
+    const onlyDeposit: WrappedExpense = {
+      ...SLIP,
+      id: 'd1',
+      amount: 10000,
+      krwAmount: 100000,
+      items: [deposit],
+      shares: [
+        { memberId: A, krwAmount: 33334 },
+        { memberId: B, krwAmount: 33333 },
+        { memberId: C, krwAmount: 33333 },
+      ],
+    };
+    // 이자카야 1,800엔 + 입금 1,800엔 → 금액 3,600엔·36,000원 중 절반이 입금
+    const mixed: WrappedExpense = {
+      ...IZAKAYA,
+      amount: 3600,
+      krwAmount: 36000,
+      items: [...IZAKAYA.items, { ...deposit, unitPrice: 1800 }],
+      shares: [
+        { memberId: A, krwAmount: 14000 },
+        { memberId: B, krwAmount: 14000 },
+        { memberId: C, krwAmount: 8000 },
+      ],
+    };
+
+    const w = buildWrapped(input([mixed, onlyDeposit]));
+    expect(w.expenseCount).toBe(1);
+    expect(w.totalKrw).toBe(18000);
+    expect(w.top).toMatchObject({ expenseId: 'e1', krwAmount: 18000, amount: 1800 });
+    expect(w.categories.reduce((s, c) => s + c.krwAmount, 0)).toBe(18000);
+    expect(w.members.find((m) => m.memberId === C)).toMatchObject({ eatenKrw: 2000 });
+
+    // 1,800엔 ÷ 650 = 2접시 (입금 1,800엔·10,000엔은 안 센다)
+    expect(badges([mixed, onlyDeposit])[0]).toMatchObject({ kind: 'compare', count: 2 });
+    expect(badges([onlyDeposit])).toEqual([]);
   });
 });

@@ -6,6 +6,8 @@
  * - 칭호는 문구가 아니라 종류(`kind`)와 값만 돌려준다. 문구는 화면(i18n)이 정한다.
  * - 잔 수(맥주·하이볼·차)는 품목의 `tag`로 센다. 계약에 아직 `tag`가 없으면 전부 0이다.
  * - 화면이 품목 한 줄을 표시할 때 쓰는 도우미(`itemLineAmount`, `perHeadRange`)도 여기에 둔다.
+ * - 공금 입금(category 'deposit') 품목은 모든 계산 전에 뺀다 (`excludeDeposits`). 품목이 전부 입금이면 지출째 뺀다.
+ * - 추억 배지(`computeBadges`)는 규칙으로만 고른다 (AI 호출 없음).
  */
 
 import { allocateByLargestRemainder } from './allocate';
@@ -27,6 +29,8 @@ export interface WrappedItem {
   readonly category: string;
   readonly checkedMemberIds: readonly string[];
   readonly tag?: DrinkTag | null;
+  /** 영수증 원문 이름 (메뉴 키워드 찾기용). 없으면 `name`만 본다. */
+  readonly originalName?: string;
 }
 
 export interface WrappedExpense {
@@ -40,6 +44,10 @@ export interface WrappedExpense {
   readonly items: readonly WrappedItem[];
   /** 사람별 원화 몫. 합계는 `krwAmount`. */
   readonly shares: readonly { readonly memberId: string; readonly krwAmount: number }[];
+  /** 결제 수단 (배지 '결제 스타일'). 없으면 그 지출은 세지 않는다. */
+  readonly paymentMethod?: 'CASH' | 'CARD';
+  /** 올린 시각 ISO 문자열 (배지 '야식'). 없으면 그 지출은 세지 않는다. */
+  readonly createdAt?: string | null;
 }
 
 export interface WrappedInput {
@@ -49,12 +57,22 @@ export interface WrappedInput {
   readonly transferCount: number;
 }
 
-export type WrappedTitleKind = 'beerKing' | 'highballMaster' | 'bigSpender' | 'teaGuardian' | 'foodie';
+export type WrappedTitleKind =
+  | 'beerKing'
+  | 'highballMaster'
+  | 'bigSpender'
+  | 'teaGuardian'
+  | 'foodie'
+  | 'allKill'
+  | 'selective';
 
 export interface WrappedTitle {
   readonly memberId: string;
   readonly kind: WrappedTitleKind;
-  /** 잔 수(맥주왕·하이볼 장인·차 한 잔 수호자) 또는 원화 금액(큰손: 낸 돈, 먹방 요정: 먹은 몫). */
+  /**
+   * 잔 수(맥주왕·하이볼 장인·차 한 잔 수호자), 원화 금액(큰손: 낸 돈, 먹방 요정: 먹은 몫),
+   * 메뉴 개수(올킬 미식가: 전부 먹은 메뉴 수) 또는 정수 퍼센트(선택과 집중: 안 먹은 메뉴 비율).
+   */
   readonly value: number;
 }
 
@@ -155,6 +173,59 @@ function splitEvenly(
   return new Map(memberIds.map((id, position) => [id, parts[position]]));
 }
 
+const isDeposit = (item: WrappedItem): boolean => (item.category as string) === 'deposit';
+
+/**
+ * 공금 입금 품목을 뺀 지출 목록. 품목이 전부 입금인 지출은 뺀다.
+ * 일부만 입금이면 지출 금액·원화를 품목 금액 비율로 나눈 입금 몫만큼 줄이고,
+ * 사람별 몫에서도 그 입금 품목을 체크한 사람끼리 똑같이 나눈 만큼 뺀다 (0 아래로는 안 내려간다).
+ */
+export function excludeDeposits(
+  expenses: readonly WrappedExpense[],
+  memberIds: readonly string[],
+): readonly WrappedExpense[] {
+  const result: WrappedExpense[] = [];
+  for (const expense of expenses) {
+    if (!expense.items.some(isDeposit)) {
+      result.push(expense);
+      continue;
+    }
+    const items = expense.items.filter((item) => !isDeposit(item));
+    if (items.length === 0) continue;
+
+    const lines = expense.items.map((item) => itemLineAmount(item.unitPrice, item.quantity));
+    if (sumAmounts(lines) === 0) {
+      result.push({ ...expense, items });
+      continue;
+    }
+    const krwParts = allocateByLargestRemainder(expense.krwAmount, lines);
+    const amountParts = allocateByLargestRemainder(expense.amount, lines);
+    const shareCut = new Map<string, number>();
+    let depositKrw = 0;
+    let depositAmount = 0;
+    expense.items.forEach((item, index) => {
+      if (!isDeposit(item)) return;
+      depositKrw += krwParts[index];
+      depositAmount += amountParts[index];
+      const checked = new Set(item.checkedMemberIds);
+      splitEvenly(krwParts[index], memberIds, checked).forEach((amount, id) => {
+        shareCut.set(id, (shareCut.get(id) ?? 0) + amount);
+      });
+    });
+    result.push({
+      ...expense,
+      items,
+      amount: expense.amount - depositAmount,
+      krwAmount: expense.krwAmount - depositKrw,
+      shares: expense.shares.map((share) => ({
+        memberId: share.memberId,
+        krwAmount: Math.max(0, share.krwAmount - (shareCut.get(share.memberId) ?? 0)),
+      })),
+    });
+  }
+  return result;
+}
+
 interface MutableMemberStats {
   paidKrw: number;
   eatenKrw: number;
@@ -170,12 +241,14 @@ interface MutableMemberStats {
  * @throws {RangeError} 금액·수량이 0 이상의 안전한 정수가 아니거나 멤버 id가 겹칠 때.
  */
 export function buildWrapped(input: WrappedInput): Wrapped {
-  const { memberIds, expenses } = input;
+  const { memberIds } = input;
   assertNonNegativeSafeInteger(input.transferCount, 'transferCount');
   if (new Set(memberIds).size !== memberIds.length) {
     throw new RangeError('member listed twice');
   }
   const known = new Set(memberIds);
+  // 공금 입금은 쓴 돈이 아니다: 모든 계산 전에 뺀다
+  const expenses = excludeDeposits(input.expenses, memberIds);
 
   const stats = new Map<string, MutableMemberStats>(
     memberIds.map((id) => [id, { paidKrw: 0, eatenKrw: 0, alcoholKrw: 0, beer: 0, highball: 0, tea: 0 }]),
@@ -248,7 +321,7 @@ export function buildWrapped(input: WrappedInput): Wrapped {
     members,
     beerRank,
     top: topExpense(expenses),
-    titles: pickTitles(members),
+    titles: pickTitles(members, skippedMenus(expenses, memberIds)),
     transferCount: input.transferCount,
   };
 }
@@ -282,9 +355,28 @@ function topExpense(expenses: readonly WrappedExpense[]): WrappedTopExpense | nu
 
 /**
  * 칭호 (시안 규칙): 맥주왕 → 하이볼 장인 → 큰손 → 술을 가장 적게 마신 사람(차를 마셨으면 차 한 잔 수호자, 아니면 먹방 요정)
- * → 나머지는 먹방 요정. 한 사람은 칭호 하나. 동점은 참여 순서가 앞선 사람.
+ * → 메뉴를 전부 먹은 사람(올킬 미식가) → 안 먹은 메뉴 비율이 가장 높은 사람(선택과 집중) → 나머지는 먹방 요정. 한 사람은 칭호 하나. 동점은 참여 순서가 앞선 사람.
  */
-function pickTitles(members: readonly WrappedMemberStats[]): readonly WrappedTitle[] {
+/** 사람별 안 먹은(체크 안 한) 메뉴 줄 수와 전체 메뉴 줄 수. */
+interface MenuSkips {
+  readonly total: number;
+  readonly skipped: ReadonlyMap<string, number>;
+}
+
+function skippedMenus(expenses: readonly WrappedExpense[], memberIds: readonly string[]): MenuSkips {
+  const skipped = new Map(memberIds.map((id) => [id, 0]));
+  let total = 0;
+  for (const expense of expenses) {
+    for (const item of expense.items) {
+      total += 1;
+      const checked = new Set(item.checkedMemberIds);
+      for (const id of memberIds) if (!checked.has(id)) skipped.set(id, skipped.get(id)! + 1);
+    }
+  }
+  return { total, skipped };
+}
+
+function pickTitles(members: readonly WrappedMemberStats[], menus: MenuSkips): readonly WrappedTitle[] {
   const used = new Set<string>();
   const titles = new Map<string, WrappedTitle>();
 
@@ -325,8 +417,259 @@ function pickTitles(members: readonly WrappedMemberStats[]): readonly WrappedTit
     );
   }
 
+  // 메뉴 칭호: 남은 사람 중에서만 (기존 칭호와 겹치지 않게). 메뉴가 없으면 없다.
+  if (menus.total > 0) {
+    const skips = (m: WrappedMemberStats) => menus.skipped.get(m.memberId) ?? 0;
+    const allKill = pick(skips, (v) => v === 0, true);
+    if (allKill) titles.set(allKill.memberId, { memberId: allKill.memberId, kind: 'allKill', value: menus.total });
+
+    const selective = pick(skips, (v) => v > 0);
+    if (selective) {
+      titles.set(selective.memberId, {
+        memberId: selective.memberId,
+        kind: 'selective',
+        value: mulDivFloor(skips(selective), 100, menus.total).quotient,
+      });
+    }
+  }
+
   return members.map(
     (member) =>
       titles.get(member.memberId) ?? { memberId: member.memberId, kind: 'foodie', value: member.eatenKrw },
   );
+}
+
+// ── 추억 배지 ────────────────────────────────────────────────────────────
+
+/** 여행지 대표 메뉴 (환산 비교 배지). `price`는 `currency`의 최소 단위 정수. */
+export interface BadgeSignature {
+  readonly name: string;
+  readonly price: number;
+  readonly unit: string;
+  readonly currency: string;
+}
+
+/** 메뉴 키워드 한 묶음. `words`는 품목 이름(한국어·원문)에서 찾을 글자 (대소문자 무시). */
+export interface MenuKeyword {
+  readonly label: string;
+  readonly words: readonly string[];
+  readonly unit: string;
+}
+
+export interface BadgeInput {
+  /** 멤버 전원, 참여 순서대로. */
+  readonly memberIds: readonly string[];
+  readonly expenses: readonly WrappedExpense[];
+  readonly signature: BadgeSignature;
+  readonly keywords: readonly MenuKeyword[];
+  /** 여행 날짜 'YYYY-MM-DD'. 둘 다 있어야 '1인 하루 평균' 배지가 후보가 된다. */
+  readonly startDate?: string | null;
+  readonly endDate?: string | null;
+}
+
+/** 금액과 통화 (지출 통화 기준). */
+export interface BadgeMoney {
+  readonly amount: number;
+  readonly currency: string;
+}
+
+/** 배지는 문구가 아니라 종류와 값만 돌려준다 (문구는 화면 i18n). `score`가 높을수록 앞. */
+export type Badge =
+  | { readonly kind: 'compare'; readonly score: number; readonly count: number; readonly name: string; readonly unit: string }
+  | { readonly kind: 'keyword'; readonly score: number; readonly label: string; readonly unit: string; readonly count: number }
+  | { readonly kind: 'repeat'; readonly score: number; readonly name: string; readonly count: number }
+  | { readonly kind: 'convenience'; readonly score: number; readonly count: number }
+  | { readonly kind: 'extremes'; readonly score: number; readonly max: BadgeMoney; readonly min: BadgeMoney }
+  | { readonly kind: 'payment'; readonly score: number; readonly method: 'CASH' | 'CARD'; readonly percent: number }
+  | { readonly kind: 'lateNight'; readonly score: number; readonly count: number; readonly krwAmount: number }
+  | { readonly kind: 'dailyAvg'; readonly score: number; readonly krwAmount: number };
+
+export type BadgeKind = Badge['kind'];
+
+/** 보여줄 배지 수 최대. */
+export const MAX_BADGES = 4;
+
+/** 점수 (높을수록 앞). 환산 비교가 항상 가장 높다. */
+const BADGE_SCORE: Record<BadgeKind, number> = {
+  compare: 100,
+  keyword: 70,
+  repeat: 65,
+  convenience: 60,
+  lateNight: 55,
+  extremes: 50,
+  payment: 40,
+  dailyAvg: 30,
+};
+
+/** 편의점 이름. 영문은 단어 단위로만 찾는다 (예: 'CURRY HOUSE'는 CU가 아니다). */
+const CONVENIENCE_WORDS: readonly string[] = ['セブン', 'ローソン', 'ファミリーマート', '세븐일레븐', 'CU', 'GS25'];
+
+function hasWord(text: string, word: string): boolean {
+  if (/^[A-Za-z0-9]+$/.test(word)) {
+    return new RegExp(`(^|[^A-Za-z0-9])${word}([^A-Za-z0-9]|$)`, 'i').test(text);
+  }
+  return text.toLowerCase().includes(word.toLowerCase());
+}
+
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+
+/** 한국 시간(UTC+9) 기준 시(0~23). 읽을 수 없으면 null. */
+function kstHour(iso: string): number | null {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return null;
+  const inDay = (((ms + 9 * HOUR_MS) % DAY_MS) + DAY_MS) % DAY_MS;
+  return Math.floor(inDay / HOUR_MS);
+}
+
+/** 'YYYY-MM-DD' 두 날짜 사이의 날 수 (양 끝 포함). 읽을 수 없거나 거꾸로면 null. */
+function tripDays(start: string, end: string): number | null {
+  const parse = (d: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+  };
+  const a = parse(start);
+  const b = parse(end);
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return null;
+  return Math.round((b - a) / DAY_MS) + 1;
+}
+
+/** 원화를 만 원 단위로 반올림 (화면의 "₩8만" 표시용). */
+export function toManWon(krw: number): number {
+  assertNonNegativeSafeInteger(krw, 'krw');
+  return roundDiv(krw, 10000);
+}
+
+/**
+ * 추억 배지: 후보를 전부 계산한 뒤 점수 높은 순으로 최대 `MAX_BADGES`개. 조건이 안 맞는 배지는 빠진다.
+ * 공금 입금 품목은 먼저 뺀다. 지출이 없으면 빈 배열.
+ */
+export function computeBadges(input: BadgeInput): readonly Badge[] {
+  const { memberIds, signature } = input;
+  assertPositiveSafeInteger(signature.price, 'signature.price');
+  const expenses = excludeDeposits(input.expenses, memberIds);
+  if (expenses.length === 0) return [];
+
+  const candidates: Badge[] = [];
+  const totalKrw = sumAmounts(expenses.map((e) => e.krwAmount));
+
+  // 1. 환산 비교: 총 현지 금액 ÷ 대표 메뉴 값 (내림). 대표 메뉴가 원화면 원화 총액으로.
+  const localTotal =
+    signature.currency === 'KRW'
+      ? totalKrw
+      : sumAmounts(expenses.filter((e) => e.currency === signature.currency).map((e) => e.amount));
+  const compareCount = mulDivFloor(localTotal, 1, signature.price).quotient;
+  if (compareCount > 0) {
+    candidates.push({
+      kind: 'compare',
+      score: BADGE_SCORE.compare,
+      count: compareCount,
+      name: signature.name,
+      unit: signature.unit,
+    });
+  }
+
+  const items = expenses.flatMap((e) => e.items);
+
+  // 2. 메뉴 키워드: 수량 합이 3 이상인 것 중 가장 많은 하나 (동점은 사전 순서)
+  let keyword: { readonly k: MenuKeyword; readonly count: number } | null = null;
+  for (const k of input.keywords) {
+    const count = sumAmounts(
+      items
+        .filter((item) => k.words.some((w) => hasWord(item.name, w) || hasWord(item.originalName ?? '', w)))
+        .map((item) => item.quantity),
+    );
+    if (count >= 3 && (keyword === null || count > keyword.count)) keyword = { k, count };
+  }
+  if (keyword) {
+    candidates.push({
+      kind: 'keyword',
+      score: BADGE_SCORE.keyword,
+      label: keyword.k.label,
+      unit: keyword.k.unit,
+      count: keyword.count,
+    });
+  }
+
+  // 3. 같은 메뉴 반복: 같은 이름 품목 줄이 4번 이상 (가장 많은 하나, 동점은 먼저 나온 것).
+  //    키워드 배지와 같은 메뉴면 겹치므로 뺀다.
+  const repeats = new Map<string, number>();
+  for (const item of items) {
+    const name = item.name.trim();
+    if (name) repeats.set(name, (repeats.get(name) ?? 0) + 1);
+  }
+  let repeatName = '';
+  let repeatCount = 0;
+  for (const [name, count] of repeats) {
+    if (count >= 4 && count > repeatCount) {
+      repeatName = name;
+      repeatCount = count;
+    }
+  }
+  const sameAsKeyword = keyword !== null && keyword.k.words.some((w) => hasWord(repeatName, w));
+  if (repeatCount > 0 && !sameAsKeyword) {
+    candidates.push({ kind: 'repeat', score: BADGE_SCORE.repeat, name: repeatName, count: repeatCount });
+  }
+
+  // 4. 편의점: 가게 이름으로 2번 이상
+  const convenience = expenses.filter((e) => CONVENIENCE_WORDS.some((w) => hasWord(e.title, w))).length;
+  if (convenience >= 2) {
+    candidates.push({ kind: 'convenience', score: BADGE_SCORE.convenience, count: convenience });
+  }
+
+  // 5. 극과 극: 원화 기준 가장 비싼 지출 ÷ 가장 싼 지출 ≥ 10 (0원 지출은 빼고)
+  const paid = expenses.filter((e) => e.krwAmount > 0);
+  if (paid.length >= 2) {
+    let max = paid[0];
+    let min = paid[0];
+    for (const e of paid) {
+      if (e.krwAmount > max.krwAmount) max = e;
+      if (e.krwAmount < min.krwAmount) min = e;
+    }
+    if (max.krwAmount >= min.krwAmount * 10) {
+      candidates.push({
+        kind: 'extremes',
+        score: BADGE_SCORE.extremes,
+        max: { amount: max.amount, currency: max.currency },
+        min: { amount: min.amount, currency: min.currency },
+      });
+    }
+  }
+
+  // 6. 결제 스타일: 원화 기준 현금 또는 카드가 70% 이상
+  const byMethod = { CASH: 0, CARD: 0 };
+  for (const e of expenses) if (e.paymentMethod) byMethod[e.paymentMethod] += e.krwAmount;
+  const methodTotal = byMethod.CASH + byMethod.CARD;
+  if (methodTotal > 0) {
+    const method = byMethod.CASH >= byMethod.CARD ? 'CASH' : 'CARD';
+    const percent = mulDivFloor(byMethod[method], 100, methodTotal).quotient;
+    if (percent >= 70) candidates.push({ kind: 'payment', score: BADGE_SCORE.payment, method, percent });
+  }
+
+  // 7. 야식: 한국 시간 22시부터 새벽 4시 전까지 올린 지출 2건 이상
+  const late = expenses.filter((e) => {
+    const hour = e.createdAt ? kstHour(e.createdAt) : null;
+    return hour !== null && (hour >= 22 || hour < 4);
+  });
+  if (late.length >= 2) {
+    candidates.push({
+      kind: 'lateNight',
+      score: BADGE_SCORE.lateNight,
+      count: late.length,
+      krwAmount: sumAmounts(late.map((e) => e.krwAmount)),
+    });
+  }
+
+  // 8. 1인 하루 평균: 여행 날짜가 있을 때
+  const days = input.startDate && input.endDate ? tripDays(input.startDate, input.endDate) : null;
+  if (days !== null && memberIds.length > 0 && totalKrw > 0) {
+    candidates.push({
+      kind: 'dailyAvg',
+      score: BADGE_SCORE.dailyAvg,
+      krwAmount: roundDiv(totalKrw, memberIds.length * days),
+    });
+  }
+
+  // 점수가 같으면 위 순서 그대로 (sort는 안정 정렬)
+  return candidates.sort((a, b) => b.score - a.score).slice(0, MAX_BADGES);
 }

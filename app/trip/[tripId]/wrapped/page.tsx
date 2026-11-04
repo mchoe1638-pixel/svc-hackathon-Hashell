@@ -12,10 +12,24 @@ import { useToast } from "@/components/toast";
 import { DestinationArtImage } from "@/components/trip-art";
 import { cn } from "@/components/utils";
 import { CountUp, Stories, Tally, type StorySlide } from "@/components/wrapped/stories";
-import { renderStoryFile, shareStoryFile, type StoryInput } from "@/components/wrapped/story-image";
+import { badgeLine } from "@/components/wrapped/badge-lines";
+import {
+  renderBadgeStoryFile,
+  renderStoryFile,
+  shareStoryFile,
+  type BadgeStoryInput,
+  type StoryInput,
+} from "@/components/wrapped/story-image";
 import { formatMoney } from "@/core/money";
-import { buildWrapped, type Wrapped, type WrappedCategory, type WrappedTitle } from "@/core/tripStats";
-import { detect } from "@/data/destinations";
+import {
+  buildWrapped,
+  computeBadges,
+  type Wrapped,
+  type WrappedCategory,
+  type WrappedExpense,
+  type WrappedTitle,
+} from "@/core/tripStats";
+import { detect, MENU_KEYWORDS } from "@/data/destinations";
 import { useExpense, useExpenses, useSettlement, useTrip } from "@/hooks";
 import { t } from "@/i18n/ko";
 import type { ExpenseDetail, ExpenseId, TripDetail } from "@/types/api";
@@ -139,30 +153,47 @@ function WrappedStories({
   const [sharing, setSharing] = useState(false);
   const [round, setRound] = useState(0);
 
-  const wrapped: Wrapped = useMemo(
+  const memberIds = useMemo(() => trip.members.map((member) => member.id), [trip.members]);
+  const statExpenses: readonly WrappedExpense[] = useMemo(
     () =>
-      buildWrapped({
-        memberIds: trip.members.map((member) => member.id),
-        transferCount,
-        expenses: details.map((detail) => ({
-          id: detail.id,
-          title: detail.title,
-          amount: detail.amount,
-          currency: detail.currency,
-          krwAmount: detail.krwAmount,
-          payerId: detail.payerId,
-          shares: detail.shares,
-          // 품목 tag(맥주·하이볼·차)는 계약에 아직 없어 넘기지 않는다 → 잔 수는 0
-          items: detail.items.map((item) => ({
-            name: item.koreanName,
-            unitPrice: item.unitPrice,
-            quantity: item.quantity,
-            category: item.category,
-            checkedMemberIds: item.checkedMemberIds,
-          })),
+      details.map((detail) => ({
+        id: detail.id,
+        title: detail.title,
+        amount: detail.amount,
+        currency: detail.currency,
+        krwAmount: detail.krwAmount,
+        payerId: detail.payerId,
+        shares: detail.shares,
+        paymentMethod: detail.paymentMethod,
+        // 올린 시각(createdAt, 야식 배지)은 계약에 아직 없어 넘기지 않는다 → 야식 배지는 안 뜬다
+        // 품목 tag(맥주·하이볼·차)는 계약에 아직 없어 넘기지 않는다 → 잔 수는 0
+        items: detail.items.map((item) => ({
+          name: item.koreanName,
+          originalName: item.originalName,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          category: item.category,
+          checkedMemberIds: item.checkedMemberIds,
         })),
-      }),
-    [trip.members, details, transferCount],
+      })),
+    [details],
+  );
+  const wrapped: Wrapped = useMemo(
+    () => buildWrapped({ memberIds, transferCount, expenses: statExpenses }),
+    [memberIds, statExpenses, transferCount],
+  );
+  // 추억 배지: 규칙으로만 고른다 (core `computeBadges`). 문구는 badgeLine.
+  const badgeLines = useMemo(
+    () =>
+      computeBadges({
+        memberIds,
+        expenses: statExpenses,
+        signature: detect(trip.title).signature,
+        keywords: MENU_KEYWORDS,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+      }).map(badgeLine),
+    [memberIds, statExpenses, trip.title, trip.startDate, trip.endDate],
   );
 
   const members = useMemo(
@@ -200,6 +231,22 @@ function WrappedStories({
       alive = false;
     };
   }, [trip.title, wrapped, members, titleLines]);
+  const [badgeFile, setBadgeFile] = useState<File | null>(null);
+  const badgeInput: BadgeStoryInput = useMemo(
+    () => ({ tripTitle: trip.title, lines: badgeLines }),
+    [trip.title, badgeLines],
+  );
+  useEffect(() => {
+    if (badgeInput.lines.length === 0) return;
+    let alive = true;
+    renderBadgeStoryFile(badgeInput).then(
+      (file) => alive && setBadgeFile(file),
+      () => alive && setBadgeFile(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [badgeInput]);
 
   // 화면이 가려질 때(라우트가 캐시에 남은 채 숨겨질 때)마다 처음 상태로 되돌린다.
   // 안 그러면 Stories의 `closing`이 true로 남아, 다시 열었을 때 투명한 전체 화면 덮개만 떠서 흰 화면이 된다.
@@ -212,18 +259,23 @@ function WrappedStories({
     [],
   );
 
-  async function share() {
+  async function share(which: "story" | "badges") {
     if (sharing) return;
-    if (storyFile) {
+    const ready = which === "badges" ? badgeFile : storyFile;
+    if (ready) {
       // await 없이 바로 공유창 (사용자 누름이 살아 있을 때)
-      const result = await shareStoryFile(storyFile);
-      if (result === "fallback") setPreview(storyFile);
+      const result = await shareStoryFile(ready);
+      if (result === "fallback") setPreview(ready);
       return;
     }
     // 아직 못 만들었으면 지금 만들고, 누름이 끝났으니 공유창 대신 길게 눌러 저장 안내로
     setSharing(true);
     try {
-      setPreview(await renderStoryFile({ tripTitle: trip.title, wrapped, members, titleLines }));
+      setPreview(
+        await (which === "badges"
+          ? renderBadgeStoryFile(badgeInput)
+          : renderStoryFile({ tripTitle: trip.title, wrapped, members, titleLines })),
+      );
     } catch {
       toast(t("wrapped.shareFailed"));
     } finally {
@@ -255,9 +307,11 @@ function WrappedStories({
           wrapped,
           nameOf,
           titleLines,
+          badgeLines,
           organizerName: organizer?.name ?? "",
           sharing,
-          onShare: share,
+          onShare: () => share("story"),
+          onShareBadges: () => share("badges"),
           onCopy: copy,
           onReplay: () => setRound((n) => n + 1),
         });
@@ -277,9 +331,11 @@ function buildSlides({
   wrapped,
   nameOf,
   titleLines,
+  badgeLines,
   organizerName,
   sharing,
   onShare,
+  onShareBadges,
   onCopy,
   onReplay,
 }: {
@@ -287,9 +343,11 @@ function buildSlides({
   wrapped: Wrapped;
   nameOf: (id: string) => string;
   titleLines: ReadonlyMap<string, readonly [string, string]>;
+  badgeLines: readonly (readonly [string, string])[];
   organizerName: string;
   sharing: boolean;
   onShare: () => void;
+  onShareBadges: () => void;
   onCopy: () => void;
   onReplay: () => void;
 }): StorySlide[] {
@@ -419,6 +477,42 @@ function buildSlides({
                     : null}
                 </p>
                 <DestinationArtImage art={destination.art[1]} className="wr-hero sm" />
+              </>
+            ),
+          },
+        ]
+      : []),
+    ...(badgeLines.length > 0
+      ? [
+          {
+            tone: "s-brand",
+            content: (
+              <>
+                <p className="wr-lead in">{t("wrapped.badgeLead")}</p>
+                <div className="grid gap-2.5">
+                  {badgeLines.map(([title, hint], k) => (
+                    <div
+                      key={title}
+                      className="in rounded-lg border border-current/25 px-4 py-3.5"
+                      style={i(k + 1)}
+                    >
+                      <p className={cn("d truncate text-[26px]", k === 0 && "text-glow")}>{title}</p>
+                      <span className="block truncate text-hint opacity-75">{hint}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1" />
+                <div className="in relative grid" style={i(badgeLines.length + 1)}>
+                  <button
+                    type="button"
+                    disabled={sharing}
+                    aria-busy={sharing || undefined}
+                    onClick={onShareBadges}
+                    className="wbtn-a press min-h-13 truncate rounded-lg px-4.5 text-body font-bold disabled:opacity-60"
+                  >
+                    {sharing ? t("wrapped.sharing") : t("wrapped.shareBadges")}
+                  </button>
+                </div>
               </>
             ),
           },
