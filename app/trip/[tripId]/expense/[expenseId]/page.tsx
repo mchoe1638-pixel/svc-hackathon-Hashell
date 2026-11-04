@@ -16,6 +16,7 @@ import { Receipt, ReceiptHead, ReceiptSum } from "@/components/receipt";
 import { Screen } from "@/components/screen";
 import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { useToast } from "@/components/toast";
+import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/utils";
 import { formatMoney } from "@/core/money";
@@ -41,6 +42,7 @@ function ExpenseCheck() {
 
   if (trip.status === "pending" || expense.status === "pending") return <ScreenSkeleton />;
   if (trip.status === "error" || expense.status === "error") {
+    if (trip.error?.status === 404) return <TripGone />;
     const notFound = expense.error?.status === 404;
     return (
       <>
@@ -153,7 +155,7 @@ function CheckBody({
         onMore={isOwner ? () => setMenuOpen(true) : undefined}
       />
       <Screen className="bg-field pt-0">
-        <div className="sticky top-13.5 z-20 -mx-gutter flex items-end justify-between gap-3 bg-grad px-gutter pt-3.5 pb-4 text-paper">
+        <div className="sticky top-bar-safe z-20 -mx-gutter flex items-end justify-between gap-3 bg-grad px-gutter pt-3.5 pb-4 text-paper">
           <div className="min-w-0">
             <div className="text-caption opacity-85">
               {t("itemCheck.mineLabel", { name: me.name })}

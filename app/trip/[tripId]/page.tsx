@@ -19,6 +19,7 @@ import { ScreenSkeleton } from "@/components/screen-skeleton";
 import { useToast } from "@/components/toast";
 import { TripArt, TripHeader } from "@/components/trip-art";
 import { groupBySpentOn } from "@/components/trip-dates";
+import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
@@ -44,6 +45,7 @@ function TripHome() {
 
   if (trip.status === "pending") return <ScreenSkeleton />;
   if (trip.status === "error") {
+    if (trip.error.status === 404) return <TripGone />;
     return (
       <>
         <AppBar title={t("app.name")} />
@@ -125,7 +127,7 @@ function TripHome() {
 
 /**
  * 상단바. 총무에게만 ← 목록으로(`/`)와 ⋯ → 여행 삭제를 보여준다 (시안 노트).
- * 지울 수 있는지는 서버가 정한다 — 403(총무 아님)·423(정산 확정)이면 안내만 하고, 버튼 숨김은 편의일 뿐이다.
+ * 지울 수 있는지는 서버가 정한다 — 403(총무 아님)이면 안내만 하고, 버튼 숨김은 편의일 뿐이다. 정산을 확정한 여행도 지울 수 있다.
  */
 function TripBar({ trip }: { trip: TripDetail }) {
   const router = useRouter();
@@ -146,7 +148,6 @@ function TripBar({ trip }: { trip: TripDetail }) {
         onError: (error) => {
           setConfirming(false);
           if (error.status === 403) toast(t("home.deleteTripForbidden"));
-          else if (error.status === 423) toast(t("home.deleteTripSettled"));
           else if (error.status === 404) {
             router.replace("/");
             toast(t("home.deleteTripGone"));
@@ -173,8 +174,8 @@ function TripBar({ trip }: { trip: TripDetail }) {
       />
       <ConfirmSheet
         open={confirming}
-        title={t("home.deleteTripTitle")}
-        hint={t("home.deleteTripHint", { title: trip.title })}
+        title={t("home.deleteTripTitle", { title: trip.title })}
+        hint={t("home.deleteTripHint")}
         confirmLabel={t("home.deleteTripConfirm")}
         danger
         busy={deleteTrip.isPending}

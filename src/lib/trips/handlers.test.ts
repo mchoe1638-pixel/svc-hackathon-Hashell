@@ -99,7 +99,7 @@ function fakeRepository(options: FakeOptions = {}): Fake {
       return trip.status === 'SETTLED' ? 'SETTLED' : 'OPEN';
     },
     async deleteTrip() {
-      return trip.status === 'SETTLED' ? 'SETTLED' : 'DELETED';
+      return 'DELETED';
     },
     async joinTrip(joinRequest) {
       joined.push(joinRequest);

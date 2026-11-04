@@ -56,8 +56,8 @@ export interface TripsGateway {
   lockTripIfOpen(tripId: string): Promise<GatewayResult>;
   /** `status = 'LOCKED'`인 여행만 OPEN으로 바꾸고, 바뀐 행의 id 목록을 돌려준다. */
   unlockTripIfLocked(tripId: string): Promise<GatewayResult>;
-  /** `status <> 'SETTLED'`인 여행만 지우고, 지운 행의 id 목록을 돌려준다. 딸린 행은 FK cascade가 지운다. */
-  deleteTripUnlessSettled(tripId: string): Promise<GatewayResult>;
+  /** 여행을 지우고 (정산 확정이어도), 지운 행의 id 목록을 돌려준다. 딸린 행은 FK cascade가 지운다. */
+  deleteTrip(tripId: string): Promise<GatewayResult>;
   /** 여행의 `{ status }` 한 행 (없으면 data가 null). */
   selectTripStatus(tripId: string): Promise<GatewayResult>;
   /** 여행의 지출 전부와 품목·체크·조정. 정산 계산의 입력이다. 순서는 정하지 않는다. */
@@ -97,19 +97,6 @@ async function readUnlockedStatus(gateway: TripsGateway, tripId: TripId): Promis
   if (status === 'LOCKED') {
     // LOCKED였다면 위 갱신이 바꿨어야 한다. 그 사이 총무가 다른 기기에서 다시 잠근 아주 드문 경우가 아니면 가정이 깨진 것이다.
     throw new Error('unlock update changed no row but the trip still reads LOCKED');
-  }
-  return status;
-}
-
-/** `deleteTrip`이 "지운 행이 없다"는 답을 받은 뒤 상태를 읽어 이유를 가린다. */
-async function readUndeletedStatus(gateway: TripsGateway, tripId: TripId): Promise<DeleteTripResult> {
-  const row = unwrap('select trip status', await gateway.selectTripStatus(tripId));
-  if (row === null) return null;
-
-  const status = parseTripStatus(row);
-  if (status !== 'SETTLED') {
-    // 확정 전이었다면 위 삭제가 지웠어야 한다. 그 사이 총무가 다른 기기에서 확정을 푼 아주 드문 경우가 아니면 가정이 깨진 것이다.
-    throw new Error(`trip delete removed no row but the trip still reads ${status}`);
   }
   return status;
 }
@@ -159,9 +146,8 @@ export function createSupabaseTripsRepository(gateway: TripsGateway): TripsRepos
     },
 
     async deleteTrip(tripId: TripId): Promise<DeleteTripResult> {
-      const deleted = parseUpdatedIds(unwrap('delete trip', await gateway.deleteTripUnlessSettled(tripId)));
-      if (deleted.length > 0) return 'DELETED';
-      return readUndeletedStatus(gateway, tripId);
+      const deleted = parseUpdatedIds(unwrap('delete trip', await gateway.deleteTrip(tripId)));
+      return deleted.length > 0 ? 'DELETED' : null;
     },
 
     async joinTrip(request: JoinRequest): Promise<JoinOutcome> {

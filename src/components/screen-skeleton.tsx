@@ -5,7 +5,7 @@ import { t } from "@/i18n/ko";
 export function ScreenSkeleton({ card = true, rows = 4 }: { card?: boolean; rows?: number }) {
   return (
     <>
-      <div aria-hidden className="h-13.5 border-b border-line bg-paper" />
+      <div aria-hidden className="min-h-bar-safe border-b border-line bg-paper" />
       <main
         aria-busy
         aria-label={t("common.loading")}

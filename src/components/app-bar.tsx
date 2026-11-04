@@ -19,7 +19,7 @@ type AppBarProps = {
 /** 상단바 (시안 .bar): (뒤로) + 제목 + (여행 상태 칩) + (⋯). */
 export function AppBar({ title, backHref, onBack, status, onMore }: AppBarProps) {
   return (
-    <header className="sticky top-0 z-30 flex min-h-13.5 items-center gap-1 border-b border-line bg-paper py-1.5 pr-3.5 pl-1.5">
+    <header className="sticky top-0 z-30 flex min-h-bar-safe items-center gap-1 border-b border-line bg-paper pt-bar-safe pr-3.5 pb-1.5 pl-1.5">
       {onBack ? (
         <button
           type="button"

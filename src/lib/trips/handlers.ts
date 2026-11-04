@@ -99,8 +99,8 @@ export async function handleUnlockTrip(request: Request, deps: TripsDeps): Promi
 }
 
 /**
- * `POST /api/trips/delete` — 여행을 지운다 (총무만). 멤버·지출·품목·체크·조정·송금도 같이 지워진다 (FK cascade).
- * 정산 확정된 여행은 423이라, 지우려면 먼저 확정을 푼다. 성공하면 빈 객체.
+ * `POST /api/trips/delete` — 여행을 지운다 (총무만, 정산 확정된 여행도). 멤버·지출·품목·체크·조정·송금도 같이 지워진다 (FK cascade).
+ * 총무가 아니면 403, 없거나 멤버가 아니면 404. 성공하면 빈 객체.
  */
 export async function handleDeleteTrip(request: Request, deps: TripsDeps): Promise<Response> {
   const userId = await authenticate(request, deps.verify);
@@ -109,7 +109,6 @@ export async function handleDeleteTrip(request: Request, deps: TripsDeps): Promi
 
   const result = await deps.repository.deleteTrip(tripId);
   if (result === null) throw tripNotFound();
-  if (result === 'SETTLED') throw tripSettled();
 
   return jsonResponse(200, {});
 }

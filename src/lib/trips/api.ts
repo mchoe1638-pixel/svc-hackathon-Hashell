@@ -85,7 +85,7 @@ export async function unsettleTripRequest(tripId: TripId): Promise<TripStatusRes
   return getTripsClient().unsettleTrip(tripId);
 }
 
-/** `useDeleteTrip` — 여행 지우기 (총무만). 딸린 지출·품목·체크·송금도 같이 지워진다. 정산 확정 여행이면 423. */
+/** `useDeleteTrip` — 여행 지우기 (총무만). 딸린 지출·품목·체크·송금도 같이 지워진다. 정산 확정 여행도 지운다. */
 export async function deleteTripRequest(tripId: TripId): Promise<void> {
   return getTripsClient().deleteTrip(tripId);
 }
