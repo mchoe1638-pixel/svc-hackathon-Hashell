@@ -16,7 +16,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-grad text-primary-foreground",
+        // 글자색은 임의 속성으로 쓴다: `text-primary-foreground`는 뒤의 `text-body`/`text-hint`(글자 크기)를 색으로 착각한 twMerge가 지워 버려 검은 글자가 됐다.
+        default: "bg-grad [color:var(--paper)]",
         ghost: "bg-field text-ink",
         danger: "bg-paper text-send inset-ring-2 inset-ring-send",
         outline: "bg-paper text-ink inset-ring-2 inset-ring-line",

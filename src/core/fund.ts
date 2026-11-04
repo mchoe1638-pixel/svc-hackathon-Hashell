@@ -29,6 +29,15 @@ export interface FundBalance {
 }
 
 /**
+ * 공금 걷기의 총액 = 1인당 금액 × 인원 (현지 통화 최소 단위 정수). 시트의 "n명 × 금액 = 총 금액" 줄에 쓴다.
+ * 곱이 안전한 정수를 넘으면 null: 화면이 줄을 숨기게 하려는 것이라 예외를 던지지 않는다.
+ */
+export function fundCollectTotal(perPerson: number, memberCount: number): number | null {
+  const total = perPerson * memberCount;
+  return Number.isSafeInteger(total) ? total : null;
+}
+
+/**
  * 남은 공금 = 입금 합계 − 총무가 낸 지출 합계. 원화 어림값은 방의 현금 환율로 바꾼 값이다.
  *
  * - 총무 본인의 입금도 입금이다 (낸 사람이 총무여도 지출 합계에는 들어가지 않는다).

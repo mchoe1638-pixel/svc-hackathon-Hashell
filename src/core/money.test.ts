@@ -92,6 +92,11 @@ describe('convertToKrw', () => {
       // 8,740 × 9.5 × 1.025 = 85,105.75원 → 85,106원
       expect(convertToKrw(8740, 'JPY', { rate: 9.5 }, 0.025)).toBe(85106);
     });
+
+    it('converts a two-decimal currency card payment with the fee: SGD 12.50 at TTS 1,000 + 2.2% = 12,775원', () => {
+      // 12.50 × 1,000 × 1.022 = 12,775원. 센트 단위 입력과 수수료가 함께 들어가는 경로를 고정한다 (회귀 방지).
+      expect(convertToKrw(1250, 'SGD', { rate: 1000 }, 0.022)).toBe(12775);
+    });
   });
 
   it('treats two-decimal currencies as cents', () => {
