@@ -23,6 +23,7 @@
 - 날짜/시간: 2026-11-04 (Wrapped 추억 배지. main 받아옴(충돌 없음)·병합 미커밋)
 - 완료: `computeBadges`(규칙 8개, 점수순 최대 4개)·칭호 올킬 미식가/선택과 집중·공금 입금(deposit) 품목 제외(`excludeDeposits`), destinations에 signature(오사카 타코야키 ¥650·기본 아메리카노 ₩5,000)·`MENU_KEYWORDS`, Wrapped 칭호 장 앞에 배지 장 + 배지 스토리 이미지 공유. core 189개 통과, tsc는 `@anthropic-ai/sdk` 미설치 7건만
 - 다음: (사람) `npm install` 뒤 tsc 재확인, 미리보기(USE_MOCK)에서 배지 장 확인(목업은 2개: 아메리카노 35잔·라멘 원정대 4그릇), 커밋
+- 발표 자료(2026-11-04): `docs/pitch/hashell_pitch.html` 16장(공정한 노동·공정한 금액) + `script.md`(1,365자, 약 4분 35초)·`sources.md`. [자체 설문 결과 필요]·[팀 결정 필요]·[발표 전 갱신] 남음
 - 막힌 점(백엔드 요청): `ExpenseDetail.createdAt` 없어 야식 배지 안 뜸, `ItemCategory`에 'deposit' 추가, `src/core`는 백엔드 소유인데 이번 지시로 디자인이 수정함(리뷰 부탁)
 - 날짜/시간: 2026-11-02 (S1 시안 반영)
 - 완료: `docs/design-prototype.html` 기준 토큰(연한 파란 단색 #2F6FEB, Noto Sans KR, 둥글기·움직임)·공통 컴포넌트(AppBar, BottomBar/CTA, Button default·ghost·danger, MemberAvatar, MemberChip, ListRow, Banner, Toast, ConfirmSheet, Screen)·참여/동행 초대 화면, `src/lib/native.ts`(사용자 요청으로 디자인이 작성). tsc·vitest·build 통과
