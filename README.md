@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# hashell
 
-## Getting Started
+**총무 혼자가 아니라 모두가 나눠서 하는 여행 정산.**
+각자 자기가 먹은 것만 고르면, 정산의 노동도 금액도 공정하게 나뉩니다.
 
-First, run the development server:
+- 서비스: https://svc-hackathon-hashell.vercel.app
+- 총무 앱(안드로이드) 설치: https://svc-hackathon-hashell.vercel.app/hashell.apk
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 어떤 서비스인가요
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+여행 정산은 늘 총무 한 명이 떠안습니다. 영수증을 모으고, 누가 뭘 먹었는지 기억해 내고, 계산해서 단톡방에 올립니다.
+그런데 "누가 뭘 먹었는지"는 각자만 압니다. 그래서 결국 "그냥 n분의 1 하자"가 되고, 술을 안 마신 친구가 술값을 냅니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+hashell은 이 일을 모두에게 나눕니다.
 
-## Learn More
+| 문제 | hashell의 해결 |
+|---|---|
+| 누가 뭘 먹었는지는 각자만 아는데, 입력은 총무 혼자 한다 | **각자 자기 메뉴를 체크합니다.** 처음엔 모두 먹은 것으로 시작하고, 안 먹은 메뉴에서 자기만 빼면 됩니다 |
+| 메뉴를 하나하나 적는 게 귀찮다 (외국어 영수증은 더) | **AI가 영수증을 읽습니다.** 일본어 영수증도 메뉴·가격·수량을 한국어로 정리합니다 |
+| 해외 카드는 원화로 얼마가 나갔는지 모른다 | 수출입은행 고시 환율로 **추정**하고, 낸 사람이 **실제 결제 금액**으로 확정합니다 |
+| 공금을 모아도 결국 n분의 1 | 공금으로 냈어도 **안 먹은 메뉴는 내 몫에서 빠집니다** |
 
-To learn more about Next.js, take a look at the following resources:
+동행은 앱 설치도, 회원가입도 필요 없습니다. 카카오톡으로 받은 링크를 누르고 이름만 고르면 됩니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 시작하기
 
-## Deploy on Vercel
+### 총무 (안드로이드 앱)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. 안드로이드 폰에서 아래 주소를 엽니다
+   **https://svc-hackathon-hashell.vercel.app/hashell.apk**
+2. 다운로드가 끝나면 파일을 눌러 설치합니다
+   - "출처를 알 수 없는 앱" 설치 허용을 묻으면 **허용**
+   - "Play 프로텍트" 경고가 뜨면 **무시하고 설치** (스토어에 올리지 않은 테스트 앱이라 뜨는 경고입니다)
+3. 앱을 열고 **새 여행 만들기**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> 여행 만들기는 총무 앱에서만 할 수 있습니다. 웹 브라우저로 서비스 주소를 열면 "방은 앱에서 만들 수 있어요"가 나오는 것이 정상입니다.
+> 아이폰에는 앱을 설치할 수 없습니다. 아이폰 사용자는 아래 '동행' 방법으로 참여합니다.
+
+### 동행 (설치·가입 없음, 아이폰·안드로이드 모두)
+
+1. 총무에게 받은 **초대 링크**를 누르거나 **QR**을 찍습니다
+2. 명단에서 **내 이름**을 고르면 참여 끝
+
+---
+
+## 쓰는 순서
+
+1. **여행 만들기 (총무)** — 국내·해외, 공금을 모을지 고르고, 여행지·날짜·함께 갈 사람을 적습니다. 해외 여행은 현지 통화를 고르면 오늘 고시 환율이 자동으로 채워집니다
+2. **초대 (총무)** — QR이나 링크를 단톡방에 보냅니다. 친구가 들어오면 참여 현황이 실시간으로 바뀝니다. 다 모이면 링크를 잠급니다 (필요하면 다시 열 수 있습니다)
+3. **공금 걷기 (공금 여행일 때, 총무)** — 1인당 금액을 적으면 명단 전원에게서 걷은 것으로 기록되고, 홈에 남은 공금이 보입니다
+4. **지출 기록 (누구나)** — 세 가지 방법
+   - **영수증 찍기**: AI가 메뉴·가격·수량을 읽습니다
+   - **직접 입력**: 메뉴별로 이름·금액·수량을 적습니다
+   - **n분의 1**: 택시처럼 똑같이 나눌 것은 총액만
+5. **안 먹은 메뉴 빼기 (각자)** — 자기가 안 먹은 메뉴에서 자기 이름만 끕니다. 모두의 화면에 바로 반영됩니다
+6. **실제 결제 금액 입력 (카드로 낸 사람)** — 해외 카드는 '추정' 금액으로 시작합니다. 카드사 앱에 찍힌 원화 금액을 넣으면 '확정'으로 바뀝니다
+7. **정산 (총무)** — 누가 누구에게 얼마를 보내면 되는지 송금 횟수가 가장 적게 정리됩니다. 총무가 확정하면 목록이 고정되고, 돈을 받은 사람이 '받았어요'를 누릅니다
+8. **여행 돌아보기** — 정산이 끝나면 우리가 쓴 돈, 맥주를 가장 많이 마신 사람, 가장 비싼 한 끼, 추억 배지와 사람별 칭호가 나옵니다. 장면마다 인스타 스토리 이미지로 공유할 수 있습니다
+
+---
+
+## 기술 스택
+
+- **화면·서버**: Next.js (App Router), Vercel
+- **데이터·인증·실시간**: Supabase (Postgres, 익명 로그인, RLS, Realtime)
+- **총무 앱**: Capacitor (Android) — 운영 주소를 여는 앱 셸이라 화면 코드는 하나입니다
+- **AI**: Claude API — 영수증 판독에만 사용합니다. 영수증 사진은 판독 후 저장하지 않습니다
+- **환율**: 한국수출입은행 환율 API (하루 한 번 수집)
+
+정산 계산은 금액을 통화 최소 단위 정수로만 다루고(소수점 오차 없음), 나머지 1원은 최대 잔여법으로 공정하게 나눕니다.
+
+---
+
+## 팀
+
+| 이름 | 역할 |
+|---|---|
+| 최명규 | 백엔드 (정산 엔진, API, DB, 영수증 판독, 실시간, 환율) |
+| 이승화 | 디자인·화면 (시안, 전체 화면, 여행 돌아보기, 인스타 스토리) |
