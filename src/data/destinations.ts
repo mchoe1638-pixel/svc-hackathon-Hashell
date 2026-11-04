@@ -6,7 +6,10 @@
  *   `colors`에 없는 색은 덮어쓰지 않고 앱 기본 색(globals.css)을 그대로 쓴다.
  * - 그림은 `public/art/{file}`. 새 그림은 `<svg>`에 width="200" height="200"을 둔다 (사파리 canvas drawImage).
  * - 여행지를 더하려면 `DESTINATIONS`에 항목 하나를 추가한다. `match`는 소문자로 적는다.
+ * - `signature`는 추억 배지 '환산 비교'("우리가 쓴 돈 = 타코야키 312접시")에 쓴다. 값은 `currency` 최소 단위 정수.
  */
+
+import type { BadgeSignature, MenuKeyword } from '@/core/tripStats';
 
 /** 그림 종류. 스토리 이미지가 장마다 종류를 골라 쓴다. */
 export type ArtKind = 'landmark' | 'food' | 'drink' | 'symbol';
@@ -47,6 +50,8 @@ export interface Destination {
   readonly hb: DestinationHighball;
   /** 마지막 장 "이번 여행 우리 이름은"에 나오는 모임 이름. */
   readonly title: string;
+  /** 추억 배지 '환산 비교'의 대표 메뉴. */
+  readonly signature: BadgeSignature;
 }
 
 const OSAKA: Destination = {
@@ -65,6 +70,7 @@ const OSAKA: Destination = {
   ],
   hb: { name: '하이볼', title: '하이볼 장인' },
   title: '이자카야 정복대',
+  signature: { name: '타코야키', price: 650, unit: '접시', currency: 'JPY' },
 };
 
 /** 목록에서 못 찾았을 때 쓰는 기본 세트. 어느 나라 여행이든 어색하지 않은 그림만 둔다. */
@@ -84,6 +90,7 @@ const DEFAULT_DESTINATION: Destination = {
   ],
   hb: { name: '하이볼', title: '하이볼 장인' },
   title: '맛집 정복대',
+  signature: { name: '아메리카노', price: 5000, unit: '잔', currency: 'KRW' },
 };
 
 /** 찾는 순서대로. 앞에 있는 여행지가 먼저 걸린다. */
@@ -104,3 +111,13 @@ export function detect(title: string | null | undefined): Destination {
 export function artSrc(art: DestinationArt): string {
   return `/art/${art.file}`;
 }
+
+/**
+ * 추억 배지 '메뉴 키워드' 사전. 품목의 한국어 이름·원문에서 찾는다 (대소문자 무시, 영문은 단어 단위).
+ * 수량 합이 3 이상이면 "{label} 원정대 · {수량}{unit}".
+ */
+export const MENU_KEYWORDS: readonly MenuKeyword[] = [
+  { label: '라멘', words: ['라멘', '라면', 'ラーメン', 'ramen'], unit: '그릇' },
+  { label: '타코야키', words: ['타코야키', 'たこ焼', 'takoyaki'], unit: '접시' },
+  { label: '초밥', words: ['초밥', '스시', '寿司', 'すし', 'sushi'], unit: '접시' },
+];

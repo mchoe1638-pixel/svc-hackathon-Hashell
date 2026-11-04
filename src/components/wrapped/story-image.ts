@@ -205,6 +205,87 @@ export async function renderStoryFile(input: StoryInput): Promise<File> {
   return new File([blob], t("wrapped.fileName"), { type: "image/png" });
 }
 
+export interface BadgeStoryInput {
+  readonly tripTitle: string;
+  /** 배지 한 줄: [제목, 덧말] (화면 배지 장과 같은 문구) */
+  readonly lines: readonly (readonly [string, string])[];
+}
+
+/** 추억 배지 스토리 이미지 (1080×1920). 바탕·글꼴은 `drawStory`와 같다. */
+export async function drawBadgeStory(input: BadgeStoryInput): Promise<HTMLCanvasElement> {
+  if (document.fonts?.ready) await document.fonts.ready;
+  const family = getComputedStyle(document.body).fontFamily || "sans-serif";
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas 2d unavailable");
+
+  const night = cssVar("--night");
+  const brandInk = cssVar("--brand-ink");
+  const brandLight = cssVar("--brand-light");
+  const foam = cssVar("--foam");
+  const glow = cssVar("--glow");
+  const paper = cssVar("--paper");
+
+  const bg = ctx.createLinearGradient(0, 0, W * 0.6, H);
+  bg.addColorStop(0, brandLight);
+  bg.addColorStop(0.55, brandInk);
+  bg.addColorStop(1, night);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const inner = W - PAD * 2;
+  ctx.textBaseline = "alphabetic";
+
+  ctx.fillStyle = glow;
+  ctx.font = `900 64px ${family}`;
+  ctx.fillText(t("app.name"), PAD, 190);
+
+  ctx.fillStyle = foam;
+  ctx.fillText(fitText(ctx, input.tripTitle, 112, 900, family, inner), PAD, 360);
+
+  ctx.font = `500 44px ${family}`;
+  ctx.globalAlpha = 0.85;
+  ctx.fillText(t("wrapped.storyBadges"), PAD, 500);
+  ctx.globalAlpha = 1;
+
+  // 배지 칸: 인스타 스토리 아래 약 250px는 가려지므로 그 위까지
+  const top = 560;
+  const gap = 32;
+  const boxH = Math.min(260, Math.floor((H - 300 - top - gap * (input.lines.length - 1)) / Math.max(1, input.lines.length)));
+  input.lines.forEach(([title, hint], index) => {
+    const y = top + index * (boxH + gap);
+    ctx.fillStyle = paper;
+    ctx.globalAlpha = 0.14;
+    roundRect(ctx, PAD, y, inner, boxH, 36);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = index === 0 ? glow : foam;
+    ctx.fillText(fitText(ctx, title, 72, 900, family, inner - 96), PAD + 48, y + boxH / 2 + 4);
+    ctx.fillStyle = foam;
+    ctx.globalAlpha = 0.75;
+    ctx.fillText(fitText(ctx, hint, 40, 500, family, inner - 96), PAD + 48, y + boxH / 2 + 66);
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.fillStyle = foam;
+  ctx.globalAlpha = 0.7;
+  ctx.font = `500 36px ${family}`;
+  ctx.fillText(t("wrapped.storyFooter"), PAD, H - 120);
+  ctx.globalAlpha = 1;
+
+  return canvas;
+}
+
+/** 추억 배지 스토리 이미지를 PNG 파일로 (`renderStoryFile`과 같이 미리 만들어 둔다). */
+export async function renderBadgeStoryFile(input: BadgeStoryInput): Promise<File> {
+  const canvas = await drawBadgeStory(input);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("toBlob failed");
+  return new File([blob], t("wrapped.badgeFileName"), { type: "image/png" });
+}
+
 /** shared: 공유창으로 보냄 · cancelled: 사용자가 공유창을 닫음 · fallback: 공유창을 못 씀 → 길게 눌러 저장 안내로 */
 export type StoryShareResult = "shared" | "cancelled" | "fallback";
 

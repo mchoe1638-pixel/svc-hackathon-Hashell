@@ -20,10 +20,11 @@
 
 
 ## 디자인·화면 (이승화)
-- 날짜/시간: 2026-11-03 (S3 영수증 흐름·정산 확정 화면 완성, 실연결 대비)
-- 완료: 영수증 촬영+앨범·읽기 실패 화면(다시 찍기/직접 입력)·결과 확인에서 품목 이름·단가·수량 수정+카테고리 표시+합계 불일치 경고(저장 막음), 정산 확정 확인 시트·해제 위험 시트·409/423 다시 받기, 홈 빈 목록 버튼, 스토리 공유는 이미지를 미리 만들어 누른 순간 share(아이폰) + 안 되면 길게 눌러 저장 화면. tsc·vitest 760 통과, 미커밋
-- 다음: (사람) design에 main 받아오기(1-5 미반영 상태였음) → 커밋, 폰(아이폰 사파리·앱)으로 공유·촬영 확인, 지출 수정 화면(시안 없음)
-- 막힌 점(백엔드 요청): `src/lib/image/resize.ts`(없어서 `src/components/image.ts` 사용), `JoinInfo.alreadyJoined`, `MemberBalance.paidKrw/eatenKrw`, `ExpenseSummary.myShareKrw`·날짜, 품목 `tag`, `useWrapped`+`wrapped_title`, `parseMoney`, 정산 확정이 OPEN에서도 되는지(LOCKED만이면 화면에서 안내 필요)
+- 날짜/시간: 2026-11-04 (Wrapped 추억 배지. main 받아옴(충돌 없음)·병합 미커밋)
+- 완료: `computeBadges`(규칙 8개, 점수순 최대 4개)·칭호 올킬 미식가/선택과 집중·공금 입금(deposit) 품목 제외(`excludeDeposits`), destinations에 signature(오사카 타코야키 ¥650·기본 아메리카노 ₩5,000)·`MENU_KEYWORDS`, Wrapped 칭호 장 앞에 배지 장 + 배지 스토리 이미지 공유. core 189개 통과, tsc는 `@anthropic-ai/sdk` 미설치 7건만
+- 다음: (사람) `npm install` 뒤 tsc 재확인, 미리보기(USE_MOCK)에서 배지 장 확인(목업은 2개: 아메리카노 35잔·라멘 원정대 4그릇), 커밋
+- 발표 자료(2026-11-04): `docs/pitch/hashell_pitch.html` 16장(공정한 노동·공정한 금액) + `script.md`(1,365자, 약 4분 35초)·`sources.md`. [자체 설문 결과 필요]·[팀 결정 필요]·[발표 전 갱신] 남음
+- 막힌 점(백엔드 요청): `ExpenseDetail.createdAt` 없어 야식 배지 안 뜸, `ItemCategory`에 'deposit' 추가, `src/core`는 백엔드 소유인데 이번 지시로 디자인이 수정함(리뷰 부탁)
 - 날짜/시간: 2026-11-02 (S1 시안 반영)
 - 완료: `docs/design-prototype.html` 기준 토큰(연한 파란 단색 #2F6FEB, Noto Sans KR, 둥글기·움직임)·공통 컴포넌트(AppBar, BottomBar/CTA, Button default·ghost·danger, MemberAvatar, MemberChip, ListRow, Banner, Toast, ConfirmSheet, Screen)·참여/동행 초대 화면, `src/lib/native.ts`(사용자 요청으로 디자인이 작성). tsc·vitest·build 통과
 - 다음: 운영 확인(main 병합 + Vercel `NEXT_PUBLIC_USE_MOCK=true`) → 방 만들기(`isNativeApp()`로 앱/웹 구분), 홈
