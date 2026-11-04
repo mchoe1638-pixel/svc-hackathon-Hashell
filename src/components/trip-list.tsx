@@ -72,7 +72,7 @@ export function TripList() {
     <>
       <AppBar title={t("trips.barTitle")} />
       <Screen>
-        <ul className="grid">
+        <ul className="grid grid-cols-1">
           {sortTrips(trips.data).map((trip) => (
             <TripRow key={trip.id} trip={trip} />
           ))}
@@ -94,7 +94,7 @@ function TripRow({ trip }: { trip: TripSummary }) {
   });
 
   return (
-    <li className="[&:last-child>*]:border-b-0">
+    <li className="min-w-0 [&:last-child>*]:border-b-0">
       <Link
         href={`/trip/${trip.id}`}
         className="press-row flex min-h-15 w-full items-center gap-3 border-b border-line py-2.5 text-left"
@@ -106,7 +106,7 @@ function TripRow({ trip }: { trip: TripSummary }) {
           <span className="block truncate text-caption text-sub">{meta}</span>
           <BalanceLine amount={trip.myBalance} />
         </span>
-        <span className="self-start pt-0.5">
+        <span className="shrink-0 self-start pt-0.5">
           <StatusChip status={trip.status} />
         </span>
       </Link>

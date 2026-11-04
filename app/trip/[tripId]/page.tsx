@@ -248,13 +248,13 @@ function ExpenseList({
   }
   // 날짜(spent_on)로 묶는다 (시안 .day). 하나라도 날짜가 비어 있으면 묶음 없이 한 목록 그대로 (groupBySpentOn).
   return (
-    <div className="grid">
+    <div className="grid grid-cols-1">
       {groupBySpentOn(expenses).map((group) => (
-        <div key={group.key} className="grid">
+        <div key={group.key} className="grid grid-cols-1">
           {group.label ? (
             <h3 className="mt-2 -mb-1 text-caption font-bold text-sub">{group.label}</h3>
           ) : null}
-          <ul className="grid">
+          <ul className="grid grid-cols-1">
             {group.items.map((expense) => (
               <ExpenseRow key={expense.id} trip={trip} expense={expense} />
             ))}
