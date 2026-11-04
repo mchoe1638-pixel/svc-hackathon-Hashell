@@ -121,6 +121,7 @@ const ITEM_CATEGORIES = [
   'shopping',
   'lodging',
   'other',
+  'deposit',
 ] as const;
 
 /** 지출 목록의 한 줄. */
@@ -171,11 +172,18 @@ const expenseRecordRowSchema = expenseSnapshotRowSchema.extend({
   adjustments: z.array(adjustmentRowSchema),
 });
 
+/** 목록은 공금 입금 지출을 가르는 데만 품목을 읽는다 (카테고리만, 이름·금액은 읽지 않는다). */
+const expenseListItemSchema = z.object({ category: z.enum(ITEM_CATEGORIES) });
+const expenseListRowSchema = expenseSummaryRowSchema.extend({ items: z.array(expenseListItemSchema) });
+
 type ExpenseSummaryRow = z.infer<typeof expenseSummaryRowSchema>;
 type ExpenseRecordRow = z.infer<typeof expenseRecordRowSchema>;
 
-/** 지출 목록 조회의 컬럼 목록. 파서 스키마에서 뽑아서 둘이 어긋날 수 없다. */
-export const EXPENSE_SUMMARY_COLUMNS: string = Object.keys(expenseSummaryRowSchema.shape).join(',');
+/** 지출 목록 조회의 select. 파서 스키마에서 뽑아서 둘이 어긋날 수 없다. 품목은 `items` 키 아래로 온다. */
+export const EXPENSE_LIST_COLUMNS = [
+  Object.keys(expenseSummaryRowSchema.shape).join(','),
+  `items(${Object.keys(expenseListItemSchema.shape).join(',')})`,
+].join(',');
 
 /** 지출 한 건과 그 품목(체크한 멤버 포함)·조정을 한 번에 가져오는 임베디드 select. */
 export const EXPENSE_RECORD_COLUMNS = [
@@ -217,9 +225,18 @@ function bySortOrder<T extends { readonly sort_order: number }>(rows: readonly T
   return [...rows].sort((a, b) => a.sort_order - b.sort_order);
 }
 
+/** 품목이 모두 'deposit'이면 공금 입금 지출이다. 아니면 `isDeposit`을 싣지 않아서 일반 지출의 모양은 그대로다. */
+function withDepositFlag(
+  summary: ExpenseSummary,
+  items: readonly { readonly category: string }[],
+): ExpenseSummary {
+  const isDeposit = items.length > 0 && items.every((item) => item.category === 'deposit');
+  return isDeposit ? { ...summary, isDeposit } : summary;
+}
+
 function toRecord(row: ExpenseRecordRow): ExpenseRecord {
   return {
-    summary: toSummary(row),
+    summary: withDepositFlag(toSummary(row), row.items),
     tripId: row.trip_id,
     appliedRate: row.applied_rate,
     appliedFeeRate: row.applied_fee_rate,
@@ -241,7 +258,10 @@ function toRecord(row: ExpenseRecordRow): ExpenseRecord {
 }
 
 export function parseExpenseSummaries(raw: unknown): readonly ExpenseSummary[] {
-  return z.array(expenseSummaryRowSchema).parse(raw).map(toSummary);
+  return z
+    .array(expenseListRowSchema)
+    .parse(raw)
+    .map((row) => withDepositFlag(toSummary(row), row.items));
 }
 
 export function parseExpenseRecord(raw: unknown): ExpenseRecord {

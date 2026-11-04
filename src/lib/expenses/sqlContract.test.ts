@@ -29,6 +29,9 @@ const tripsSql = readFileSync(fileURLToPath(TRIPS_MIGRATION_URL), 'utf8');
 /** v4 날짜: create_expense·update_expense를 지출 날짜 인자와 함께 다시 만든 마이그레이션. */
 const DATES_MIGRATION_URL = new URL('../../../supabase/migrations/20261104100000_trip_dates.sql', import.meta.url);
 const datesSql = readFileSync(fileURLToPath(DATES_MIGRATION_URL), 'utf8');
+/** 공금 여행: items.category의 CHECK에 'deposit'을 더해 다시 만든 마이그레이션. */
+const FUND_MIGRATION_URL = new URL('../../../supabase/migrations/20261104140000_fund_trips.sql', import.meta.url);
+const fundSql = readFileSync(fileURLToPath(FUND_MIGRATION_URL), 'utf8');
 
 const TRIP_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const MEMBER_ID = '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b';
@@ -80,8 +83,8 @@ function jsonKeysRead(alias: string): string[] {
 }
 
 /** `<column> in ('A', 'B', ...)` CHECK의 값 목록 (적힌 순서대로). */
-function listIn(column: string): string[] {
-  const list = new RegExp(`\\b${column} in \\(([^)]*)\\)`).exec(sql)?.[1];
+function listIn(column: string, source: string = sql): string[] {
+  const list = new RegExp(`\\b${column} in \\(([^)]*)\\)`).exec(source)?.[1];
   if (list === undefined) throw new Error(`no "${column} in (...)" check in the migration`);
   return [...list.matchAll(/'([A-Za-z_]+)'/g)].map((match) => match[1]);
 }
@@ -309,11 +312,12 @@ describe('migration ↔ TypeScript contract (expenses)', () => {
     },
     {
       column: 'category',
-      allowed: ['alcohol', 'drink', 'meal', 'snack', 'transport', 'shopping', 'lodging', 'other'],
+      allowed: ['alcohol', 'drink', 'meal', 'snack', 'transport', 'shopping', 'lodging', 'other', 'deposit'],
       build: (value: string) => withItem({ category: value }),
+      source: fundSql,
     },
   ])('$column: the table allows exactly the values input validation accepts', (testCase) => {
-    expect(listIn(testCase.column)).toEqual(testCase.allowed);
+    expect(listIn(testCase.column, testCase.source)).toEqual(testCase.allowed);
     for (const value of testCase.allowed) {
       expect(() => parseCreateExpenseInput(testCase.build(value))).not.toThrow();
     }

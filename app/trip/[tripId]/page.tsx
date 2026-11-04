@@ -11,6 +11,7 @@ import { ConfirmSheet } from "@/components/confirm-sheet";
 import { ErrorState } from "@/components/error-state";
 import { EstimateBadge } from "@/components/estimate-badge";
 import { currencyLabel, payLabel } from "@/components/format";
+import { FundCard } from "@/components/fund-card";
 import { ListRow } from "@/components/list-row";
 import { MemberAvatar } from "@/components/member-avatar";
 import { MenuSheet, type MenuItem } from "@/components/menu-sheet";
@@ -23,7 +24,7 @@ import { TripGone } from "@/components/trip-gone";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/components/utils";
-import { formatMoney } from "@/core/money";
+import { formatMoney, sumAmounts } from "@/core/money";
 import {
   useDeleteTrip,
   useExpense,
@@ -64,7 +65,7 @@ function TripHome() {
     );
   }
 
-  const { title, status, members, me, localCurrency } = trip.data;
+  const { title, status, members, me, localCurrency, usesFund } = trip.data;
   const base = `/trip/${tripId}`;
   const settled = status === "SETTLED";
   const waiting = members.filter((member) => !member.isBound);
@@ -98,6 +99,14 @@ function TripHome() {
           <Banner href={`${base}/invite`}>
             {t("home.waitingBanner", { names: waiting.map((m) => m.name).join(", ") })}
           </Banner>
+        ) : null}
+
+        {usesFund ? (
+          <FundCard
+            trip={trip.data}
+            expenses={expenses.data}
+            isLoading={expenses.status === "pending"}
+          />
         ) : null}
 
         {settlement.status === "pending" ? (
@@ -320,10 +329,16 @@ function ExpenseList({
       </div>
     );
   }
+  // 공금 입금은 일반 지출과 섞지 않고 "공금" 묶음으로 따로 보여준다.
+  const deposits = expenses.filter((expense) => expense.isDeposit);
+  const spendings = expenses.filter((expense) => !expense.isDeposit);
   // 날짜(spent_on)로 묶는다 (시안 .day). 하나라도 날짜가 비어 있으면 묶음 없이 한 목록 그대로 (groupBySpentOn).
+  // 일반 지출이 하나도 없으면 빈 묶음 하나가 돌아오니 걸러낸다.
+  const groups = groupBySpentOn(spendings).filter((group) => group.items.length > 0);
   return (
     <div className="grid grid-cols-1">
-      {groupBySpentOn(expenses).map((group) => (
+      {deposits.length > 0 ? <FundBundle trip={trip} deposits={deposits} /> : null}
+      {groups.map((group) => (
         <div key={group.key} className="grid grid-cols-1">
           {group.label ? (
             <h3 className="mt-2 -mb-1 text-caption font-bold text-sub">{group.label}</h3>
@@ -344,6 +359,57 @@ function memberOf(members: readonly Member[], id: MemberId): { member: Member | 
   return { member: members[order], order };
 }
 
+/** 지출 한 줄 오른쪽의 금액: 외화면 현지 통화 금액 위에 원화를 작게, 원화 지출이면 원화만. */
+function AmountCell({ expense }: { expense: ExpenseSummary }) {
+  if (expense.currency === "KRW") {
+    return <b className="tabular-nums whitespace-nowrap">{formatMoney(expense.krwAmount, "KRW")}</b>;
+  }
+  return (
+    <>
+      <b className="block tabular-nums whitespace-nowrap">
+        {formatMoney(expense.amount, expense.currency)}
+      </b>
+      <span className="text-caption whitespace-nowrap text-sub tabular-nums">
+        {formatMoney(expense.krwAmount, "KRW")}
+      </span>
+    </>
+  );
+}
+
+/**
+ * 공금 입금 묶음 (공금 여행만). 입금은 먹은 사람을 고를 지출이 아니라서 눌러도 아무 데도 가지 않는다.
+ * 고치거나 지우는 길은 아직 없다 (TODO: 총무가 잘못 걷은 입금을 되돌리는 방법).
+ */
+function FundBundle({ trip, deposits }: { trip: TripDetail; deposits: readonly ExpenseSummary[] }) {
+  const total = sumAmounts(deposits.map((deposit) => deposit.amount));
+  return (
+    <div className="grid grid-cols-1">
+      <h3 className="mt-2 -mb-1 text-caption font-bold text-sub">
+        {t("home.fundBundle")}
+        <span className="ml-1.5 font-medium">
+          {t("home.fundBundleMeta", {
+            count: deposits.length,
+            amount: formatMoney(total, trip.localCurrency),
+          })}
+        </span>
+      </h3>
+      <ul className="grid grid-cols-1">
+        {deposits.map((deposit) => {
+          const { member: payer, order } = memberOf(trip.members, deposit.payerId);
+          return (
+            <ListRow
+              key={deposit.id}
+              leading={<MemberAvatar name={payer?.name ?? "?"} order={order} />}
+              title={t("home.fundDepositMeta", { payer: payer?.name ?? "" })}
+              trailing={<AmountCell expense={deposit} />}
+            />
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * 지출 한 줄 (시안 .row). "내 몫"은 목록 응답에 없어 지출 상세(`useExpense`)의 `shares`에서 읽는다.
  * TODO(백엔드 요청): `ExpenseSummary.myShareKrw`가 생기면 상세 조회 없이 그 값을 쓴다.
@@ -353,7 +419,6 @@ function ExpenseRow({ trip, expense }: { trip: TripDetail; expense: ExpenseSumma
   const detail = useExpense(expense.id);
   const { member: payer, order } = memberOf(trip.members, expense.payerId);
   const myShare = detail.data?.shares.find((share) => share.memberId === trip.me.id)?.krwAmount;
-  const foreign = expense.currency !== "KRW";
 
   return (
     <ListRow
@@ -372,20 +437,7 @@ function ExpenseRow({ trip, expense }: { trip: TripDetail; expense: ExpenseSumma
           </span>
         </>
       }
-      trailing={
-        foreign ? (
-          <>
-            <b className="block tabular-nums whitespace-nowrap">
-              {formatMoney(expense.amount, expense.currency)}
-            </b>
-            <span className="text-caption whitespace-nowrap text-sub tabular-nums">
-              {formatMoney(expense.krwAmount, "KRW")}
-            </span>
-          </>
-        ) : (
-          <b className="tabular-nums whitespace-nowrap">{formatMoney(expense.krwAmount, "KRW")}</b>
-        )
-      }
+      trailing={<AmountCell expense={expense} />}
     />
   );
 }

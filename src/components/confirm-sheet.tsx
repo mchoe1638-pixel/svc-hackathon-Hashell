@@ -67,7 +67,9 @@ export function ConfirmSheet({
       if (event.key === "Escape") close();
       // Tab은 시트 안에서만 돈다
       if (event.key === "Tab" && sheetRef.current) {
-        const items = sheetRef.current.querySelectorAll<HTMLElement>("button:not(:disabled)");
+        const items = sheetRef.current.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), input:not(:disabled)",
+        );
         const first = items[0];
         const last = items[items.length - 1];
         if (!first || !last) return;

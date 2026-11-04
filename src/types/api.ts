@@ -61,6 +61,7 @@ export type ParseConfidence = 'high' | 'medium' | 'low';
 /**
  * 품목 카테고리 (PLAN '품목 카테고리' 절). 판독할 때 Claude가 품목마다 하나를 고르고, 목록 밖 값은 서버가 'other'로 저장한다.
  * 정산 계산에는 쓰지 않는다 (통계 표시용).
+ * 'deposit'은 공금 입금 품목에만 붙는다. Claude가 고르는 값이 아니고, 통계(Wrapped)에서는 빠진다.
  */
 export type ItemCategory =
   | 'alcohol'
@@ -70,7 +71,8 @@ export type ItemCategory =
   | 'transport'
   | 'shopping'
   | 'lodging'
-  | 'other';
+  | 'other'
+  | 'deposit';
 
 // ── 에러 ─────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,11 @@ export interface TripDetail {
   readonly cardFeeRate: number;
   readonly inviteCode: InviteCode;
   readonly status: TripStatus;
+  /**
+   * 공금을 모아서 쓰는 여행이면 true. 방을 만들 때 정하고 바꿀 수 없다.
+   * 공금은 총무가 맡아 둔 돈이고, 정산 엔진에는 지출로만 들어간다 (입금 = 품목 카테고리 'deposit'인 지출).
+   */
+  readonly usesFund: boolean;
   /** 여행 시작일. 정하지 않았으면 null (가짜 데이터에는 없을 수 있다). */
   readonly startDate?: IsoDate | null;
   /** 여행 종료일. 정하지 않았으면 null. */
@@ -166,6 +173,8 @@ export interface ExpenseSummary {
   readonly isEstimated: boolean;
   /** 쓴 날짜. 입력하지 않았으면 null (가짜 데이터에는 없을 수 있다). */
   readonly spentOn?: IsoDate | null;
+  /** 공금 입금 지출이면 true (품목이 모두 카테고리 'deposit'). 아니면 생략. 목록에서 "공금" 묶음으로 따로 보여준다. */
+  readonly isDeposit?: boolean;
 }
 
 export interface ExpenseItem {
@@ -258,6 +267,8 @@ export interface CreateTripInput {
   readonly startDate?: IsoDate | null;
   /** 여행 종료일. 시작일보다 앞서면 400. */
   readonly endDate?: IsoDate | null;
+  /** 공금을 모아서 쓰는 여행이면 true. 생략하면 false. */
+  readonly usesFund?: boolean;
 }
 
 export interface CreateTripResult {

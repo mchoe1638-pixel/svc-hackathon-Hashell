@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { computeFundBalance } from './fund';
 import { minimizeTransfers } from './minimizeTransfers';
 import type { TransferPlan } from './minimizeTransfers';
 import { convertToKrw } from './money';
@@ -262,6 +263,49 @@ describe('computeBalances', () => {
       ]);
       expect(transfers.length).toBeLessThanOrEqual(FIVE_MEMBERS.length - 1);
       expect(balancesAfter(balances, transfers)).toEqual([0, 0, 0, 0, 0]);
+    });
+  });
+
+  describe('shared fund (공금) — the members deposit, the organizer pays from it', () => {
+    const FUND_MEMBERS: readonly string[] = [MINJUN, SEOYEON, JIWOO];
+    const ORGANIZER = MINJUN;
+    const RATE = 9.5;
+
+    // 엔진은 공금을 모른다. 입금도 결제도 보통 지출일 뿐이고, 이 시나리오는 그 모양만으로 답이 맞게 나오는지 본다.
+    it('returns ¥2,000 to each member when ¥6,000 of the ¥30,000 fund is left', () => {
+      // 입금: 낸 사람 = 입금한 멤버, 먹은 사람 = 총무 1명. 3명이 1만 엔씩 (총무 본인 것도 입금이다).
+      const deposits = FUND_MEMBERS.map((payerId) =>
+        equalSplit({ payerId, total: 10000, rate: RATE }, [ORGANIZER]),
+      );
+      // 공금으로 결제: 낸 사람 = 총무, 3명 모두 먹음 → 1인당 8,000엔.
+      const meal = equalSplit({ payerId: ORGANIZER, total: 24000, rate: RATE }, FUND_MEMBERS);
+
+      const balances = computeBalances(FUND_MEMBERS, [...deposits, meal]);
+      const transfers = minimizeTransfers(balances);
+
+      // 1인당 돌려받을 돈은 10,000 − 8,000 = 2,000엔 = 19,000원. 총무 몫은 총무가 쥐고 있는 공금에서 빠진다.
+      expect(balances).toEqual([
+        { memberId: MINJUN, krwBalance: -38000 },
+        { memberId: SEOYEON, krwBalance: 19000 },
+        { memberId: JIWOO, krwBalance: 19000 },
+      ]);
+      expect(transfers).toEqual([
+        { fromMemberId: MINJUN, toMemberId: SEOYEON, krwAmount: 19000 },
+        { fromMemberId: MINJUN, toMemberId: JIWOO, krwAmount: 19000 },
+      ]);
+      expect(balancesAfter(balances, transfers)).toEqual([0, 0, 0]);
+
+      // 홈의 "남은 공금" 카드: 입금 30,000엔 − 총무가 낸 24,000엔 = 6,000엔 (= 3명 × 2,000엔), 현금 환율로 57,000원.
+      const fundExpenses = [
+        ...FUND_MEMBERS.map((payerId) => ({ amount: 10000, payerId, isDeposit: true })),
+        { amount: 24000, payerId: ORGANIZER },
+      ];
+      expect(computeFundBalance(fundExpenses, ORGANIZER, 'JPY', RATE)).toEqual({
+        depositTotal: 30000,
+        spentTotal: 24000,
+        remaining: 6000,
+        remainingKrw: 57000,
+      });
     });
   });
 

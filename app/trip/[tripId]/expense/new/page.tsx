@@ -344,7 +344,11 @@ function PaymentFields({
       <p className="mt-2 text-hint text-sub">{t("expense.payerQuestion")}</p>
       <Segmented
         label={t("expense.payerQuestion")}
-        options={payers.map((member) => ({ value: member.id, label: member.name }))}
+        options={payers.map((member) => ({
+          value: member.id,
+          // 공금 여행에서는 총무가 내는 돈이 곧 공금이다. 이름만 "공금"으로 보이고, 저장되는 값은 총무 id 그대로다.
+          label: trip.usesFund && member.isOrganizer ? t("expense.fundPayer") : member.name,
+        }))}
         value={payerId}
         onChange={onPayer}
         disabled={disabled}

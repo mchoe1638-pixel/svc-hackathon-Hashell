@@ -35,6 +35,8 @@ const tripSchema = z.object({
   // DB는 항상 날짜나 null을 준다. 날짜 컬럼이 생기기 전에 만든 테스트·가짜 응답에는 없어서 생략도 받는다.
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
+  // DB는 항상 true나 false를 준다 (not null default false). 공금 컬럼 이전의 테스트·가짜 응답에는 없어서 생략도 받는다.
+  uses_fund: z.boolean().optional(),
 });
 
 const memberSchema = z.object({
@@ -101,6 +103,7 @@ function toTripRow(json: z.infer<typeof tripSchema>): TripRow {
     status: json.status,
     startDate: json.start_date,
     endDate: json.end_date,
+    usesFund: json.uses_fund,
   };
 }
 

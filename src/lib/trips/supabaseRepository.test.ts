@@ -80,6 +80,7 @@ describe('createTrip', () => {
       p_member_names: ['민수', '지수'],
       p_start_date: null,
       p_end_date: null,
+      p_uses_fund: false,
     });
   });
 

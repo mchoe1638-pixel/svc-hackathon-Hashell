@@ -5,7 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { AppBar } from "@/components/app-bar";
-import { CreateTripForm, parseScope } from "@/components/create-trip-form";
+import {
+  CreateTripForm,
+  parseFund,
+  parseScope,
+  type TripScope,
+} from "@/components/create-trip-form";
 import { Screen } from "@/components/screen";
 import { useAppMode } from "@/components/use-app-mode";
 import { cn } from "@/components/utils";
@@ -32,8 +37,14 @@ const SCOPE_CHOICES = [
   },
 ] as const;
 
+/** 공금 카드. 국내/해외 카드와 같은 모양이고 그림은 없다. */
+const FUND_CHOICES = [
+  { value: "yes", title: "create.fundYes", hint: "create.fundYesHint" },
+  { value: "no", title: "create.fundNo", hint: "create.fundNoHint" },
+] as const;
+
 /**
- * 새 여행 (/new). `?scope=domestic|overseas`가 없으면 국내/해외부터 고르고, 있으면 여행 만들기 폼.
+ * 새 여행 (/new). 국내/해외(`?scope=`) → 공금(`&fund=yes|no`) 순서로 고르고, 둘 다 있으면 여행 만들기 폼.
  * 방 만들기는 앱 안에서만 보인다 (웹 브라우저는 앱 안내만).
  */
 export default function NewTripPage() {
@@ -46,11 +57,41 @@ export default function NewTripPage() {
 
 function NewTrip() {
   const mode = useAppMode();
-  const scope = parseScope(useSearchParams().get("scope"));
+  const params = useSearchParams();
+  const scope = parseScope(params.get("scope"));
+  const usesFund = parseFund(params.get("fund"));
 
   if (mode === "checking") return null;
   if (mode === "web") return <WebNotice />;
-  return scope ? <CreateTripForm scope={scope} /> : <ScopeChoice />;
+  if (!scope) return <ScopeChoice />;
+  if (usesFund === null) return <FundChoice scope={scope} />;
+  return <CreateTripForm scope={scope} usesFund={usesFund} />;
+}
+
+/** 공금 고르기 (국내/해외 다음). 고른 값은 저장하지 않고 다음 화면 주소로만 넘긴다. */
+function FundChoice({ scope }: { scope: TripScope }) {
+  return (
+    <>
+      <AppBar title={t("create.scopeBarTitle")} backHref="/new" />
+      <Screen>
+        <h2 className="mt-1 text-title font-bold tracking-tight">{t("create.fundQuestion")}</h2>
+        <p className="-mt-2 text-hint text-sub">{t("create.fundHint")}</p>
+
+        <div className="grid auto-rows-fr gap-4">
+          {FUND_CHOICES.map((choice) => (
+            <Link
+              key={choice.value}
+              href={`/new?scope=${scope}&fund=${choice.value}`}
+              className="press grid content-center gap-1 rounded-2xl border-2 border-line bg-paper px-4.5 py-5 text-left"
+            >
+              <b className="text-lead font-bold">{t(choice.title)}</b>
+              <span className="text-hint text-sub">{t(choice.hint)}</span>
+            </Link>
+          ))}
+        </div>
+      </Screen>
+    </>
+  );
 }
 
 /** 국내/해외 고르기 (시안 "scope"). 고른 값은 저장하지 않고 다음 화면 주소로만 넘긴다. */

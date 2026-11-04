@@ -76,6 +76,7 @@ const createTripSchema = z
     memberNames: memberNamesSchema,
     startDate: dateSchema.nullable().optional(),
     endDate: dateSchema.nullable().optional(),
+    usesFund: z.boolean('must be true or false').optional(),
   })
   // DB의 trips_date_range_check와 같은 규칙. 둘 중 하나라도 없으면 통과한다. 같은 형식의 날짜 문자열은 글자 순서가 날짜 순서다.
   .refine((value) => value.startDate == null || value.endDate == null || value.endDate >= value.startDate, {

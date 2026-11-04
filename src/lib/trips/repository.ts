@@ -24,6 +24,8 @@ export interface TripRow {
   /** 여행 기간. 정하지 않았으면 null (날짜 컬럼 이전의 테스트 데이터에서는 생략된다). */
   readonly startDate?: IsoDate | null;
   readonly endDate?: IsoDate | null;
+  /** 공금 여행 여부 (공금 컬럼 이전의 테스트 데이터에서는 생략된다 = false). */
+  readonly usesFund?: boolean;
 }
 
 /** `members` 테이블 한 행 (camelCase). `authUserId`가 null이면 아직 아무 기기도 고르지 않은 이름이다. */

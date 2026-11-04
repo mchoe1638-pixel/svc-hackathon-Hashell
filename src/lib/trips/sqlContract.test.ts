@@ -19,6 +19,9 @@ const sql = readFileSync(fileURLToPath(MIGRATION_URL), 'utf8');
 /** v4 날짜: trips에 기간 컬럼을 더하고 create_trip을 날짜 인자와 함께 다시 만든 마이그레이션. */
 const DATES_MIGRATION_URL = new URL('../../../supabase/migrations/20261104100000_trip_dates.sql', import.meta.url);
 const datesSql = readFileSync(fileURLToPath(DATES_MIGRATION_URL), 'utf8');
+/** 공금 여행: trips에 uses_fund 컬럼을 더하고 create_trip을 공금 인자와 함께 다시 만든 마이그레이션. */
+const FUND_MIGRATION_URL = new URL('../../../supabase/migrations/20261104140000_fund_trips.sql', import.meta.url);
+const fundSql = readFileSync(fileURLToPath(FUND_MIGRATION_URL), 'utf8');
 
 const TRIP_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const MEMBER_ID = '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b';
@@ -86,7 +89,7 @@ describe('migration ↔ TypeScript contract', () => {
 
     const [functionName, params] = rpc.mock.calls[0] as [string, Record<string, unknown>];
     expect(functionName).toBe('create_trip');
-    expect(Object.keys(params).sort()).toEqual(functionParams('create_trip', datesSql).sort());
+    expect(Object.keys(params).sort()).toEqual(functionParams('create_trip', fundSql).sort());
   });
 
   it('join_trip: the repository sends exactly the parameters the SQL function declares, for both ways to join', async () => {
@@ -116,7 +119,11 @@ describe('migration ↔ TypeScript contract', () => {
   });
 
   it('the columns the selects ask for all exist in the tables', () => {
-    expect([...tableColumns('trips'), ...addedColumns('trips', datesSql)]).toEqual(
+    expect([
+      ...tableColumns('trips'),
+      ...addedColumns('trips', datesSql),
+      ...addedColumns('trips', fundSql),
+    ]).toEqual(
       expect.arrayContaining(TRIP_COLUMNS.split(',')),
     );
     expect(tableColumns('members')).toEqual(expect.arrayContaining(MEMBER_COLUMNS.split(',')));

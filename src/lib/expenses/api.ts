@@ -29,8 +29,8 @@ import { parseApiResponse } from '../trips/responses';
 import { TRANSFER_COLUMNS, TRIP_WITH_MEMBERS_COLUMNS, parseTransferRows, parseTripsWithMembers } from '../trips/rows';
 import { toTripDetail } from '../trips/tripDetail';
 import {
+  EXPENSE_LIST_COLUMNS,
   EXPENSE_RECORD_COLUMNS,
-  EXPENSE_SUMMARY_COLUMNS,
   parseExpenseRecord,
   parseExpenseRecords,
   parseExpenseSummaries,
@@ -164,7 +164,7 @@ export async function fetchExpenses(tripId: TripId): Promise<readonly ExpenseSum
   await getSession();
   const { data, error, status } = await getBrowserClient()
     .from('expenses')
-    .select(EXPENSE_SUMMARY_COLUMNS)
+    .select(EXPENSE_LIST_COLUMNS)
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .retry(false);

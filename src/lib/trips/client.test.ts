@@ -255,6 +255,7 @@ describe('getTrip', () => {
       cardFeeRate: 0.025,
       inviteCode: 'k3Jx9Qm2Vb7Lp4Zt',
       status: 'OPEN',
+      usesFund: false,
       members: [
         { id: MEMBER_ID, name: '민수', isOrganizer: true, isBound: true },
         { id: FRIEND_ID, name: '지영', isOrganizer: false, isBound: false },

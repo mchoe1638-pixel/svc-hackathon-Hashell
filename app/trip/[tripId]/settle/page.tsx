@@ -104,6 +104,23 @@ function TransferWho({ members, transfer }: { members: readonly Member[]; transf
   );
 }
 
+/**
+ * 공금 여행의 송금 옆 문구. 총무가 보내는 송금은 "남은 공금", 총무가 받는 송금은 "공금 채우기".
+ * 총무와 상관없는 송금과 공금을 안 쓰는 여행에는 붙이지 않는다.
+ */
+function FundNote({ trip, transfer }: { trip: TripDetail; transfer: Transfer }) {
+  if (!trip.usesFund) return null;
+  const organizer = trip.members.find((member) => member.isOrganizer);
+  if (!organizer) return null;
+  const note =
+    transfer.fromMemberId === organizer.id
+      ? t("settle.fundLeft")
+      : transfer.toMemberId === organizer.id
+        ? t("settle.fundRefill")
+        : null;
+  return note ? <span className="text-caption font-medium text-sub">{note}</span> : null;
+}
+
 type ScreenProps = { trip: TripDetail; settlement: Settlement; onConflict: () => void };
 
 /** 쓰기 실패 공통 처리: 409는 최신 내용 다시 받기, 423은 이미 확정됨(다시 받기), 나머지는 짧은 안내. */
@@ -163,9 +180,12 @@ function Preview({ trip, settlement, onConflict }: ScreenProps) {
               className="flex min-h-16 min-w-0 items-center gap-2 border-b border-line py-2.5 last:border-b-0"
             >
               <TransferWho members={trip.members} transfer={transfer} />
-              <span className="shrink-0 text-bar font-bold whitespace-nowrap tabular-nums">
-                {formatMoney(transfer.krwAmount, "KRW")}
-              </span>
+              <div className="grid shrink-0 justify-items-end text-right">
+                <span className="text-bar font-bold whitespace-nowrap tabular-nums">
+                  {formatMoney(transfer.krwAmount, "KRW")}
+                </span>
+                <FundNote trip={trip} transfer={transfer} />
+              </div>
             </li>
           ))}
         </ul>
@@ -297,6 +317,7 @@ function Settled({ trip, settlement, onConflict }: ScreenProps) {
                   <span className="text-bar font-bold tabular-nums">
                     {formatMoney(transfer.krwAmount, "KRW")}
                   </span>
+                  <FundNote trip={trip} transfer={transfer} />
                   {done ? (
                     <span className="text-caption font-bold text-ok">{t("settle.received")}</span>
                   ) : transfer.isMeReceiver ? (

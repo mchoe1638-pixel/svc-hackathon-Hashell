@@ -57,6 +57,12 @@ const memberIdsSchema = z
   .max(MAX_MEMBER_COUNT, `must have at most ${MAX_MEMBER_COUNT} members`)
   .refine(isUnique, 'member ids must be unique');
 
+/**
+ * 지출을 저장할 때 받는 카테고리: 판독 목록 + 공금 입금('deposit').
+ * 'deposit'은 AI가 고르는 값이 아니라서 `ITEM_CATEGORIES`(판독 쪽 목록)에는 넣지 않는다.
+ */
+const SAVED_ITEM_CATEGORIES = [...ITEM_CATEGORIES, 'deposit'] as const satisfies readonly ItemCategory[];
+
 const itemSchema = z.object({
   id: idSchema.optional(),
   originalName: text(MAX_ITEM_NAME_LENGTH),
@@ -65,7 +71,7 @@ const itemSchema = z.object({
   quantity: wholeNumber(1, MAX_QUANTITY),
   splitType: z.enum(['EACH', 'SHARED'], 'must be EACH or SHARED'),
   checkedMemberIds: memberIdsSchema.optional(),
-  category: z.enum(ITEM_CATEGORIES, 'must be one of the known item categories').optional(),
+  category: z.enum(SAVED_ITEM_CATEGORIES, 'must be one of the known item categories').optional(),
 });
 
 const adjustmentSchema = z.object({

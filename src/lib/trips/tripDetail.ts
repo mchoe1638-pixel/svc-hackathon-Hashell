@@ -44,6 +44,7 @@ export function toTripDetail(
     cardFeeRate: trip.cardFeeRate,
     inviteCode: trip.inviteCode,
     status: trip.status,
+    usesFund: trip.usesFund ?? false,
     startDate: trip.startDate,
     endDate: trip.endDate,
     members: sortedByJoinOrder(rows).map(toMember),

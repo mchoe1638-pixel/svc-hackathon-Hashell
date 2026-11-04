@@ -117,6 +117,7 @@ export function createSupabaseTripsRepository(gateway: TripsGateway): TripsRepos
           p_member_names: [...trip.memberNames],
           p_start_date: trip.startDate ?? null,
           p_end_date: trip.endDate ?? null,
+          p_uses_fund: trip.usesFund ?? false,
         }),
       );
       return parseTripId(data);

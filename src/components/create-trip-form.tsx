@@ -24,6 +24,13 @@ export function parseScope(value: string | null): TripScope | null {
   return value === "domestic" || value === "overseas" ? value : null;
 }
 
+/** 공금 여행 여부. 주소의 `?fund=yes|no`를 읽는다. 없거나 모르는 값이면 null (아직 안 골랐다). */
+export function parseFund(value: string | null): boolean | null {
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return null;
+}
+
 const DOMESTIC_CURRENCY: CurrencyCode = "KRW";
 /** 해외 여행에서 처음 골라져 있는 현지통화. 고를 수 있는 목록은 `OVERSEAS_CURRENCIES`. */
 const DEFAULT_OVERSEAS_CURRENCY: CurrencyCode = "JPY";
@@ -36,7 +43,7 @@ const DEFAULT_CARD_FEE_RATE = 0.022;
 type FieldKey = "title" | "dates" | "myName" | "cashRate" | "member";
 
 /** 여행 만들기 폼. 국내면 환율 칸을 숨기고 원화·환율 1·수수료 0으로, 해외면 환율만 받고 카드 수수료는 기본값(2.2%)으로 저장한다. */
-export function CreateTripForm({ scope }: { scope: TripScope }) {
+export function CreateTripForm({ scope, usesFund }: { scope: TripScope; usesFund: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const createTrip = useCreateTrip();
@@ -110,6 +117,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
         cashRate: rate,
         cardFeeRate: feeRate,
         memberNames: [organizer, ...others],
+        usesFund,
         startDate,
         // 가는 날만 눌렀으면 당일치기로 본다.
         endDate: dates.end ?? startDate,
@@ -121,7 +129,7 @@ export function CreateTripForm({ scope }: { scope: TripScope }) {
     );
   }
 
-  // 국내/해외 고르는 화면에서 들어왔으니 한 칸 뒤로. 주소로 바로 들어왔다면 고르는 화면으로 보낸다.
+  // 공금 고르는 화면에서 들어왔으니 한 칸 뒤로. 주소로 바로 들어왔다면 처음 고르는 화면(국내/해외)으로 보낸다.
   function goBack() {
     if (window.history.length > 1) router.back();
     else router.replace("/new");

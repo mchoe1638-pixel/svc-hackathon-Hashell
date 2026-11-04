@@ -56,6 +56,7 @@ describe('toTripDetail', () => {
       cardFeeRate: 0.025,
       inviteCode: 'k3Jx9Qm2Vb7Lp4Zt',
       status: 'OPEN',
+      usesFund: false,
       members: [
         { id: 'm-1', name: '민수', isOrganizer: true, isBound: true },
         { id: 'm-2', name: '지연', isOrganizer: false, isBound: true },

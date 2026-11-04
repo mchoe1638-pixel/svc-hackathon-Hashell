@@ -29,4 +29,5 @@ export const MOCK_TRIP_BASE: Omit<TripDetail, 'status' | 'members' | 'me'> = {
   cashRate: 9.4,
   cardFeeRate: 0.025,
   inviteCode: MOCK_INVITE_CODE,
+  usesFund: false,
 };

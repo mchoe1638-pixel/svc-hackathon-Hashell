@@ -66,7 +66,8 @@ function WrappedContent() {
     );
   }
 
-  const list = expenses.data ?? [];
+  // 공금 입금(카테고리 deposit)은 쓴 돈이 아니라서 통계에서 뺀다. 상세도 읽지 않는다.
+  const list = (expenses.data ?? []).filter((expense) => !expense.isDeposit);
   const ready =
     trip.data !== undefined &&
     settlement.data !== undefined &&
