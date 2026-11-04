@@ -5,6 +5,7 @@
   "description": "hashell 총무 앱 셸 (Capacitor Android). server.url의 Vercel 운영 주소를 WebView로 연다.",
   "dependencies": {
     "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0"
   },
   "devDependencies": {

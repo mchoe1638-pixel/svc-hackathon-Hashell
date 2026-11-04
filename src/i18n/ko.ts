@@ -25,6 +25,7 @@ export const ko = {
     close: "닫기",
     tripGone: "없어진 여행이에요. 총무가 여행을 지웠거나 링크가 잘못됐어요",
     toTripList: "여행 목록으로",
+    exitHint: "한 번 더 누르면 종료돼요",
   },
   status: {
     OPEN: "참여 받는 중",

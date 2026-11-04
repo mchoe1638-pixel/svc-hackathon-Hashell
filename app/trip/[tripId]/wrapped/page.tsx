@@ -200,6 +200,17 @@ function WrappedStories({
     };
   }, [trip.title, wrapped, members, titleLines]);
 
+  // 화면이 가려질 때(라우트가 캐시에 남은 채 숨겨질 때)마다 처음 상태로 되돌린다.
+  // 안 그러면 Stories의 `closing`이 true로 남아, 다시 열었을 때 투명한 전체 화면 덮개만 떠서 흰 화면이 된다.
+  useEffect(
+    () => () => {
+      setRound((n) => n + 1);
+      setPreview(null);
+      setSharing(false);
+    },
+    [],
+  );
+
   async function share() {
     if (sharing) return;
     if (storyFile) {
@@ -499,6 +510,18 @@ function StoryPreview({ file, onClose }: { file: File; onClose: () => void }) {
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
+
+  // 기기 뒤로가기(BackButtonHandler)는 열린 대화상자에 Esc를 보내 닫는다.
+  // 뒤쪽 Stories의 Esc(스토리 닫기)보다 먼저 받아, 미리보기만 닫고 끝낸다.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.stopImmediatePropagation();
+      onClose();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onClose]);
 
   return (
     <div
